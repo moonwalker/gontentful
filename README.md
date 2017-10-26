@@ -1,3 +1,3 @@
-# Contentful Go client library
+# Gontentful
 
-WIP
+Contentful Go client library
