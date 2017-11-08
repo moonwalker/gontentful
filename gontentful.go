@@ -84,7 +84,10 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 		return nil, err
 	}
 	defer res.Body.Close()
-	c.AfterRequest(c, req, res, time.Since(start))
+
+	if c.AfterRequest != nil {
+		c.AfterRequest(c, req, res, time.Since(start))
+	}
 
 	if res.StatusCode >= http.StatusOK && res.StatusCode < http.StatusBadRequest {
 		return ioutil.ReadAll(res.Body)
