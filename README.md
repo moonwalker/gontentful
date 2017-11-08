@@ -8,4 +8,4 @@ Licensed under the [MIT License](LICENSE)
 
 ### Acknowledgements
 
-Partially based on [contentful-go](https://github.com/contentful-labs/contentful-go)
+Utilize code from [contentful-go](https://github.com/contentful-labs/contentful-go)
