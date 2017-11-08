@@ -2,12 +2,12 @@ package gontentful
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -22,7 +22,7 @@ const (
 type Client struct {
 	client       *http.Client
 	Options      *ClientOptions
-	AfterRequest func(c *Client, req *http.Request, elapsed time.Duration)
+	AfterRequest func(c *Client, req *http.Request, res *http.Response, elapsed time.Duration)
 }
 
 type ClientOptions struct {
@@ -74,23 +74,75 @@ func (c *Client) req(method string, path string, query url.Values, body io.Reade
 
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.Options.ApiToken))
 
+	return c.do(req)
+}
+
+func (c *Client) do(req *http.Request) ([]byte, error) {
 	start := time.Now()
 	res, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer res.Body.Close()
-	c.AfterRequest(c, req, time.Since(start))
+	c.AfterRequest(c, req, res, time.Since(start))
 
 	if res.StatusCode >= http.StatusOK && res.StatusCode < http.StatusBadRequest {
 		return ioutil.ReadAll(res.Body)
 	}
 
-	var e errorResponse
-	err = json.NewDecoder(res.Body).Decode(&e)
-	if err != nil {
-		return nil, err
+	apiError := c.parseError(req, res)
+
+	// return apiError if it is not rate limit error
+	if _, ok := apiError.(RateLimitExceededError); !ok {
+		return nil, apiError
 	}
 
-	return nil, errors.New(e.Message)
+	resetHeader := res.Header.Get("x-contentful-ratelimit-reset")
+
+	// return apiError if Ratelimit-Reset header is not presented
+	if resetHeader == "" {
+		return nil, apiError
+	}
+
+	// wait X-Contentful-Ratelimit-Reset amount of seconds
+	waitSeconds, err := strconv.Atoi(resetHeader)
+	if err != nil {
+		return nil, apiError
+	}
+
+	time.Sleep(time.Second * time.Duration(waitSeconds))
+
+	return c.do(req)
+}
+
+func (c *Client) parseError(req *http.Request, res *http.Response) error {
+	var e ErrorResponse
+	defer res.Body.Close()
+	err := json.NewDecoder(res.Body).Decode(&e)
+	if err != nil {
+		return err
+	}
+
+	apiError := APIError{
+		req: req,
+		res: res,
+		err: &e,
+	}
+
+	switch errType := e.Sys.ID; errType {
+	case "NotFound":
+		return NotFoundError{apiError}
+	case "RateLimitExceeded":
+		return RateLimitExceededError{apiError}
+	case "AccessTokenInvalid":
+		return AccessTokenInvalidError{apiError}
+	case "ValidationFailed":
+		return ValidationFailedError{apiError}
+	case "VersionMismatch":
+		return VersionMismatchError{apiError}
+	case "Conflict":
+		return VersionMismatchError{apiError}
+	default:
+		return e
+	}
 }

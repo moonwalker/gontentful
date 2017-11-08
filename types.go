@@ -1,9 +1,5 @@
 package gontentful
 
-import (
-	"encoding/json"
-)
-
 type Sys struct {
 	ID          string       `json:"id"`
 	Type        string       `json:"type,omitempty"`
@@ -46,14 +42,4 @@ type Locale struct {
 	Default      bool   `json:"default"`
 	Name         string `json:"name"`
 	FallbackCode string `json:"fallbackCode"`
-}
-
-type errorResponse struct {
-	Message string `json:"message,omitempty"`
-}
-
-func UnmarshalEntries(body []byte) (entries *Entries, err error) {
-	entries = &Entries{}
-	err = json.Unmarshal(body, entries)
-	return
 }
