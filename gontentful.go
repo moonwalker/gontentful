@@ -15,20 +15,22 @@ const (
 	timeout  = 10 * time.Second
 	hostname = "cdn.contentful.com"
 
-	pathSpace   = "/spaces/%s"
-	pathEntries = pathSpace + "/entries"
+	pathSpaces  = "/spaces/%s"
+	pathEntries = pathSpaces + "/entries"
 )
 
 type Client struct {
 	client       *http.Client
+	headers      map[string]string
 	Options      *ClientOptions
 	AfterRequest func(c *Client, req *http.Request, res *http.Response, elapsed time.Duration)
 }
 
 type ClientOptions struct {
-	ApiToken string
-	SpaceID  string
-	ApiHost  string
+	ApiToken         string
+	ApiHost          string
+	SpaceID          string
+	RetryOnRateLimit bool
 }
 
 func NewClient(options *ClientOptions) *Client {
@@ -37,11 +39,15 @@ func NewClient(options *ClientOptions) *Client {
 		client: &http.Client{
 			Timeout: timeout,
 		},
+		headers: map[string]string{
+			"Authorization": fmt.Sprintf("Bearer %s", options.ApiToken),
+			"Content-Type":  "application/vnd.contentful.delivery.v1+json",
+		},
 	}
 }
 
 func (c *Client) GetSpace(query url.Values) ([]byte, error) {
-	path := fmt.Sprintf(pathSpace, c.Options.SpaceID)
+	path := fmt.Sprintf(pathSpaces, c.Options.SpaceID)
 	return c.get(path, query)
 }
 
@@ -72,7 +78,10 @@ func (c *Client) req(method string, path string, query url.Values, body io.Reade
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.Options.ApiToken))
+	// set headers
+	for key, value := range c.headers {
+		req.Header.Set(key, value)
+	}
 
 	return c.do(req)
 }
@@ -113,9 +122,12 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 		return nil, apiError
 	}
 
-	time.Sleep(time.Second * time.Duration(waitSeconds))
+	if c.Options.RetryOnRateLimit {
+		time.Sleep(time.Second * time.Duration(waitSeconds))
+		return c.do(req)
+	}
 
-	return c.do(req)
+	return nil, apiError
 }
 
 func (c *Client) parseError(req *http.Request, res *http.Response) error {
