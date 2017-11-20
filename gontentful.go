@@ -27,9 +27,10 @@ type Client struct {
 }
 
 type ClientOptions struct {
-	ApiToken         string
-	ApiHost          string
+	OrgID            string
 	SpaceID          string
+	ApiHost          string
+	ApiToken         string
 	RetryOnRateLimit bool
 }
 
@@ -40,8 +41,9 @@ func NewClient(options *ClientOptions) *Client {
 			Timeout: timeout,
 		},
 		headers: map[string]string{
-			"Authorization": fmt.Sprintf("Bearer %s", options.ApiToken),
-			"Content-Type":  "application/vnd.contentful.delivery.v1+json",
+			"X-Contentful-Organization": options.OrgID,
+			"Authorization":             fmt.Sprintf("Bearer %s", options.ApiToken),
+			"Content-Type":              "application/vnd.contentful.delivery.v1+json",
 		},
 	}
 }
