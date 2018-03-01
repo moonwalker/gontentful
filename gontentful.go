@@ -41,7 +41,6 @@ type ClientOptions struct {
 	SpaceID          string
 	ApiHost          string
 	ApiToken         string
-	RetryOnRateLimit bool
 }
 
 func NewClient(options *ClientOptions) *Client {
@@ -140,10 +139,7 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 		return nil, apiError
 	}
 
-	if c.Options.RetryOnRateLimit == nil || *c.Options.RetryOnRateLimit {
-		time.Sleep(time.Second * time.Duration(waitSeconds))
-		return c.do(req)
-	}
-
-	return nil, apiError
+	// retry on rate limit
+	time.Sleep(time.Second * time.Duration(waitSeconds))
+	return c.do(req)
 }
