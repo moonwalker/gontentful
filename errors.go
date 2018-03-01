@@ -2,6 +2,7 @@ package gontentful
 
 import (
 	"net/http"
+	"encoding/json"
 )
 
 // ErrorResponse model
@@ -94,3 +95,35 @@ type BadRequestError struct{}
 type InvalidQueryError struct{}
 type AccessDeniedError struct{}
 type ServerError struct{}
+
+func parseError(req *http.Request, res *http.Response) error {
+	var e ErrorResponse
+	defer res.Body.Close()
+	err := json.NewDecoder(res.Body).Decode(&e)
+	if err != nil {
+		return err
+	}
+
+	apiError := APIError{
+		req: req,
+		res: res,
+		err: &e,
+	}
+
+	switch errType := e.Sys.ID; errType {
+	case "NotFound":
+		return NotFoundError{apiError}
+	case "RateLimitExceeded":
+		return RateLimitExceededError{apiError}
+	case "AccessTokenInvalid":
+		return AccessTokenInvalidError{apiError}
+	case "ValidationFailed":
+		return ValidationFailedError{apiError}
+	case "VersionMismatch":
+		return VersionMismatchError{apiError}
+	case "Conflict":
+		return VersionMismatchError{apiError}
+	default:
+		return e
+	}
+}
