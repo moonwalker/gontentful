@@ -1,8 +1,6 @@
 package gontentful
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -28,6 +26,14 @@ type Client struct {
 	headers      map[string]string
 	Options      *ClientOptions
 	AfterRequest func(c *Client, req *http.Request, res *http.Response, elapsed time.Duration)
+
+	common  service
+	Entries *EntriesService
+	Spaces  *SpacesService
+}
+
+type service struct {
+	client *Client
 }
 
 type ClientOptions struct {
@@ -39,7 +45,7 @@ type ClientOptions struct {
 }
 
 func NewClient(options *ClientOptions) *Client {
-	return &Client{
+	client := &Client{
 		Options: options,
 		client: &http.Client{
 			Timeout: timeout,
@@ -50,23 +56,12 @@ func NewClient(options *ClientOptions) *Client {
 			"Content-Type":              "application/vnd.contentful.delivery.v1+json",
 		},
 	}
-}
 
-func (c *Client) GetSpace(query url.Values) ([]byte, error) {
-	path := fmt.Sprintf(pathSpaces, c.Options.SpaceID)
-	return c.get(path, query)
-}
+	client.common.client = client
+	client.Entries = (*EntriesService)(&client.common)
+	client.Spaces = (*SpacesService)(&client.common)
 
-func (c *Client) GetEntries(query url.Values) ([]byte, error) {
-	path := fmt.Sprintf(pathEntries, c.Options.SpaceID)
-	return c.get(path, query)
-}
-
-func (c *Client) CreateEntry(contentType string, body []byte) ([]byte, error) {
-	path := fmt.Sprintf(pathEntries, c.Options.SpaceID)
-	// Set header for content type id
-	c.headers[headerContentfulContentType] = contentType
-	return c.post(path, bytes.NewBuffer(body))
+	return client
 }
 
 func (c *Client) post(path string, body io.Reader) ([]byte, error) {
@@ -125,7 +120,7 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 		return ioutil.ReadAll(res.Body)
 	}
 
-	apiError := c.parseError(req, res)
+	apiError := parseError(req, res)
 
 	// return apiError if it is not rate limit error
 	if _, ok := apiError.(RateLimitExceededError); !ok {
@@ -145,42 +140,10 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 		return nil, apiError
 	}
 
-	if c.Options.RetryOnRateLimit {
+	if c.Options.RetryOnRateLimit == nil || *c.Options.RetryOnRateLimit {
 		time.Sleep(time.Second * time.Duration(waitSeconds))
 		return c.do(req)
 	}
 
 	return nil, apiError
-}
-
-func (c *Client) parseError(req *http.Request, res *http.Response) error {
-	var e ErrorResponse
-	defer res.Body.Close()
-	err := json.NewDecoder(res.Body).Decode(&e)
-	if err != nil {
-		return err
-	}
-
-	apiError := APIError{
-		req: req,
-		res: res,
-		err: &e,
-	}
-
-	switch errType := e.Sys.ID; errType {
-	case "NotFound":
-		return NotFoundError{apiError}
-	case "RateLimitExceeded":
-		return RateLimitExceededError{apiError}
-	case "AccessTokenInvalid":
-		return AccessTokenInvalidError{apiError}
-	case "ValidationFailed":
-		return ValidationFailedError{apiError}
-	case "VersionMismatch":
-		return VersionMismatchError{apiError}
-	case "Conflict":
-		return VersionMismatchError{apiError}
-	default:
-		return e
-	}
 }
