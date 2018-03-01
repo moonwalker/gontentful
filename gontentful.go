@@ -1,6 +1,7 @@
 package gontentful
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,11 +13,14 @@ import (
 )
 
 const (
-	timeout  = 10 * time.Second
-	hostname = "cdn.contentful.com"
+	timeout = 10 * time.Second
+	cdn     = "cdn.contentful.com"
+	api     = "api.contentful.com"
 
 	pathSpaces  = "/spaces/%s"
 	pathEntries = pathSpaces + "/entries"
+
+	headerContentfulContentType = "X-Contentful-Content-Type"
 )
 
 type Client struct {
@@ -58,12 +62,29 @@ func (c *Client) GetEntries(query url.Values) ([]byte, error) {
 	return c.get(path, query)
 }
 
+func (c *Client) CreateEntry(contentType string, body []byte) ([]byte, error) {
+	path := fmt.Sprintf(pathEntries, c.Options.SpaceID)
+	// Set header for content type id
+	c.headers[headerContentfulContentType] = contentType
+	return c.post(path, bytes.NewBuffer(body))
+}
+
+func (c *Client) post(path string, body io.Reader) ([]byte, error) {
+	return c.req(http.MethodPost, path, nil, body)
+}
+
 func (c *Client) get(path string, query url.Values) ([]byte, error) {
 	return c.req(http.MethodGet, path, query, nil)
 }
 
 func (c *Client) req(method string, path string, query url.Values, body io.Reader) ([]byte, error) {
-	host := hostname
+	host := ""
+	if method == http.MethodGet {
+		host = cdn
+	} else if method == http.MethodPost {
+		host = api
+	}
+
 	if c.Options.ApiHost != "" {
 		host = c.Options.ApiHost
 	}
