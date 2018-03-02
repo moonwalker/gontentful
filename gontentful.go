@@ -90,17 +90,18 @@ func (c *Client) delete(path string) ([]byte, error) {
 func (c *Client) req(method string, path string, query url.Values, body io.Reader, preview bool) ([]byte, error) {
 	// Set correct host and token for the request
 	host := ""
+	authToken := ""
 	if method == http.MethodGet {
 		if preview {
 			host = urlPreview
-			c.headers[headerAuthorization] = fmt.Sprintf("Bearer %s", c.Options.PreviewToken)
+			authToken = fmt.Sprintf("Bearer %s", c.Options.PreviewToken)
 		} else {
 			host = urlCdn
-			c.headers[headerAuthorization] = fmt.Sprintf("Bearer %s", c.Options.ApiToken)
+			authToken = fmt.Sprintf("Bearer %s", c.Options.ApiToken)
 		}
 	} else {
 		host = urlCma
-		c.headers[headerAuthorization] = fmt.Sprintf("Bearer %s", c.Options.CMAToken)
+		authToken = fmt.Sprintf("Bearer %s", c.Options.CMAToken)
 	}
 
 	u := &url.URL{
@@ -117,8 +118,12 @@ func (c *Client) req(method string, path string, query url.Values, body io.Reade
 
 	// set headers
 	for key, value := range c.headers {
-		req.Header.Set(key, value)
+		if value != "" {
+			req.Header.Set(key, value)
+		}
 	}
+	// add auth header
+	req.Header.Set(headerAuthorization, authToken)
 
 	return c.do(req)
 }
