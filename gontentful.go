@@ -11,14 +11,22 @@ import (
 )
 
 const (
-	timeout = 10 * time.Second
-	cdn     = "cdn.contentful.com"
-	api     = "api.contentful.com"
+	timeout    = 10 * time.Second
+	urlCdn     = "cdn.contentful.com"
+	urlApi     = "api.contentful.com"
+	urlPreview = "preview.contentful.com"
 
-	pathSpaces  = "/spaces/%s"
-	pathEntries = pathSpaces + "/entries"
+	pathSpaces         = "/spaces/%s"
+	pathEntries        = pathSpaces + "/entries"
+	pathEntry          = pathEntries + "/%s"
+	pathEntriesPublish = pathEntry + "/published"
+	pathEntriesArchive = pathEntry + "/archived"
 
-	headerContentfulContentType = "X-Contentful-Content-Type"
+	headerContentfulContentType  = "X-Contentful-Content-Type"
+	headerContentulVersion       = "X-Contentful-Version"
+	headerContentfulOrganization = "X-Contentful-Organization"
+	headerContentType            = "Content-Type"
+	headerAuthorization          = "Authorization"
 )
 
 type Client struct {
@@ -37,10 +45,11 @@ type service struct {
 }
 
 type ClientOptions struct {
-	OrgID            string
-	SpaceID          string
-	ApiHost          string
-	ApiToken         string
+	OrgID        string
+	SpaceID      string
+	ApiToken     string
+	PreviewToken string
+	CMAToken     string
 }
 
 func NewClient(options *ClientOptions) *Client {
@@ -50,9 +59,8 @@ func NewClient(options *ClientOptions) *Client {
 			Timeout: timeout,
 		},
 		headers: map[string]string{
-			"X-Contentful-Organization": options.OrgID,
-			"Authorization":             fmt.Sprintf("Bearer %s", options.ApiToken),
-			"Content-Type":              "application/vnd.contentful.delivery.v1+json",
+			headerContentfulOrganization: options.OrgID,
+			headerContentType:            "application/vnd.contentful.delivery.v1+json",
 		},
 	}
 
@@ -63,24 +71,36 @@ func NewClient(options *ClientOptions) *Client {
 	return client
 }
 
+func (c *Client) get(path string, query url.Values, preview bool) ([]byte, error) {
+	return c.req(http.MethodGet, path, query, nil, preview)
+}
+
 func (c *Client) post(path string, body io.Reader) ([]byte, error) {
-	return c.req(http.MethodPost, path, nil, body)
+	return c.req(http.MethodPost, path, nil, body, false)
 }
 
-func (c *Client) get(path string, query url.Values) ([]byte, error) {
-	return c.req(http.MethodGet, path, query, nil)
+func (c *Client) put(path string, body io.Reader) ([]byte, error) {
+	return c.req(http.MethodPut, path, nil, body, false)
 }
 
-func (c *Client) req(method string, path string, query url.Values, body io.Reader) ([]byte, error) {
+func (c *Client) delete(path string) ([]byte, error) {
+	return c.req(http.MethodDelete, path, nil, nil, false)
+}
+
+func (c *Client) req(method string, path string, query url.Values, body io.Reader, preview bool) ([]byte, error) {
+	// Set correct host and token for the request
 	host := ""
 	if method == http.MethodGet {
-		host = cdn
-	} else if method == http.MethodPost {
-		host = api
-	}
-
-	if c.Options.ApiHost != "" {
-		host = c.Options.ApiHost
+		if preview {
+			host = urlPreview
+			c.headers[headerAuthorization] = fmt.Sprintf("Bearer %s", c.Options.PreviewToken)
+		} else {
+			host = urlApi
+			c.headers[headerAuthorization] = fmt.Sprintf("Bearer %s", c.Options.ApiToken)
+		}
+	} else {
+		host = urlCdn
+		c.headers[headerAuthorization] = fmt.Sprintf("Bearer %s", c.Options.CMAToken)
 	}
 
 	u := &url.URL{

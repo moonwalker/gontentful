@@ -7,7 +7,7 @@ import (
 
 type SpacesService service
 
-func (s *SpacesService) Get(query url.Values) ([]byte, error) {
+func (s *SpacesService) Get(query url.Values, preview bool) ([]byte, error) {
 	path := fmt.Sprintf(pathSpaces, s.client.Options.SpaceID)
-	return s.client.get(path, query)
+	return s.client.get(path, query, preview)
 }
