@@ -13,7 +13,7 @@ import (
 const (
 	timeout    = 10 * time.Second
 	urlCdn     = "cdn.contentful.com"
-	urlApi     = "api.contentful.com"
+	urlCma     = "api.contentful.com"
 	urlPreview = "preview.contentful.com"
 
 	pathSpaces         = "/spaces/%s"
@@ -95,11 +95,11 @@ func (c *Client) req(method string, path string, query url.Values, body io.Reade
 			host = urlPreview
 			c.headers[headerAuthorization] = fmt.Sprintf("Bearer %s", c.Options.PreviewToken)
 		} else {
-			host = urlApi
+			host = urlCdn
 			c.headers[headerAuthorization] = fmt.Sprintf("Bearer %s", c.Options.ApiToken)
 		}
 	} else {
-		host = urlCdn
+		host = urlCma
 		c.headers[headerAuthorization] = fmt.Sprintf("Bearer %s", c.Options.CMAToken)
 	}
 
