@@ -12,7 +12,7 @@ import (
 
 const (
 	timeout    = 10 * time.Second
-	urlCdn     = "cdn.contentful.com"
+	urlCdn     = "cf-cdn.mw.zone"
 	urlCma     = "api.contentful.com"
 	urlPreview = "preview.contentful.com"
 
@@ -21,6 +21,7 @@ const (
 	pathEntry          = pathEntries + "/%s"
 	pathEntriesPublish = pathEntry + "/published"
 	pathEntriesArchive = pathEntry + "/archived"
+	pathSync           = "/spaces/%s/sync"
 
 	headerContentfulContentType  = "X-Contentful-Content-Type"
 	headerContentulVersion       = "X-Contentful-Version"
