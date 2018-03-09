@@ -18,7 +18,7 @@ const (
 	pathEntry          = pathEntries + "/%s"
 	pathEntriesPublish = pathEntry + "/published"
 	pathEntriesArchive = pathEntry + "/archived"
-	pathSync           = "/spaces/%s/sync"
+	pathSync           = pathSpaces + "/%s/sync"
 
 	headerContentfulContentType  = "X-Contentful-Content-Type"
 	headerContentulVersion       = "X-Contentful-Version"
