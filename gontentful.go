@@ -18,7 +18,7 @@ const (
 	pathEntry          = pathEntries + "/%s"
 	pathEntriesPublish = pathEntry + "/published"
 	pathEntriesArchive = pathEntry + "/archived"
-	pathSync           = pathSpaces + "/%s/sync"
+	pathSync           = pathSpaces + "/sync"
 
 	headerContentfulContentType  = "X-Contentful-Content-Type"
 	headerContentulVersion       = "X-Contentful-Version"
@@ -105,6 +105,8 @@ func (c *Client) req(method string, path string, query url.Values, body io.Reade
 		Path:   path,
 	}
 	u.RawQuery = query.Encode()
+
+	// fmt.Println(fmt.Sprintf("%s/%s%s", host, path, u.RawQuery))
 
 	req, err := http.NewRequest(method, u.String(), body)
 	if err != nil {
