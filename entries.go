@@ -1,16 +1,16 @@
 package gontentful
 
 import (
-	"net/url"
-	"fmt"
 	"bytes"
+	"fmt"
+	"net/url"
 )
 
 type EntriesService service
 
-func (s *EntriesService) Get(query url.Values, preview bool) ([]byte, error) {
+func (s *EntriesService) Get(query url.Values) ([]byte, error) {
 	path := fmt.Sprintf(pathEntries, s.client.Options.SpaceID)
-	return s.client.get(path, query, preview)
+	return s.client.get(path, query)
 }
 
 func (s *EntriesService) Create(contentType string, body []byte) ([]byte, error) {

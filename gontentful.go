@@ -11,10 +11,7 @@ import (
 )
 
 const (
-	timeout    = 10 * time.Second
-	urlCdn     = "cf-cdn.mw.zone"
-	urlCma     = "api.contentful.com"
-	urlPreview = "preview.contentful.com"
+	timeout = 10 * time.Second
 
 	pathSpaces         = "/spaces/%s"
 	pathEntries        = pathSpaces + "/entries"
@@ -48,9 +45,13 @@ type service struct {
 type ClientOptions struct {
 	OrgID        string
 	SpaceID      string
-	ApiToken     string
+	CdnToken     string
 	PreviewToken string
-	CMAToken     string
+	CmaToken     string
+	CdnURL       string
+	PreviewURL   string
+	CmaURL       string
+	UsePreview   bool
 }
 
 func NewClient(options *ClientOptions) *Client {
@@ -72,39 +73,32 @@ func NewClient(options *ClientOptions) *Client {
 	return client
 }
 
-func (c *Client) get(path string, query url.Values, preview bool) ([]byte, error) {
-	return c.req(http.MethodGet, path, query, nil, preview)
+func (c *Client) get(path string, query url.Values) ([]byte, error) {
+	host := ""
+	authToken := ""
+	if c.Options.UsePreview {
+		host = c.Options.PreviewURL
+		authToken = c.Options.PreviewToken
+	} else {
+		host = c.Options.CdnURL
+		authToken = c.Options.CdnToken
+	}
+	return c.req(http.MethodGet, path, query, nil, host, authToken)
 }
 
 func (c *Client) post(path string, body io.Reader) ([]byte, error) {
-	return c.req(http.MethodPost, path, nil, body, false)
+	return c.req(http.MethodPost, path, nil, body, c.Options.CmaURL, c.Options.CmaToken)
 }
 
 func (c *Client) put(path string, body io.Reader) ([]byte, error) {
-	return c.req(http.MethodPut, path, nil, body, false)
+	return c.req(http.MethodPut, path, nil, body, c.Options.CmaURL, c.Options.CmaToken)
 }
 
 func (c *Client) delete(path string) ([]byte, error) {
-	return c.req(http.MethodDelete, path, nil, nil, false)
+	return c.req(http.MethodDelete, path, nil, nil, c.Options.CmaURL, c.Options.CmaToken)
 }
 
-func (c *Client) req(method string, path string, query url.Values, body io.Reader, preview bool) ([]byte, error) {
-	// Set correct host and token for the request
-	host := ""
-	authToken := ""
-	if method == http.MethodGet {
-		if preview {
-			host = urlPreview
-			authToken = fmt.Sprintf("Bearer %s", c.Options.PreviewToken)
-		} else {
-			host = urlCdn
-			authToken = fmt.Sprintf("Bearer %s", c.Options.ApiToken)
-		}
-	} else {
-		host = urlCma
-		authToken = fmt.Sprintf("Bearer %s", c.Options.CMAToken)
-	}
-
+func (c *Client) req(method string, path string, query url.Values, body io.Reader, host string, authToken string) ([]byte, error) {
 	u := &url.URL{
 		Scheme: "https",
 		Host:   host,
@@ -124,7 +118,7 @@ func (c *Client) req(method string, path string, query url.Values, body io.Reade
 		}
 	}
 	// add auth header
-	req.Header.Set(headerAuthorization, authToken)
+	req.Header.Set(headerAuthorization, fmt.Sprintf("Bearer %s", authToken))
 
 	return c.do(req)
 }
