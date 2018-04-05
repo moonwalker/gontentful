@@ -1,6 +1,14 @@
 # Gontentful
 
-Minimal Contentful client library for Go.
+Minimal Contentful client library for Go, and command line interface.
+
+## CLI:
+
+Install:
+
+```sh
+$ go get -u github.com/moonwalker/gontentful/cmd/gontentful
+```
 
 ## License
 
