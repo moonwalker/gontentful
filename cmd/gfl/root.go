@@ -7,4 +7,5 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "gontentful",
 	Short: "cli for contentful",
+
 }

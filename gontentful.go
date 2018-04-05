@@ -22,6 +22,7 @@ const (
 	pathAssets         = pathSpaces + "/assets"
 	pathAssetsProcess  = pathAssets + "/%s/files/%s/process"
 	pathUploads        = pathSpaces + "/uploads"
+	pathContentTypes   = pathSpaces + "/content_types"
 
 	headerContentfulContentType  = "X-Contentful-Content-Type"
 	headerContentulVersion       = "X-Contentful-Version"
@@ -41,6 +42,7 @@ type Client struct {
 	Spaces  *SpacesService
 	Assets  *AssetsService
 	Uploads *UploadsService
+	ContentTypes *ContentTypesService
 }
 
 type service struct {
@@ -76,6 +78,7 @@ func NewClient(options *ClientOptions) *Client {
 	client.Spaces = (*SpacesService)(&client.common)
 	client.Assets = (*AssetsService)(&client.common)
 	client.Uploads = (*UploadsService)(&client.common)
+	client.ContentTypes = (*ContentTypesService)(&client.common)
 
 	return client
 }
