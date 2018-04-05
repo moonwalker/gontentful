@@ -7,16 +7,34 @@ import (
 
 	"github.com/moonwalker/gontentful"
 
+	"github.com/cbroglie/mustache"
 	"github.com/spf13/cobra"
 )
 
+const tpl = `
+begin;
+
+create schema {{SchemaName}};
+
+{{#Tables}}
+create table {{SchemaName}}.{{TableName}} (
+  id serial primary key,
+  {{#Columns}}
+  {{ColumnName}} {{ColumnDesc}}{{^Last}},{{/Last}}
+  {{/Columns}}
+);
+
+{{/Tables}}
+commit;
+`
+
 var typesCmd = &cobra.Command{
-	Use:   "types",
-	Short: "List all content types",
+	Use:   "schema",
+	Short: "Creates postgres schema",
 
 	Run: func(cmd *cobra.Command, args []string) {
 		client := gontentful.NewClient(&gontentful.ClientOptions{
-			CdnURL: "cdn.contentful.com",
+			CdnURL:   "cdn.contentful.com",
 			SpaceID:  SpaceId,
 			CdnToken: CdnToken,
 		})
@@ -30,15 +48,13 @@ var typesCmd = &cobra.Command{
 		resp := &Resp{}
 		err = json.Unmarshal(data, resp)
 
-		for _, item := range resp.Items {
-			fmt.Println(item.Sys.ID)
-			for _, field := range item.Fields {
-				fmt.Println("- " + field.ID)
-				if field.Items != nil && len(field.Items.Validations) > 0 && len(field.Items.Validations[0].LinkContentType) > 0 {
-					fmt.Println("--- " + field.Items.Validations[0].LinkContentType[0])
-				}
-			}
+		schema := NewPGSQLSchema(SpaceId, resp.Items)
+		s, err := mustache.Render(tpl, &schema)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
 		}
+		fmt.Println(s)
 	},
 }
 
@@ -48,10 +64,10 @@ func init() {
 
 type PGSQLSchema struct {
 	SchemaName string
-	Tables []PGSQLTable
+	Tables     []PGSQLTable
 }
 
-func NewPGSQLSchema(schemaName string, items []ContentType) PGSQLSchema{
+func NewPGSQLSchema(schemaName string, items []ContentType) PGSQLSchema {
 	schema := PGSQLSchema{
 		SchemaName: schemaName,
 	}
@@ -69,10 +85,10 @@ func NewPGSQLSchema(schemaName string, items []ContentType) PGSQLSchema{
 
 func NewPGSQLTable(schemaName, tableName string, fields []*Field) PGSQLTable {
 	table := PGSQLTable{
-		Referencing: make([]string, 0),
+		Referencing:  make([]string, 0),
 		ReferencedBy: make([]string, 0),
-		SchemaName: schemaName,
-		TableName: tableName,
+		SchemaName:   schemaName,
+		TableName:    tableName,
 	}
 
 	columns := make([]PGSQLColumn, 0)
@@ -83,14 +99,14 @@ func NewPGSQLTable(schemaName, tableName string, fields []*Field) PGSQLTable {
 
 	table.Columns = columns
 
-	table.Columns[len(table.Columns) - 1].Last = true
+	table.Columns[len(table.Columns)-1].Last = true
 
 	return table
 }
 
 func NewPGSQLColumn(table PGSQLTable, field Field) PGSQLColumn {
 	column := PGSQLColumn{
-		Table: table,
+		Table:      table,
 		SchemaName: table.SchemaName,
 		ColumnName: field.ID,
 	}
@@ -112,19 +128,19 @@ func (c *PGSQLColumn) getColumnType(field Field) string {
 	switch field.Type {
 	case "Symbol":
 		return "text"
-      case "Text":
+	case "Text":
 		return "text"
-      case "Integer":
+	case "Integer":
 		return "integer"
-      case "Number":
+	case "Number":
 		return "decimal"
-      case "Date":
+	case "Date":
 		return "date"
-      case "Location":
+	case "Location":
 		return "point"
-      case "Boolean":
+	case "Boolean":
 		return "boolean"
-      case "Link":
+	case "Link":
 		return c.getLinkType(field.Validations)
 	case "Array":
 		return c.getArrayType(*field.Items)
@@ -138,7 +154,7 @@ func (c *PGSQLColumn) getArrayType(items FieldTypeArrayItem) string {
 	switch items.Type {
 	case "Symbol":
 		return "text ARRAY"
-  	case "Link":
+	case "Link":
 		return c.getLinkType(items.Validations)
 	}
 	return ""
@@ -155,23 +171,22 @@ func (c *PGSQLColumn) getLinkType(validations []FieldValidation) string {
 		}
 	} else {
 		return "text"
-    }
-    return ""
+	}
+	return ""
 }
 
-
 type PGSQLTable struct {
-	Referencing []string
+	Referencing  []string
 	ReferencedBy []string
-	SchemaName string
-	TableName string
-	Columns []PGSQLColumn
+	SchemaName   string
+	TableName    string
+	Columns      []PGSQLColumn
 }
 
 type PGSQLColumn struct {
-	Table PGSQLTable
+	Table      PGSQLTable
 	SchemaName string
 	ColumnName string
 	ColumnDesc string
-	Last bool
+	Last       bool
 }
