@@ -7,7 +7,7 @@ Minimal Contentful client library for Go, and command line interface.
 Install:
 
 ```sh
-$ go get -u github.com/moonwalker/gontentful/cmd/gontentful
+$ go get -u github.com/moonwalker/gontentful/cmd/gfl
 ```
 
 ## License
