@@ -12,9 +12,9 @@ var (
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&SpaceId, "space", "s", "", "cf space id (required)")
-	rootCmd.PersistentFlags().StringVarP(&CdnToken, "cdn", "c", "", "cdn token (required)")
+	rootCmd.PersistentFlags().StringVarP(&CdnToken, "token", "t", "", "token token (required)")
 	rootCmd.MarkFlagRequired("space")
-	rootCmd.MarkFlagRequired("cdn")
+	rootCmd.MarkFlagRequired("token")
 }
 
 func main() {
