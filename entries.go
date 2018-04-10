@@ -13,6 +13,11 @@ func (s *EntriesService) Get(query url.Values) ([]byte, error) {
 	return s.client.get(path, query)
 }
 
+func (s *EntriesService) GetSingle(entryId string) ([]byte, error) {
+	path := fmt.Sprintf(pathEntry, s.client.Options.SpaceID, entryId)
+	return s.client.get(path, nil)
+}
+
 func (s *EntriesService) Create(contentType string, body []byte) ([]byte, error) {
 	path := fmt.Sprintf(pathEntries, s.client.Options.SpaceID)
 	// Set header for content type

@@ -13,16 +13,17 @@ import (
 const (
 	timeout = 10 * time.Second
 
-	pathSpaces         = "/spaces/%s"
-	pathEntries        = pathSpaces + "/entries"
-	pathEntry          = pathEntries + "/%s"
-	pathEntriesPublish = pathEntry + "/published"
-	pathEntriesArchive = pathEntry + "/archived"
-	pathSync           = pathSpaces + "/sync"
-	pathAssets         = pathSpaces + "/assets"
-	pathAssetsProcess  = pathAssets + "/%s/files/%s/process"
-	pathUploads        = pathSpaces + "/uploads"
-	pathContentTypes   = pathSpaces + "/content_types"
+	pathSpaces          = "/spaces/%s"
+	pathEntries         = pathSpaces + "/entries"
+	pathEntry           = pathEntries + "/%s"
+	pathEntriesPublish  = pathEntry + "/published"
+	pathEntriesArchive  = pathEntry + "/archived"
+	pathSync            = pathSpaces + "/sync"
+	pathAssets          = pathSpaces + "/assets"
+	pathAssetsProcess   = pathAssets + "/%s/files/%s/process"
+	pathAssetsPublished = pathAssets + "/%s/published"
+	pathUploads         = pathSpaces + "/uploads"
+	pathContentTypes    = pathSpaces + "/content_types"
 
 	headerContentfulContentType  = "X-Contentful-Content-Type"
 	headerContentulVersion       = "X-Contentful-Version"
@@ -37,11 +38,11 @@ type Client struct {
 	Options      *ClientOptions
 	AfterRequest func(c *Client, req *http.Request, res *http.Response, elapsed time.Duration)
 
-	common  service
-	Entries *EntriesService
-	Spaces  *SpacesService
-	Assets  *AssetsService
-	Uploads *UploadsService
+	common       service
+	Entries      *EntriesService
+	Spaces       *SpacesService
+	Assets       *AssetsService
+	Uploads      *UploadsService
 	ContentTypes *ContentTypesService
 }
 
