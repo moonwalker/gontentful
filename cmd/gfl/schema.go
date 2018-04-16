@@ -28,7 +28,7 @@ create table {{ $.SchemaName }}.{{ .TableName }} (
 alter table {{ $.SchemaName }}.{{ .TableName }} (
   {{- range $colidx, $col := .Columns }}
   {{- if $colidx }},{{- end }}
-  {{ .ColumnName }} integer not null references {{ $.SchemaName }}.{{ .ColumnDesc }} (id)
+  ADD COLUMN {{ .ColumnName }} integer references {{ $.SchemaName }}.{{ .ColumnDesc }}(id)
   {{- end }}
 );
 {{ end }}
