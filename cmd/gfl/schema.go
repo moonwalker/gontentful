@@ -1,3 +1,5 @@
+// $ ... | docker exec -i  <containerid> psql -U postgres
+
 package main
 
 import (
@@ -12,11 +14,11 @@ import (
 	"github.com/moonwalker/gontentful"
 )
 
-const tpl = `begin;
+const tpl = `BEGIN;
 
-create schema {{ .SchemaName }};
+CREATE SCHEMA {{ .SchemaName }};
 {{ range $tblidx, $tbl := .Tables }}
-create table {{ $.SchemaName }}.{{ .TableName }} (
+CREATE TABLE {{ $.SchemaName }}.{{ .TableName }} (
   id serial primary key,
   {{- range $colidx, $col := .Columns }}
   {{- if $colidx }},{{- end }}
@@ -25,14 +27,13 @@ create table {{ $.SchemaName }}.{{ .TableName }} (
 );
 {{ end -}}
 {{ range $refidx, $ref := .References }}
-alter table {{ $.SchemaName }}.{{ .TableName }} (
+ALTER TABLE {{ $.SchemaName }}.{{ .TableName }}
   {{- range $colidx, $col := .Columns }}
   {{- if $colidx }},{{- end }}
   ADD COLUMN {{ .ColumnName }} integer references {{ $.SchemaName }}.{{ .ColumnDesc }}(id)
-  {{- end }}
-);
+  {{- end }};
 {{ end }}
-commit;`
+COMMIT;`
 
 type PGSQLColumn struct {
 	ColumnName string
