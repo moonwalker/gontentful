@@ -10,6 +10,14 @@ Install:
 $ go get -u github.com/moonwalker/gontentful/cmd/gfl
 ```
 
+## Dependencies
+
+Go vendors managed with Dep:
+
+```shell
+$ dep ensure
+```
+
 ## License
 
 Licensed under the [MIT License](LICENSE)

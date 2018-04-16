@@ -1,32 +1,55 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
+	"text/template"
+
+	"github.com/spf13/cobra"
 
 	"github.com/moonwalker/gontentful"
-
-	"github.com/cbroglie/mustache"
-	"github.com/spf13/cobra"
 )
 
-const tpl = `
-begin;
+const tpl = `begin;
 
-create schema {{SchemaName}};
-
-{{#Tables}}
-create table {{SchemaName}}.{{TableName}} (
+create schema {{ .SchemaName }};
+{{ range $tblidx, $tbl := .Tables }}
+create table {{ .SchemaName }}.{{ $tbl.TableName }} (
   id serial primary key,
-  {{#Columns}}
-  {{ColumnName}} {{ColumnDesc}}{{^Last}},{{/Last}}
-  {{/Columns}}
+  {{- range $colidx, $col := $tbl.Columns }}
+  {{- if $colidx }},{{- end }}
+  {{ $col.ColumnName }} {{ $col.ColumnDesc }}
+  {{- end }}
 );
+{{ end }}
+commit;`
 
-{{/Tables}}
-commit;
-`
+type PGSQLTable struct {
+	Referencing  []string
+	ReferencedBy []string
+	SchemaName   string
+	TableName    string
+	Columns      []PGSQLColumn
+}
+
+type PGSQLColumn struct {
+	Table      PGSQLTable
+	SchemaName string
+	ColumnName string
+	ColumnDesc string
+	Last       bool
+}
+
+type PGSQLSchema struct {
+	SchemaName string
+	Tables     []PGSQLTable
+}
+
+func init() {
+	rootCmd.AddCommand(schemaCmd)
+}
 
 var schemaCmd = &cobra.Command{
 	Use:   "schema",
@@ -49,22 +72,29 @@ var schemaCmd = &cobra.Command{
 		err = json.Unmarshal(data, resp)
 
 		schema := NewPGSQLSchema(SpaceId, resp.Items)
-		s, err := mustache.Render(tpl, &schema)
+		str, err := schema.Render()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		fmt.Println(s)
+
+		fmt.Println(str)
 	},
 }
 
-func init() {
-	rootCmd.AddCommand(schemaCmd)
-}
+func (s *PGSQLSchema) Render() (string, error) {
+	tmpl, err := template.New("").Parse(tpl)
+	if err != nil {
+		return "", err
+	}
 
-type PGSQLSchema struct {
-	SchemaName string
-	Tables     []PGSQLTable
+	var buff bytes.Buffer
+	err = tmpl.Execute(&buff, s)
+	if err != nil {
+		return "", err
+	}
+
+	return buff.String(), nil
 }
 
 func NewPGSQLSchema(schemaName string, items []gontentful.ContentType) PGSQLSchema {
@@ -98,7 +128,6 @@ func NewPGSQLTable(schemaName, tableName string, fields []*gontentful.ContentTyp
 	}
 
 	table.Columns = columns
-
 	table.Columns[len(table.Columns)-1].Last = true
 
 	return table
@@ -173,20 +202,4 @@ func (c *PGSQLColumn) getLinkType(validations []gontentful.FieldValidation) stri
 		return "text"
 	}
 	return ""
-}
-
-type PGSQLTable struct {
-	Referencing  []string
-	ReferencedBy []string
-	SchemaName   string
-	TableName    string
-	Columns      []PGSQLColumn
-}
-
-type PGSQLColumn struct {
-	Table      PGSQLTable
-	SchemaName string
-	ColumnName string
-	ColumnDesc string
-	Last       bool
 }
