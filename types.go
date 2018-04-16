@@ -87,4 +87,5 @@ type FieldTypeArrayItem struct {
 type FieldValidation struct {
 	LinkContentType   []string `json:"linkContentType"`
 	LinkMimetypeGroup []string `json:"linkMimetypeGroup"`
+	Unique            bool     `json:"unique"`
 }

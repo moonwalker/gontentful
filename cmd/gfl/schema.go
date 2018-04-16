@@ -16,11 +16,19 @@ const tpl = `begin;
 
 create schema {{ .SchemaName }};
 {{ range $tblidx, $tbl := .Tables }}
-create table {{ .SchemaName }}.{{ $tbl.TableName }} (
+create table {{ $.SchemaName }}.{{ .TableName }} (
   id serial primary key,
-  {{- range $colidx, $col := $tbl.Columns }}
+  {{- range $colidx, $col := .Columns }}
   {{- if $colidx }},{{- end }}
-  {{ $col.ColumnName }} {{ $col.ColumnDesc }}
+  {{ .ColumnName }} {{ .ColumnDesc }}
+  {{- end }}
+);
+{{ end }}
+{{ range $tblidx, $tbl := .Tables }}
+alter table {{ $.SchemaName }}.{{ .TableName }} (
+  {{- range $refidx, $ref := .Referencing }}
+  {{- if $refidx }},{{- end }}
+  integer not null references {{ $.SchemaName }}.{{ $ref }} (id)
   {{- end }}
 );
 {{ end }}
@@ -29,17 +37,14 @@ commit;`
 type PGSQLTable struct {
 	Referencing  []string
 	ReferencedBy []string
-	SchemaName   string
 	TableName    string
 	Columns      []PGSQLColumn
 }
 
 type PGSQLColumn struct {
 	Table      PGSQLTable
-	SchemaName string
 	ColumnName string
 	ColumnDesc string
-	Last       bool
 }
 
 type PGSQLSchema struct {
@@ -104,7 +109,7 @@ func NewPGSQLSchema(schemaName string, items []gontentful.ContentType) PGSQLSche
 
 	tables := make([]PGSQLTable, 0)
 	for _, item := range items {
-		table := NewPGSQLTable(schemaName, item.Sys.ID, item.Fields)
+		table := NewPGSQLTable(item.Sys.ID, item.Fields)
 		tables = append(tables, table)
 	}
 
@@ -113,11 +118,10 @@ func NewPGSQLSchema(schemaName string, items []gontentful.ContentType) PGSQLSche
 	return schema
 }
 
-func NewPGSQLTable(schemaName, tableName string, fields []*gontentful.ContentTypeField) PGSQLTable {
+func NewPGSQLTable(tableName string, fields []*gontentful.ContentTypeField) PGSQLTable {
 	table := PGSQLTable{
 		Referencing:  make([]string, 0),
 		ReferencedBy: make([]string, 0),
-		SchemaName:   schemaName,
 		TableName:    tableName,
 	}
 
@@ -128,7 +132,6 @@ func NewPGSQLTable(schemaName, tableName string, fields []*gontentful.ContentTyp
 	}
 
 	table.Columns = columns
-	table.Columns[len(table.Columns)-1].Last = true
 
 	return table
 }
@@ -136,7 +139,6 @@ func NewPGSQLTable(schemaName, tableName string, fields []*gontentful.ContentTyp
 func NewPGSQLColumn(table PGSQLTable, field gontentful.ContentTypeField) PGSQLColumn {
 	column := PGSQLColumn{
 		Table:      table,
-		SchemaName: table.SchemaName,
 		ColumnName: field.ID,
 	}
 
@@ -147,9 +149,9 @@ func NewPGSQLColumn(table PGSQLTable, field gontentful.ContentTypeField) PGSQLCo
 
 func (c *PGSQLColumn) getColumnDesc(field gontentful.ContentTypeField) string {
 	columnType := c.getColumnType(field)
-	//if c.isUnique(field.Validations) {
-	//	columnType += " unique"
-	//}
+	if c.isUnique(field.Validations) {
+		columnType += " unique"
+	}
 	return columnType
 }
 
@@ -175,8 +177,9 @@ func (c *PGSQLColumn) getColumnType(field gontentful.ContentTypeField) string {
 		return c.getArrayType(*field.Items)
 	case "Object":
 		return "jsonb"
+	default:
+		return ""
 	}
-	return ""
 }
 
 func (c *PGSQLColumn) getArrayType(items gontentful.FieldTypeArrayItem) string {
@@ -185,21 +188,28 @@ func (c *PGSQLColumn) getArrayType(items gontentful.FieldTypeArrayItem) string {
 		return "text ARRAY"
 	case "Link":
 		return c.getLinkType(items.Validations)
+	default:
+		return ""
+	}
+}
+
+func (c *PGSQLColumn) getLinkType(validations []gontentful.FieldValidation) string {
+	for _, v := range validations {
+		// links
+		for _, l := range v.LinkContentType {
+			c.Table.Referencing = append(c.Table.Referencing, l)
+		}
+		// mime types ?
+		// for _, m := range v.LinkMimetypeGroup {}
 	}
 	return ""
 }
 
-func (c *PGSQLColumn) getLinkType(validations []gontentful.FieldValidation) string {
-	if len(validations) > 0 {
-		if len(validations[0].LinkContentType) != 0 {
-			refTable := validations[0].LinkContentType[0]
-			c.Table.Referencing = append(c.Table.Referencing, refTable)
-			return "integer not null references " + c.SchemaName + "." + refTable + "(id)"
-		} else if len(validations[0].LinkMimetypeGroup) != 0 {
-			return "text" // image
+func (c *PGSQLColumn) isUnique(validations []gontentful.FieldValidation) bool {
+	for _, v := range validations {
+		if v.Unique {
+			return true
 		}
-	} else {
-		return "text"
 	}
-	return ""
+	return false
 }
