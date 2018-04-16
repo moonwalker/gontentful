@@ -27,5 +27,4 @@ func (s *SpacesService) Sync(token string) ([]byte, error) {
 func (s *SpacesService) sync(query url.Values) ([]byte, error) {
 	path := fmt.Sprintf(pathSync, s.client.Options.SpaceID)
 	return s.client.get(path, query)
-
 }

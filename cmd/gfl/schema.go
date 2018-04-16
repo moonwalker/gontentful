@@ -28,7 +28,7 @@ create table {{SchemaName}}.{{TableName}} (
 commit;
 `
 
-var typesCmd = &cobra.Command{
+var schemaCmd = &cobra.Command{
 	Use:   "schema",
 	Short: "Creates postgres schema",
 
@@ -45,7 +45,7 @@ var typesCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		resp := &Resp{}
+		resp := &gontentful.ContentTypes{}
 		err = json.Unmarshal(data, resp)
 
 		schema := NewPGSQLSchema(SpaceId, resp.Items)
@@ -59,7 +59,7 @@ var typesCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(typesCmd)
+	rootCmd.AddCommand(schemaCmd)
 }
 
 type PGSQLSchema struct {
@@ -67,7 +67,7 @@ type PGSQLSchema struct {
 	Tables     []PGSQLTable
 }
 
-func NewPGSQLSchema(schemaName string, items []ContentType) PGSQLSchema {
+func NewPGSQLSchema(schemaName string, items []gontentful.ContentType) PGSQLSchema {
 	schema := PGSQLSchema{
 		SchemaName: schemaName,
 	}
@@ -83,7 +83,7 @@ func NewPGSQLSchema(schemaName string, items []ContentType) PGSQLSchema {
 	return schema
 }
 
-func NewPGSQLTable(schemaName, tableName string, fields []*Field) PGSQLTable {
+func NewPGSQLTable(schemaName, tableName string, fields []*gontentful.ContentTypeField) PGSQLTable {
 	table := PGSQLTable{
 		Referencing:  make([]string, 0),
 		ReferencedBy: make([]string, 0),
@@ -104,7 +104,7 @@ func NewPGSQLTable(schemaName, tableName string, fields []*Field) PGSQLTable {
 	return table
 }
 
-func NewPGSQLColumn(table PGSQLTable, field Field) PGSQLColumn {
+func NewPGSQLColumn(table PGSQLTable, field gontentful.ContentTypeField) PGSQLColumn {
 	column := PGSQLColumn{
 		Table:      table,
 		SchemaName: table.SchemaName,
@@ -116,7 +116,7 @@ func NewPGSQLColumn(table PGSQLTable, field Field) PGSQLColumn {
 	return column
 }
 
-func (c *PGSQLColumn) getColumnDesc(field Field) string {
+func (c *PGSQLColumn) getColumnDesc(field gontentful.ContentTypeField) string {
 	columnType := c.getColumnType(field)
 	//if c.isUnique(field.Validations) {
 	//	columnType += " unique"
@@ -124,7 +124,7 @@ func (c *PGSQLColumn) getColumnDesc(field Field) string {
 	return columnType
 }
 
-func (c *PGSQLColumn) getColumnType(field Field) string {
+func (c *PGSQLColumn) getColumnType(field gontentful.ContentTypeField) string {
 	switch field.Type {
 	case "Symbol":
 		return "text"
@@ -150,7 +150,7 @@ func (c *PGSQLColumn) getColumnType(field Field) string {
 	return ""
 }
 
-func (c *PGSQLColumn) getArrayType(items FieldTypeArrayItem) string {
+func (c *PGSQLColumn) getArrayType(items gontentful.FieldTypeArrayItem) string {
 	switch items.Type {
 	case "Symbol":
 		return "text ARRAY"
@@ -160,7 +160,7 @@ func (c *PGSQLColumn) getArrayType(items FieldTypeArrayItem) string {
 	return ""
 }
 
-func (c *PGSQLColumn) getLinkType(validations []FieldValidation) string {
+func (c *PGSQLColumn) getLinkType(validations []gontentful.FieldValidation) string {
 	if len(validations) > 0 {
 		if len(validations[0].LinkContentType) != 0 {
 			refTable := validations[0].LinkContentType[0]
