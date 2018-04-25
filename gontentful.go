@@ -117,7 +117,7 @@ func (c *Client) req(method string, path string, query url.Values, body io.Reade
 	}
 	u.RawQuery = query.Encode()
 
-	// fmt.Println(fmt.Sprintf("%s%s%s", host, path, u.RawQuery))
+	// fmt.Println(fmt.Sprintf("%s%s?%s", host, path, u.RawQuery))
 
 	req, err := http.NewRequest(method, u.String(), body)
 	if err != nil {
@@ -130,6 +130,7 @@ func (c *Client) req(method string, path string, query url.Values, body io.Reade
 			req.Header.Set(key, value)
 		}
 	}
+	// fmt.Println(fmt.Sprintf("%s: Bearer %s", headerAuthorization, authToken))
 	// add auth header
 	req.Header.Set(headerAuthorization, fmt.Sprintf("Bearer %s", authToken))
 
