@@ -68,10 +68,7 @@ func NewClient(options *ClientOptions) *Client {
 		client: &http.Client{
 			Timeout: timeout,
 		},
-		headers: map[string]string{
-			headerContentfulOrganization: options.OrgID,
-			headerContentType:            "application/vnd.contentful.delivery.v1+json",
-		},
+		headers: getHeadersMap(options.OrgID),
 	}
 
 	client.common.client = client
@@ -82,6 +79,13 @@ func NewClient(options *ClientOptions) *Client {
 	client.ContentTypes = (*ContentTypesService)(&client.common)
 
 	return client
+}
+
+func getHeadersMap(orgID string) map[string]string {
+	return map[string]string{
+		headerContentfulOrganization: orgID,
+		headerContentType:            "application/vnd.contentful.delivery.v1+json",
+	}
 }
 
 func (c *Client) get(path string, query url.Values) ([]byte, error) {
@@ -150,6 +154,9 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 	}
 
 	if res.StatusCode >= http.StatusOK && res.StatusCode < http.StatusBadRequest {
+		// clear headers so that they will not infect the next request.
+		c.headers = getHeadersMap(c.Options.OrgID)
+		// return the response
 		return ioutil.ReadAll(res.Body)
 	}
 
