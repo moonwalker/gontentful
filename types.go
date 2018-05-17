@@ -43,6 +43,14 @@ type Space struct {
 	Locales []Locale `json:"locales"`
 }
 
+type Spaces struct {
+	Sys   *Sys    `json:"sys"`
+	Total int     `json:"total"`
+	Limit int     `json:"limit"`
+	Skip  int     `json:"skip"`
+	Items []Space `json:"items"`
+}
+
 type Locale struct {
 	Code         string `json:"code"`
 	Default      bool   `json:"default"`
@@ -88,4 +96,9 @@ type FieldValidation struct {
 	LinkContentType   []string `json:"linkContentType"`
 	LinkMimetypeGroup []string `json:"linkMimetypeGroup"`
 	Unique            bool     `json:"unique"`
+}
+
+type CreateSpace struct {
+	Name          string `json:"name"`
+	DefaultLocale string `json:"defaultLocale"`
 }
