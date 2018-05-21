@@ -28,41 +28,41 @@ func (s *EntriesService) Create(contentType string, body []byte) ([]byte, error)
 func (s *EntriesService) Update(version string, entryId string, body []byte) ([]byte, error) {
 	path := fmt.Sprintf(pathEntry, s.client.Options.SpaceID, entryId)
 	// Set header for content type
-	s.client.headers[headerContentulVersion] = version
+	s.client.headers[headerContentfulVersion] = version
 	return s.client.put(path, bytes.NewBuffer(body))
 }
 
 func (s *EntriesService) Publish(entryId string, version string) ([]byte, error) {
 	path := fmt.Sprintf(pathEntriesPublish, s.client.Options.SpaceID, entryId)
 	// Set header for version
-	s.client.headers[headerContentulVersion] = version
+	s.client.headers[headerContentfulVersion] = version
 	return s.client.put(path, nil)
 }
 
 func (s *EntriesService) UnPublish(entryId string, version string) ([]byte, error) {
 	path := fmt.Sprintf(pathEntriesPublish, s.client.Options.SpaceID, entryId)
 	// Set header for version
-	s.client.headers[headerContentulVersion] = version
+	s.client.headers[headerContentfulVersion] = version
 	return s.client.delete(path)
 }
 
 func (s *EntriesService) Delete(entryId string, version string) ([]byte, error) {
 	path := fmt.Sprintf(pathEntry, s.client.Options.SpaceID, entryId)
 	// Set header for version
-	s.client.headers[headerContentulVersion] = version
+	s.client.headers[headerContentfulVersion] = version
 	return s.client.delete(path)
 }
 
 func (s *EntriesService) Archive(entryId string, version string) ([]byte, error) {
 	path := fmt.Sprintf(pathEntriesArchive, s.client.Options.SpaceID, entryId)
 	// Set header for version
-	s.client.headers[headerContentulVersion] = version
+	s.client.headers[headerContentfulVersion] = version
 	return s.client.put(path, nil)
 }
 
 func (s *EntriesService) UnArchive(entryId string, version string) ([]byte, error) {
 	path := fmt.Sprintf(pathEntriesArchive, s.client.Options.SpaceID, entryId)
 	// Set header for version
-	s.client.headers[headerContentulVersion] = version
+	s.client.headers[headerContentfulVersion] = version
 	return s.client.delete(path)
 }

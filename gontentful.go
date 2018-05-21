@@ -29,7 +29,7 @@ const (
 	pathContentTypesPublish = pathContentType + "/published"
 
 	headerContentfulContentType  = "X-Contentful-Content-Type"
-	headerContentulVersion       = "X-Contentful-Version"
+	headerContentfulVersion      = "X-Contentful-Version"
 	headerContentfulOrganization = "X-Contentful-Organization"
 	headerContentType            = "Content-Type"
 	headerAuthorization          = "Authorization"

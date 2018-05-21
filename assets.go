@@ -21,6 +21,6 @@ func (s *AssetsService) Process(id string, locale string) ([]byte, error) {
 
 func (s *AssetsService) Publish(id string, version string) ([]byte, error) {
 	path := fmt.Sprintf(pathAssetsPublished, s.client.Options.SpaceID, id)
-	s.client.headers[headerContentulVersion] = version
+	s.client.headers[headerContentfulVersion] = version
 	return s.client.put(path, nil)
 }
