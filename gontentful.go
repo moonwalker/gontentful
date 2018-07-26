@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	timeout = 10 * time.Second
+	timeout = 30 * time.Second
 
 	pathSpaces              = "/spaces/%s"
 	pathSpacesCreate        = "/spaces"
