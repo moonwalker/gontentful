@@ -31,6 +31,11 @@ type {{ .TypeName }} implements Entry {
 }
 {{- end }}`
 
+const (
+	singleArgs     = "id: ID, locale: String, include: Int, select: String, order: String"
+	collectionArgs = "locale: String, skip: Int, limit: Int, include: Int, select: String, order: String, q: String, label: String, routeSlug: String, iconSlug: String, showForUsers: String"
+)
+
 type GraphQLResolver struct {
 	Name   string
 	Args   string
@@ -93,12 +98,12 @@ func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType 
 	}
 
 	// single
-	typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(typeName))
+	typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(typeName, typeDef.TypeName, false))
 
 	// collection
 	pluralName := inflection.Plural(typeName)
 	if pluralName != typeName {
-		typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(pluralName))
+		typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(pluralName, typeDef.TypeName, true))
 	}
 
 	for _, f := range fields {
@@ -109,11 +114,18 @@ func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType 
 	return typeDef
 }
 
-func NewGraphQLResolver(name string) GraphQLResolver {
+func NewGraphQLResolver(name string, result string, collection bool) GraphQLResolver {
+	args := singleArgs
+
+	if collection {
+		args = collectionArgs
+		result = fmt.Sprintf("[%s]", result)
+	}
+
 	return GraphQLResolver{
 		Name:   name,
-		Args:   "...",
-		Result: "<>",
+		Args:   args,
+		Result: result,
 	}
 }
 
