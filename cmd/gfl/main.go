@@ -6,8 +6,12 @@ import (
 )
 
 var (
-	SpaceId string
+	SpaceId  string
 	CdnToken string
+)
+
+const (
+	apiURL = "api.contentful.com"
 )
 
 func init() {
