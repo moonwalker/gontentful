@@ -54,6 +54,7 @@ type GraphQLSchema struct {
 
 func init() {
 	inflection.AddPlural("(bonu)s$", "${1}ses")
+	inflection.AddPlural("(hero)$", "${1}es")
 }
 
 func NewGraphQLSchema(items []ContentType) GraphQLSchema {
@@ -91,8 +92,14 @@ func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType 
 		Resolvers: make([]GraphQLResolver, 0),
 	}
 
-	typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(typeName, false))
-	typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(typeName, true))
+	// single
+	typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(typeName))
+
+	// collection
+	pluralName := inflection.Plural(typeName)
+	if pluralName != typeName {
+		typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(pluralName))
+	}
 
 	for _, f := range fields {
 		field := NewGraphQLField(f)
@@ -102,17 +109,11 @@ func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType 
 	return typeDef
 }
 
-// menuListItem(id: ID, locale: String, include: Int, select: String, order: String): MenuListItem
-// menuListItems(locale: String, skip: Int, limit: Int, include: Int, select: String, order: String, q: String, label: String, routeSlug: String, iconSlug: String, showForUsers: String): [MenuListItem]
-
-func NewGraphQLResolver(name string, plural bool) GraphQLResolver {
-	if plural {
-		name = inflection.Plural(name)
-	}
+func NewGraphQLResolver(name string) GraphQLResolver {
 	return GraphQLResolver{
 		Name:   name,
-		Args:   "",
-		Result: "<na>",
+		Args:   "...",
+		Result: "<>",
 	}
 }
 
