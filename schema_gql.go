@@ -7,14 +7,31 @@ import (
 	"text/template"
 )
 
-const gqlTemplate = `{{ range $t := .TypeDefs }}
+const gqlTemplate = `schema {
+  query: Query
+}
+
+type Query {
+  {{- range $_ := .TypeDefs }}
+  {{ .Resolver.Name }}({{ .Resolver.Args }}): {{ .Resolver.Result }}
+  {{- end }}
+}
+
+{{- range $i := .TypeDefs }}
+{{ if $i }}{{ end }}
 type {{ .TypeName }} implements Entry {
   sys: EntrySys!
-  {{- range $f := .Fields }}
+  {{- range $_ := .Fields }}
   {{ .FieldName }}: {{ .FieldType }}
   {{- end }}
 }
-{{ end -}}`
+{{- end }}`
+
+type GraphQLResolver struct {
+	Name   string
+	Args   string
+	Result string
+}
 
 type GraphQLField struct {
 	FieldName string
@@ -24,6 +41,7 @@ type GraphQLField struct {
 type GraphQLType struct {
 	TypeName string
 	Fields   []GraphQLField
+	Resolver GraphQLResolver
 }
 
 type GraphQLSchema struct {
@@ -62,6 +80,7 @@ func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType 
 	typeDef := GraphQLType{
 		TypeName: strings.Title(typeName),
 		Fields:   make([]GraphQLField, 0),
+		Resolver: NewGraphQLResolver(typeName),
 	}
 
 	for _, f := range fields {
@@ -72,12 +91,22 @@ func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType 
 	return typeDef
 }
 
+// menuListItem(id: ID, locale: String, include: Int, select: String, order: String): MenuListItem
+// menuListItems(locale: String, skip: Int, limit: Int, include: Int, select: String, order: String, q: String, label: String, routeSlug: String, iconSlug: String, showForUsers: String): [MenuListItem]
+
+func NewGraphQLResolver(name string) GraphQLResolver {
+	return GraphQLResolver{
+		Name:   name,
+		Args:   "",
+		Result: "<na>",
+	}
+}
+
 func NewGraphQLField(f *ContentTypeField) GraphQLField {
-	field := GraphQLField{
+	return GraphQLField{
 		FieldName: f.ID,
 		FieldType: isRequired(f.Required, getFieldType(f)),
 	}
-	return field
 }
 
 func isRequired(r bool, s string) string {
