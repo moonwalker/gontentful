@@ -10,10 +10,6 @@ var (
 	CdnToken string
 )
 
-const (
-	apiURL = "api.contentful.com"
-)
-
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&SpaceId, "space", "s", "", "cf space id (required)")
 	rootCmd.PersistentFlags().StringVarP(&CdnToken, "token", "t", "", "token token (required)")

@@ -12,10 +12,10 @@ $ go get -u github.com/moonwalker/gontentful/cmd/gfl
 
 ## Dependencies
 
-Go vendors managed with Dep:
+Using Go modules:
 
-```shell
-$ dep ensure
+```sh
+$ go mod vendor
 ```
 
 ## License

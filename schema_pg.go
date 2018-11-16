@@ -1,17 +1,10 @@
 // $ ... | docker exec -i  <containerid> psql -U postgres
 
-package main
+package gontentful
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
-	"os"
 	"text/template"
-
-	"github.com/spf13/cobra"
-
-	"github.com/moonwalker/gontentful"
 )
 
 const pgTemplate = `BEGIN;
@@ -51,46 +44,7 @@ type PGSQLSchema struct {
 	References map[string]PGSQLTable
 }
 
-func init() {
-	schemaCmd.AddCommand(pgSchemaCmd)
-}
-
-var pgSchemaCmd = &cobra.Command{
-	Use:   "pg",
-	Short: "Creates postgres schema",
-
-	Run: func(cmd *cobra.Command, args []string) {
-		client := gontentful.NewClient(&gontentful.ClientOptions{
-			CdnURL:   apiURL,
-			SpaceID:  SpaceId,
-			CdnToken: CdnToken,
-		})
-
-		data, err := client.ContentTypes.Get()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		resp := &gontentful.ContentTypes{}
-		err = json.Unmarshal(data, resp)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		schema := NewPGSQLSchema(SpaceId, resp.Items)
-		str, err := schema.Render()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		fmt.Println(str)
-	},
-}
-
-func NewPGSQLSchema(schemaName string, items []gontentful.ContentType) PGSQLSchema {
+func NewPGSQLSchema(schemaName string, items []ContentType) PGSQLSchema {
 	schema := PGSQLSchema{
 		SchemaName: schemaName,
 		Tables:     make([]PGSQLTable, 0),
@@ -107,7 +61,7 @@ func NewPGSQLSchema(schemaName string, items []gontentful.ContentType) PGSQLSche
 	return schema
 }
 
-func (s *PGSQLSchema) collectAlters(item gontentful.ContentType) {
+func (s *PGSQLSchema) collectAlters(item ContentType) {
 	alterTable := PGSQLTable{
 		TableName: item.Sys.ID,
 		Columns:   make([]PGSQLColumn, 0),
@@ -145,7 +99,7 @@ func (s *PGSQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewPGSQLTable(tableName string, fields []*gontentful.ContentTypeField) PGSQLTable {
+func NewPGSQLTable(tableName string, fields []*ContentTypeField) PGSQLTable {
 	table := PGSQLTable{
 		TableName: tableName,
 		Columns:   make([]PGSQLColumn, 0),
@@ -161,7 +115,7 @@ func NewPGSQLTable(tableName string, fields []*gontentful.ContentTypeField) PGSQ
 	return table
 }
 
-func NewPGSQLColumn(field gontentful.ContentTypeField) PGSQLColumn {
+func NewPGSQLColumn(field ContentTypeField) PGSQLColumn {
 	column := PGSQLColumn{
 		ColumnName: field.ID,
 	}
@@ -169,7 +123,7 @@ func NewPGSQLColumn(field gontentful.ContentTypeField) PGSQLColumn {
 	return column
 }
 
-func (c *PGSQLColumn) getColumnDesc(field gontentful.ContentTypeField) {
+func (c *PGSQLColumn) getColumnDesc(field ContentTypeField) {
 	columnType := c.getColumnType(field)
 	if c.isUnique(field.Validations) {
 		columnType += " unique"
@@ -177,7 +131,7 @@ func (c *PGSQLColumn) getColumnDesc(field gontentful.ContentTypeField) {
 	c.ColumnDesc = columnType
 }
 
-func (c *PGSQLColumn) getColumnType(field gontentful.ContentTypeField) string {
+func (c *PGSQLColumn) getColumnType(field ContentTypeField) string {
 	switch field.Type {
 	case "Symbol":
 		return "text"
@@ -202,7 +156,7 @@ func (c *PGSQLColumn) getColumnType(field gontentful.ContentTypeField) string {
 	}
 }
 
-func (c *PGSQLColumn) isUnique(validations []gontentful.FieldValidation) bool {
+func (c *PGSQLColumn) isUnique(validations []FieldValidation) bool {
 	for _, v := range validations {
 		if v.Unique {
 			return true

@@ -1,16 +1,10 @@
-package main
+package gontentful
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"text/template"
-
-	"github.com/spf13/cobra"
-
-	"github.com/moonwalker/gontentful"
 )
 
 const gqlTemplate = `{{ range $t := .TypeDefs }}
@@ -36,46 +30,7 @@ type GraphQLSchema struct {
 	TypeDefs []GraphQLType
 }
 
-func init() {
-	schemaCmd.AddCommand(gqlSchemaCmd)
-}
-
-var gqlSchemaCmd = &cobra.Command{
-	Use:   "gql",
-	Short: "Creates graphql schema",
-
-	Run: func(cmd *cobra.Command, args []string) {
-		client := gontentful.NewClient(&gontentful.ClientOptions{
-			CdnURL:   apiURL,
-			SpaceID:  SpaceId,
-			CdnToken: CdnToken,
-		})
-
-		data, err := client.ContentTypes.Get()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		resp := &gontentful.ContentTypes{}
-		err = json.Unmarshal(data, resp)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		schema := NewGraphQLSchema(resp.Items)
-		str, err := schema.Render()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		fmt.Println(str)
-	},
-}
-
-func NewGraphQLSchema(items []gontentful.ContentType) GraphQLSchema {
+func NewGraphQLSchema(items []ContentType) GraphQLSchema {
 	schema := GraphQLSchema{
 		TypeDefs: make([]GraphQLType, 0),
 	}
@@ -103,7 +58,7 @@ func (s *GraphQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewGraphQLTypeDef(typeName string, fields []*gontentful.ContentTypeField) GraphQLType {
+func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType {
 	typeDef := GraphQLType{
 		TypeName: strings.Title(typeName),
 		Fields:   make([]GraphQLField, 0),
@@ -117,7 +72,7 @@ func NewGraphQLTypeDef(typeName string, fields []*gontentful.ContentTypeField) G
 	return typeDef
 }
 
-func NewGraphQLField(f *gontentful.ContentTypeField) GraphQLField {
+func NewGraphQLField(f *ContentTypeField) GraphQLField {
 	field := GraphQLField{
 		FieldName: f.ID,
 		FieldType: isRequired(f.Required, getFieldType(f)),
@@ -132,7 +87,7 @@ func isRequired(r bool, s string) string {
 	return s
 }
 
-func getFieldType(field *gontentful.ContentTypeField) string {
+func getFieldType(field *ContentTypeField) string {
 	switch field.Type {
 	case "Symbol":
 		return "String"
@@ -159,16 +114,20 @@ func getFieldType(field *gontentful.ContentTypeField) string {
 	}
 }
 
-func getArrayType(field *gontentful.ContentTypeField) string {
+func getArrayType(field *ContentTypeField) string {
 	if field.Items == nil || len(field.Items.LinkType) == 0 {
 		return "[String]"
 	}
-	return fmt.Sprintf("[%s]", field.Items.LinkType)
+	return fmt.Sprintf("[%s]", getValidationContentType(field.Items.LinkType, field.Items.Validations))
 }
 
-func getLinkType(field *gontentful.ContentTypeField) string {
-	if len(field.Validations) > 0 && len(field.Validations[0].LinkContentType) > 0 {
-		return strings.Title(field.Validations[0].LinkContentType[0])
+func getLinkType(field *ContentTypeField) string {
+	return getValidationContentType(field.LinkType, field.Validations)
+}
+
+func getValidationContentType(t string, validations []FieldValidation) string {
+	if len(validations) > 0 && len(validations[0].LinkContentType) > 0 {
+		t = validations[0].LinkContentType[0]
 	}
-	return strings.Title(field.LinkType)
+	return strings.Title(t)
 }
