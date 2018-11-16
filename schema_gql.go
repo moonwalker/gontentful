@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+
+	"github.com/jinzhu/inflection"
 )
 
 const gqlTemplate = `schema {
@@ -13,7 +15,9 @@ const gqlTemplate = `schema {
 
 type Query {
   {{- range $_ := .TypeDefs }}
-  {{ .Resolver.Name }}({{ .Resolver.Args }}): {{ .Resolver.Result }}
+  {{- range $_ := .Resolvers }}
+  {{ .Name }}({{ .Args }}): {{ .Result }}
+  {{- end }}
   {{- end }}
 }
 
@@ -39,13 +43,17 @@ type GraphQLField struct {
 }
 
 type GraphQLType struct {
-	TypeName string
-	Fields   []GraphQLField
-	Resolver GraphQLResolver
+	TypeName  string
+	Fields    []GraphQLField
+	Resolvers []GraphQLResolver
 }
 
 type GraphQLSchema struct {
 	TypeDefs []GraphQLType
+}
+
+func init() {
+	inflection.AddPlural("(bonu)s$", "${1}ses")
 }
 
 func NewGraphQLSchema(items []ContentType) GraphQLSchema {
@@ -78,10 +86,13 @@ func (s *GraphQLSchema) Render() (string, error) {
 
 func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType {
 	typeDef := GraphQLType{
-		TypeName: strings.Title(typeName),
-		Fields:   make([]GraphQLField, 0),
-		Resolver: NewGraphQLResolver(typeName),
+		TypeName:  strings.Title(typeName),
+		Fields:    make([]GraphQLField, 0),
+		Resolvers: make([]GraphQLResolver, 0),
 	}
+
+	typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(typeName, false))
+	typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(typeName, true))
 
 	for _, f := range fields {
 		field := NewGraphQLField(f)
@@ -94,7 +105,10 @@ func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType 
 // menuListItem(id: ID, locale: String, include: Int, select: String, order: String): MenuListItem
 // menuListItems(locale: String, skip: Int, limit: Int, include: Int, select: String, order: String, q: String, label: String, routeSlug: String, iconSlug: String, showForUsers: String): [MenuListItem]
 
-func NewGraphQLResolver(name string) GraphQLResolver {
+func NewGraphQLResolver(name string, plural bool) GraphQLResolver {
+	if plural {
+		name = inflection.Plural(name)
+	}
 	return GraphQLResolver{
 		Name:   name,
 		Args:   "",
