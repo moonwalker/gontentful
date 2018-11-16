@@ -16,13 +16,16 @@ const gqlTemplate = `schema {
 type Query {
   {{- range $_ := .TypeDefs }}
   {{- range $_ := .Resolvers }}
-  {{ .Name }}({{ .Args }}): {{ .Result }}
+  {{ .Name }}(
+	  {{- range $i, $_ := .Args -}}
+	  {{ if $i }}, {{ end }}{{ .ArgName }}: {{ .ArgType }}
+	  {{- end }}): {{ .Result }}
   {{- end }}
   {{- end }}
 }
 
-{{- range $i := .TypeDefs }}
-{{ if $i }}{{ end }}
+{{- range $t := .TypeDefs }}
+{{ if $t }}{{ end }}
 type {{ .TypeName }} implements Entry {
   sys: EntrySys!
   {{- range $_ := .Fields }}
@@ -31,15 +34,39 @@ type {{ .TypeName }} implements Entry {
 }
 {{- end }}`
 
-const (
-	singleArgs     = "id: ID, locale: String, include: Int, select: String, order: String"
-	collectionArgs = "locale: String, skip: Int, limit: Int, include: Int, select: String, order: String, q: String, label: String, routeSlug: String, iconSlug: String, showForUsers: String"
+var (
+	singleArgs = []GraphQLResolverArg{
+		GraphQLResolverArg{"id", "ID"},
+		GraphQLResolverArg{"locale", "String"},
+		GraphQLResolverArg{"include", "Int"},
+		GraphQLResolverArg{"select", "String"},
+	}
+	singleExtraArgs = []GraphQLResolverArg{
+		GraphQLResolverArg{"slug", "String"},
+		GraphQLResolverArg{"code", "String"},
+		GraphQLResolverArg{"name", "String"},
+		GraphQLResolverArg{"key", "String"},
+	}
+	collectionArgs = []GraphQLResolverArg{
+		GraphQLResolverArg{"locale", "String"},
+		GraphQLResolverArg{"skip", "Int"},
+		GraphQLResolverArg{"limit", "Int"},
+		GraphQLResolverArg{"include", "Int"},
+		GraphQLResolverArg{"select", "String"},
+		GraphQLResolverArg{"order", "String"},
+		GraphQLResolverArg{"q", "String"},
+	}
 )
 
 type GraphQLResolver struct {
 	Name   string
-	Args   string
+	Args   []GraphQLResolverArg
 	Result string
+}
+
+type GraphQLResolverArg struct {
+	ArgName string
+	ArgType string
 }
 
 type GraphQLField struct {
@@ -98,12 +125,14 @@ func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType 
 	}
 
 	// single
-	typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(typeName, typeDef.TypeName, false))
+	args := getResolverArgs(false, fields)
+	typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(false, typeName, args, typeDef.TypeName))
 
 	// collection
 	pluralName := inflection.Plural(typeName)
 	if pluralName != typeName {
-		typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(pluralName, typeDef.TypeName, true))
+		args = getResolverArgs(true, fields)
+		typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(true, pluralName, args, typeDef.TypeName))
 	}
 
 	for _, f := range fields {
@@ -114,11 +143,8 @@ func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType 
 	return typeDef
 }
 
-func NewGraphQLResolver(name string, result string, collection bool) GraphQLResolver {
-	args := singleArgs
-
+func NewGraphQLResolver(collection bool, name string, args []GraphQLResolverArg, result string) GraphQLResolver {
 	if collection {
-		args = collectionArgs
 		result = fmt.Sprintf("[%s]", result)
 	}
 
@@ -127,6 +153,31 @@ func NewGraphQLResolver(name string, result string, collection bool) GraphQLReso
 		Args:   args,
 		Result: result,
 	}
+}
+
+func getResolverArgs(collection bool, fields []*ContentTypeField) []GraphQLResolverArg {
+	args := singleArgs
+
+	if collection {
+		args = collectionArgs
+	} else {
+		for _, a := range singleExtraArgs {
+			if hasField(fields, a.ArgName) {
+				args = append(args, a)
+			}
+		}
+	}
+
+	return args
+}
+
+func hasField(fields []*ContentTypeField, id string) bool {
+	for _, f := range fields {
+		if f.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func NewGraphQLField(f *ContentTypeField) GraphQLField {
