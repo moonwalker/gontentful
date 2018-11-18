@@ -156,19 +156,41 @@ func NewGraphQLResolver(collection bool, name string, args []GraphQLResolverArg,
 }
 
 func getResolverArgs(collection bool, fields []*ContentTypeField) []GraphQLResolverArg {
-	args := singleArgs
-
 	if collection {
-		args = collectionArgs
-	} else {
-		for _, a := range singleExtraArgs {
-			if hasField(fields, a.ArgName) {
-				args = append(args, a)
-			}
+		return getCollectionArgs(fields)
+	}
+	return getSingleArgs(fields)
+}
+
+func getSingleArgs(fields []*ContentTypeField) []GraphQLResolverArg {
+	args := singleArgs
+	for _, a := range singleExtraArgs {
+		if hasField(fields, a.ArgName) {
+			args = append(args, a)
 		}
 	}
-
 	return args
+}
+
+func getCollectionArgs(fields []*ContentTypeField) []GraphQLResolverArg {
+	args := collectionArgs
+	for _, f := range fields {
+		t := isOwnField(f)
+		if len(t) > 0 {
+			args = append(args, GraphQLResolverArg{
+				ArgName: f.ID,
+				ArgType: t,
+			})
+		}
+	}
+	return args
+}
+
+func isOwnField(f *ContentTypeField) string {
+	if f.Type == "Link" || f.Type == "Array" {
+		return ""
+	}
+	return getFieldType(f)
 }
 
 func hasField(fields []*ContentTypeField, id string) bool {
@@ -217,7 +239,7 @@ func getFieldType(field *ContentTypeField) string {
 	case "Object":
 		return "String"
 	default:
-		return "String"
+		return ""
 	}
 }
 
