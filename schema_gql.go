@@ -320,6 +320,7 @@ func getLinkType(schema GraphQLSchema, field *ContentTypeField) string {
 func getValidationContentType(schema GraphQLSchema, t string, validations []FieldValidation) string {
 	if len(validations) > 0 && len(validations[0].LinkContentType) > 0 {
 		vt := validations[0].LinkContentType[0]
+		// check if validation content type exists
 		for _, item := range schema.Items {
 			if item.Sys.ID == vt {
 				t = vt
