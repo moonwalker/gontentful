@@ -24,6 +24,23 @@ type Query {
   {{- end }}
 }
 
+interface Sys {
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+}
+
+interface Entry {
+  sys: EntrySys!
+}
+
+type EntrySys implements Sys {
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+  contentTypeId: ID!
+}
+
 {{- range $t := .TypeDefs }}
 {{ if $t }}{{ end }}
 type {{ .TypeName }} implements Entry {
@@ -32,7 +49,38 @@ type {{ .TypeName }} implements Entry {
   {{ .FieldName }}: {{ .FieldType }}
   {{- end }}
 }
-{{- end }}`
+{{- end }}
+
+type FileDetailsImage {
+  height: Int
+  width: Int
+}
+
+type FileDetails {
+  size: Int
+  image: FileDetailsImage
+}
+
+type File {
+  contentType: String
+  fileName: String
+  url: String
+  details: FileDetails
+}
+
+type AssetSys implements Sys {
+  id: ID!
+  createdAt: String!
+  updatedAt: String!
+}
+
+type Asset {
+  sys: AssetSys!
+  title: String
+  description: String
+  url: String
+  file: File
+}`
 
 var (
 	singleArgs = []GraphQLResolverArg{
@@ -75,12 +123,14 @@ type GraphQLField struct {
 }
 
 type GraphQLType struct {
+	Schema    GraphQLSchema
 	TypeName  string
 	Fields    []GraphQLField
 	Resolvers []GraphQLResolver
 }
 
 type GraphQLSchema struct {
+	Items    []ContentType
 	TypeDefs []GraphQLType
 }
 
@@ -91,11 +141,12 @@ func init() {
 
 func NewGraphQLSchema(items []ContentType) GraphQLSchema {
 	schema := GraphQLSchema{
+		Items:    items,
 		TypeDefs: make([]GraphQLType, 0),
 	}
 
 	for _, item := range items {
-		typeDef := NewGraphQLTypeDef(item.Sys.ID, item.Fields)
+		typeDef := NewGraphQLTypeDef(schema, item.Sys.ID, item.Fields)
 		schema.TypeDefs = append(schema.TypeDefs, typeDef)
 	}
 
@@ -117,7 +168,7 @@ func (s *GraphQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType {
+func NewGraphQLTypeDef(schema GraphQLSchema, typeName string, fields []*ContentTypeField) GraphQLType {
 	typeDef := GraphQLType{
 		TypeName:  strings.Title(typeName),
 		Fields:    make([]GraphQLField, 0),
@@ -136,7 +187,10 @@ func NewGraphQLTypeDef(typeName string, fields []*ContentTypeField) GraphQLType 
 	}
 
 	for _, f := range fields {
-		field := NewGraphQLField(f)
+		if f.Disabled || f.Omitted {
+			continue
+		}
+		field := NewGraphQLField(schema, f)
 		typeDef.Fields = append(typeDef.Fields, field)
 	}
 
@@ -186,11 +240,20 @@ func getCollectionArgs(fields []*ContentTypeField) []GraphQLResolverArg {
 	return args
 }
 
-func isOwnField(f *ContentTypeField) string {
-	if f.Type == "Link" || f.Type == "Array" {
+func isOwnField(field *ContentTypeField) string {
+	if field.Type == "Link" || field.Type == "Array" {
 		return ""
 	}
-	return getFieldType(f)
+	switch field.Type {
+	case "Integer":
+		return "Int"
+	case "Number":
+		return "Float"
+	case "Boolean":
+		return "Boolean"
+	default:
+		return "String"
+	}
 }
 
 func hasField(fields []*ContentTypeField, id string) bool {
@@ -202,10 +265,10 @@ func hasField(fields []*ContentTypeField, id string) bool {
 	return false
 }
 
-func NewGraphQLField(f *ContentTypeField) GraphQLField {
+func NewGraphQLField(schema GraphQLSchema, f *ContentTypeField) GraphQLField {
 	return GraphQLField{
 		FieldName: f.ID,
-		FieldType: isRequired(f.Required, getFieldType(f)),
+		FieldType: isRequired(f.Required, getFieldType(schema, f)),
 	}
 }
 
@@ -216,7 +279,7 @@ func isRequired(r bool, s string) string {
 	return s
 }
 
-func getFieldType(field *ContentTypeField) string {
+func getFieldType(schema GraphQLSchema, field *ContentTypeField) string {
 	switch field.Type {
 	case "Symbol":
 		return "String"
@@ -233,30 +296,36 @@ func getFieldType(field *ContentTypeField) string {
 	case "Boolean":
 		return "Boolean"
 	case "Array":
-		return getArrayType(field)
+		return getArrayType(schema, field)
 	case "Link":
-		return getLinkType(field)
+		return getLinkType(schema, field)
 	case "Object":
 		return "String"
 	default:
-		return ""
+		return "String"
 	}
 }
 
-func getArrayType(field *ContentTypeField) string {
+func getArrayType(schema GraphQLSchema, field *ContentTypeField) string {
 	if field.Items == nil || len(field.Items.LinkType) == 0 {
 		return "[String]"
 	}
-	return fmt.Sprintf("[%s]", getValidationContentType(field.Items.LinkType, field.Items.Validations))
+	return fmt.Sprintf("[%s]", getValidationContentType(schema, field.Items.LinkType, field.Items.Validations))
 }
 
-func getLinkType(field *ContentTypeField) string {
-	return getValidationContentType(field.LinkType, field.Validations)
+func getLinkType(schema GraphQLSchema, field *ContentTypeField) string {
+	return getValidationContentType(schema, field.LinkType, field.Validations)
 }
 
-func getValidationContentType(t string, validations []FieldValidation) string {
+func getValidationContentType(schema GraphQLSchema, t string, validations []FieldValidation) string {
 	if len(validations) > 0 && len(validations[0].LinkContentType) > 0 {
-		t = validations[0].LinkContentType[0]
+		vt := validations[0].LinkContentType[0]
+		for _, item := range schema.Items {
+			if item.Sys.ID == vt {
+				t = vt
+				break
+			}
+		}
 	}
 	return strings.Title(t)
 }
