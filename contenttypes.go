@@ -1,15 +1,16 @@
 package gontentful
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
+	"net/url"
 )
 
 type ContentTypesService service
 
-func (s *ContentTypesService) Get() ([]byte, error) {
+func (s *ContentTypesService) Get(query url.Values) ([]byte, error) {
 	path := fmt.Sprintf(pathContentTypes, s.client.Options.SpaceID)
-	return s.client.get(path, nil)
+	return s.client.get(path, query)
 }
 
 func (s *ContentTypesService) GetSingle(contentTypeId string) ([]byte, error) {

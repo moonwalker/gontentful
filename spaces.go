@@ -1,9 +1,9 @@
 package gontentful
 
 import (
+	"bytes"
 	"fmt"
 	"net/url"
-	"bytes"
 )
 
 type SpacesService service
