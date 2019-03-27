@@ -5,15 +5,16 @@ type Sys struct {
 	Type             string       `json:"type,omitempty"`
 	LinkType         string       `json:"linkType,omitempty"`
 	CreatedAt        string       `json:"createdAt,omitempty"`
+	CreatedBy        *Entry       `json:"createdBy,omitempty"`
 	UpdatedAt        string       `json:"updatedAt,omitempty"`
-	UpdatedBy        *Sys         `json:"updatedBy,omitempty"`
+	UpdatedBy        *Entry       `json:"updatedBy,omitempty"`
 	Version          int          `json:"version,omitempty"`
 	Revision         int          `json:"revision,omitempty"`
 	ContentType      *ContentType `json:"contentType,omitempty"`
 	FirstPublishedAt string       `json:"firstPublishedAt,omitempty"`
 	PublishedCounter int          `json:"publishedCounter,omitempty"`
 	PublishedAt      string       `json:"publishedAt,omitempty"`
-	PublishedBy      *Sys         `json:"publishedBy,omitempty"`
+	PublishedBy      *Entry       `json:"publishedBy,omitempty"`
 	PublishedVersion int          `json:"publishedVersion,omitempty"`
 }
 
