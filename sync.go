@@ -25,35 +25,15 @@ func (s *SyncService) Sync(token string, callback func(*SyncResponse) error) (st
 		return "", err
 	}
 
-	nextPageURL := res.NextPageURL
-	nextSyncURL := res.NextSyncURL
-
-	for nextPageURL != "" {
-		t, err := getSyncToken(nextPageURL)
+	if res.NextPageURL != "" {
+		t, err := getSyncToken(res.NextPageURL)
 		if err != nil {
 			return "", err
 		}
-		q := url.Values{}
-		q.Set("sync_token", t)
-		page, err := s.sync(q)
-		if err != nil {
-			return "", err
-		}
-
-		err = callback(page)
-		if err != nil {
-			return "", err
-		}
-		nextPageURL = page.NextPageURL
-		nextSyncURL = page.NextSyncURL
+		return s.Sync(t, callback)
 	}
 
-	nextSyncToken, err := getSyncToken(nextSyncURL)
-	if err != nil {
-		return "", err
-	}
-
-	return nextSyncToken, nil
+	return getSyncToken(res.NextSyncURL)
 }
 
 func (s *SyncService) sync(query url.Values) (*SyncResponse, error) {

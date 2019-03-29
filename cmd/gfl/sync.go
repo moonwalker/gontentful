@@ -172,7 +172,7 @@ func sync(token string) (*gontentful.SyncResponse, error) {
 			return nil, err
 		}
 		if nextSyncToken != "" {
-			go storeToCache(getCacheKey("next_token"), []byte(nextSyncToken))
+			storeToCache(getCacheKey("next_token"), []byte(nextSyncToken))
 		}
 	}
 
@@ -182,10 +182,8 @@ func sync(token string) (*gontentful.SyncResponse, error) {
 func syncCallback(res *gontentful.SyncResponse, initKey string) func(*gontentful.SyncResponse) error {
 	key := initKey
 	return func(syncRes *gontentful.SyncResponse) error {
-		if syncRes.NextPageURL != "" {
-			go storeSyncResponse(getCacheKey(key), syncRes)
-			key = syncRes.NextPageURL
-		}
+		storeSyncResponse(getCacheKey(key), syncRes)
+		key = syncRes.NextPageURL
 		res.Items = append(res.Items, syncRes.Items...)
 		return nil
 	}
@@ -224,7 +222,7 @@ func fetchCachedSync(key string) (*gontentful.SyncResponse, error) {
 func storeSyncResponse(key string, res *gontentful.SyncResponse) {
 	body, err := json.Marshal(res)
 	if err != nil {
-		fmt.Errorf("Marshal error", err)
+		fmt.Println(fmt.Errorf("Marshal error: %s", err))
 		return
 	}
 	storeToCache(key, body)
@@ -234,7 +232,7 @@ func storeSyncResponse(key string, res *gontentful.SyncResponse) {
 func storeToCache(key string, body []byte) {
 	err := cache.Set(key, body, nil)
 	if err != nil {
-		fmt.Errorf("storeToCache error", err)
+		fmt.Println(fmt.Errorf("storeToCache error: %s", err))
 	}
 	return
 }
