@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"time"
 
@@ -17,13 +16,6 @@ var (
 	nextPageToken string
 	execute       bool
 )
-
-type syncResponse struct {
-	Sys         gontentful.Sys     `json:"sys"`
-	Items       []gontentful.Entry `json:"items"`
-	NextPageURL string             `json:"nextPageUrl"`
-	NextSyncURL string             `json:"nextSyncUrl"`
-}
 
 func getCacheKey(page string) string {
 	return fmt.Sprintf("sync_%s:%s", SpaceId, page)
@@ -49,7 +41,8 @@ var initSyncCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		start := time.Now()
-		res, err := initSync()
+		fmt.Println("starting initSync...")
+		res, err := sync("")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -97,6 +90,7 @@ var syncNextPageCmd = &cobra.Command{
 	Long:  "Optional next page token can be provided. If not will try to use `next_sync_token` from cache.",
 
 	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("starting sync with token: ", nextPageToken)
 		start := time.Now()
 		token := nextPageToken
 		if token == "" {
@@ -157,136 +151,84 @@ var syncNextPageCmd = &cobra.Command{
 	},
 }
 
-func initSync() (*syncResponse, error) {
-	init := "init"
-	res, err := fetchCachedSync(init)
+func sync(token string) (*gontentful.SyncResponse, error) {
+	key := token
+	if key == "" {
+		key = "initial"
+	}
+	client := gontentful.NewClient(&gontentful.ClientOptions{
+		CdnURL:   apiURL,
+		SpaceID:  SpaceId,
+		CdnToken: CdnToken,
+	})
+	res, err := fetchCachedSync(key)
 	if err != nil {
 		return nil, err
 	}
 	if res == nil {
-		client := gontentful.NewClient(&gontentful.ClientOptions{
-			CdnURL:   apiURL,
-			SpaceID:  SpaceId,
-			CdnToken: CdnToken,
-		})
-
-		body, err := client.Spaces.InitSync()
+		res = &gontentful.SyncResponse{}
+		nextSyncToken, err := client.Sync.Sync(token, syncCallback(res, key))
 		if err != nil {
 			return nil, err
 		}
-
-		go storeToCache(getCacheKey(init), body)
-
-		res = &syncResponse{}
-		err = json.Unmarshal(body, res)
-		if err != nil {
-			return nil, err
+		if nextSyncToken != "" {
+			go storeToCache(getCacheKey("next_token"), []byte(nextSyncToken))
 		}
-	}
-
-	if res.NextSyncURL != "" {
-		go storeNextToken(res.NextSyncURL)
-	}
-
-	for res.NextPageURL != "" {
-		syncToken, err := getSyncToken(res.NextPageURL)
-		if err != nil {
-			return nil, err
-		}
-		page, err := sync(syncToken)
-		if err != nil {
-			return nil, err
-		}
-
-		res.Items = append(res.Items, page.Items...)
-		res.NextPageURL = page.NextPageURL
 	}
 
 	return res, err
 }
 
-func sync(token string) (*syncResponse, error) {
-	res, err := fetchCachedSync(token)
-	if err != nil {
-		return nil, err
-	}
-
-	if res == nil {
-		client := gontentful.NewClient(&gontentful.ClientOptions{
-			CdnURL:   apiURL,
-			SpaceID:  SpaceId,
-			CdnToken: CdnToken,
-		})
-
-		body, err := client.Spaces.Sync(token)
-		if err != nil {
-			return nil, err
+func syncCallback(res *gontentful.SyncResponse, initKey string) func(*gontentful.SyncResponse) error {
+	key := initKey
+	return func(syncRes *gontentful.SyncResponse) error {
+		if syncRes.NextPageURL != "" {
+			go storeSyncResponse(getCacheKey(key), syncRes)
+			key = syncRes.NextPageURL
 		}
-
-		go storeToCache(getCacheKey(token), body)
-
-		res = &syncResponse{}
-		err = json.Unmarshal(body, res)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	for res.NextPageURL != "" {
-		syncToken, err := getSyncToken(res.NextPageURL)
-		if err != nil {
-			return nil, err
-		}
-		page, err := sync(syncToken)
-		if err != nil {
-			return nil, err
-		}
-
-		res.Items = append(res.Items, page.Items...)
-		res.NextPageURL = page.NextPageURL
-		res.NextSyncURL = page.NextSyncURL
-	}
-
-	if res.NextSyncURL != "" {
-		go storeNextToken(res.NextSyncURL)
-	}
-
-	return res, err
-}
-
-func getSyncToken(nextPageURL string) (string, error) {
-	npu, _ := url.Parse(nextPageURL)
-	m, _ := url.ParseQuery(npu.RawQuery)
-
-	syncToken := m.Get("sync_token")
-	if syncToken == "" {
-		return "", fmt.Errorf("Missing sync token from response: %s", nextPageURL)
-	}
-	return syncToken, nil
-}
-
-func storeNextToken(nextPageURL string) {
-	nextToken, err := getSyncToken(nextPageURL)
-	if err == nil {
-		storeToCache(getCacheKey("next_token"), []byte(nextToken))
+		res.Items = append(res.Items, syncRes.Items...)
+		return nil
 	}
 }
 
-func fetchCachedSync(page string) (*syncResponse, error) {
+func fetchCachedSync(key string) (*gontentful.SyncResponse, error) {
 
-	cached, err := cache.Get(getCacheKey(page))
+	cached, err := cache.Get(getCacheKey(key))
 	if err != nil {
 		return nil, err
 	}
 
 	if cached != nil && len(cached) > 0 {
-		res := &syncResponse{}
+		res := &gontentful.SyncResponse{}
 		err := json.Unmarshal(cached, res)
-		fmt.Println("sync page ", page, " cached...")
+		for res.NextPageURL != "" {
+			body, err := cache.Get(getCacheKey(res.NextPageURL))
+			if err != nil {
+				return nil, err
+			}
+			page := &gontentful.SyncResponse{}
+			err = json.Unmarshal(body, err)
+			if err != nil {
+				return nil, err
+			}
+			res.NextPageURL = page.NextPageURL
+			res.NextSyncURL = page.NextSyncURL
+			res.Items = append(res.Items, page.Items...)
+		}
 		return res, err
 	}
 
 	return nil, nil
+}
+
+func storeSyncResponse(key string, res *gontentful.SyncResponse) {
+	body, err := json.Marshal(res)
+	if err != nil {
+		fmt.Errorf("Marshal error", err)
+		return
+	}
+	storeToCache(key, body)
+	return
 }
 
 func storeToCache(key string, body []byte) {

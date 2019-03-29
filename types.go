@@ -103,3 +103,10 @@ type CreateSpace struct {
 	Name          string `json:"name"`
 	DefaultLocale string `json:"defaultLocale"`
 }
+
+type SyncResponse struct {
+	Sys         Sys     `json:"sys"`
+	Items       []Entry `json:"items"`
+	NextPageURL string  `json:"nextPageUrl"`
+	NextSyncURL string  `json:"nextSyncUrl"`
+}

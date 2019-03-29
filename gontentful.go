@@ -47,6 +47,7 @@ type Client struct {
 	Assets       *AssetsService
 	Uploads      *UploadsService
 	ContentTypes *ContentTypesService
+	Sync         *SyncService
 }
 
 type service struct {
@@ -80,6 +81,7 @@ func NewClient(options *ClientOptions) *Client {
 	client.Assets = (*AssetsService)(&client.common)
 	client.Uploads = (*UploadsService)(&client.common)
 	client.ContentTypes = (*ContentTypesService)(&client.common)
+	client.Sync = (*SyncService)(&client.common)
 
 	return client
 }
@@ -140,7 +142,6 @@ func (c *Client) req(method string, path string, query url.Values, body io.Reade
 	// fmt.Println(fmt.Sprintf("%s: Bearer %s", headerAuthorization, authToken))
 	// add auth header
 	req.Header.Set(headerAuthorization, fmt.Sprintf("Bearer %s", authToken))
-
 	return c.do(req)
 }
 
