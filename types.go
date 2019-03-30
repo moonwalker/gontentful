@@ -105,8 +105,13 @@ type CreateSpace struct {
 }
 
 type SyncResponse struct {
-	Sys         Sys     `json:"sys"`
-	Items       []Entry `json:"items"`
-	NextPageURL string  `json:"nextPageUrl"`
-	NextSyncURL string  `json:"nextSyncUrl"`
+	Sys         *Sys     `json:"sys"`
+	Items       []*Entry `json:"items"`
+	NextPageURL string   `json:"nextPageUrl"`
+	NextSyncURL string   `json:"nextSyncUrl"`
+}
+
+type SyncResult struct {
+	Items []*Entry
+	Token string
 }

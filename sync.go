@@ -6,47 +6,72 @@ import (
 	"net/url"
 )
 
-type SyncService service
+type SyncCallback func(*SyncResponse) error
 
-func (s *SyncService) Sync(token string, callback func(*SyncResponse) error) (string, error) {
+func (s *SpacesService) Sync(token string) (*SyncResult, error) {
+	var err error
+	res := &SyncResult{}
+
+	res.Token, err = s.SyncPaged(token, func(sr *SyncResponse) error {
+		for _, item := range sr.Items {
+			res.Items = append(res.Items, item)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	err = resolveResponse(res.Items)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (s *SpacesService) SyncPaged(token string, callback SyncCallback) (string, error) {
 	query := url.Values{}
-	if token == "" {
+	if len(token) == 0 {
 		query.Set("initial", "true")
 	} else {
 		query.Set("sync_token", token)
 	}
 
-	res, err := s.sync(query)
+	res, err := s.getSyncPage(query)
 	if err != nil {
 		return "", err
 	}
+
 	err = callback(res)
 	if err != nil {
 		return "", err
 	}
 
-	if res.NextPageURL != "" {
+	if len(res.NextPageURL) > 0 {
 		t, err := getSyncToken(res.NextPageURL)
 		if err != nil {
 			return "", err
 		}
-		return s.Sync(t, callback)
+		return s.SyncPaged(t, callback)
 	}
 
 	return getSyncToken(res.NextSyncURL)
 }
 
-func (s *SyncService) sync(query url.Values) (*SyncResponse, error) {
+func (s *SpacesService) getSyncPage(query url.Values) (*SyncResponse, error) {
 	path := fmt.Sprintf(pathSync, s.client.Options.SpaceID)
 	body, err := s.client.get(path, query)
 	if err != nil {
 		return nil, err
 	}
+
 	res := &SyncResponse{}
-	err = json.Unmarshal(body, res)
+	err = json.Unmarshal(body, &res)
 	if err != nil {
 		return nil, err
 	}
+
 	return res, nil
 }
 
@@ -56,7 +81,22 @@ func getSyncToken(pageUrl string) (string, error) {
 
 	syncToken := m.Get("sync_token")
 	if syncToken == "" {
-		return "", fmt.Errorf("Missing sync token from response: %s", pageUrl)
+		return "", fmt.Errorf("missing sync token from response: %s", pageUrl)
 	}
 	return syncToken, nil
+}
+
+// cf js sdk: https://github.com/contentful/contentful-resolve-response
+func resolveResponse(items []*Entry) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	for _, item := range items {
+		for name, field := range item.Fields {
+			fmt.Println(name, field)
+		}
+	}
+
+	return nil
 }

@@ -47,7 +47,6 @@ type Client struct {
 	Assets       *AssetsService
 	Uploads      *UploadsService
 	ContentTypes *ContentTypesService
-	Sync         *SyncService
 }
 
 type service struct {
@@ -81,7 +80,6 @@ func NewClient(options *ClientOptions) *Client {
 	client.Assets = (*AssetsService)(&client.common)
 	client.Uploads = (*UploadsService)(&client.common)
 	client.ContentTypes = (*ContentTypesService)(&client.common)
-	client.Sync = (*SyncService)(&client.common)
 
 	return client
 }
