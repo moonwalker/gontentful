@@ -92,11 +92,11 @@ func resolveResponse(items []*Entry) error {
 		return nil
 	}
 
-	for _, item := range items {
-		for name, field := range item.Fields {
-			fmt.Println(name, field)
-		}
-	}
+	// for _, item := range items {
+	// 	for name, field := range item.Fields {
+	// 		fmt.Println(name, field)
+	// 	}
+	// }
 
 	return nil
 }
