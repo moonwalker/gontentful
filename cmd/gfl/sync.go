@@ -166,27 +166,16 @@ func sync(token string) (*gontentful.SyncResponse, error) {
 		return nil, err
 	}
 	if res == nil {
-		res = &gontentful.SyncResponse{}
-		nextSyncToken, err := client.Sync.Sync(token, syncCallback(res, key))
+		res, err := client.Spaces.Sync(token)
 		if err != nil {
 			return nil, err
 		}
-		if nextSyncToken != "" {
-			storeToCache(getCacheKey("next_token"), []byte(nextSyncToken))
+		if res.Token != "" {
+			storeToCache(getCacheKey("next_token"), []byte(res.Token))
 		}
 	}
 
 	return res, err
-}
-
-func syncCallback(res *gontentful.SyncResponse, initKey string) func(*gontentful.SyncResponse) error {
-	key := initKey
-	return func(syncRes *gontentful.SyncResponse) error {
-		storeSyncResponse(getCacheKey(key), syncRes)
-		key = syncRes.NextPageURL
-		res.Items = append(res.Items, syncRes.Items...)
-		return nil
-	}
 }
 
 func fetchCachedSync(key string) (*gontentful.SyncResponse, error) {

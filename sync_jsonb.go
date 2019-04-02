@@ -72,7 +72,7 @@ RETURNING 1;
 COMMIT;
 {{ end -}}`
 
-type PGSyncRow struct {
+type SyncJSONBRow struct {
 	ID               string `json:"id,omitempty"`
 	Fields           string `json:"fields,omitempty"`
 	Type             string `json:"type,omitempty"`
@@ -87,27 +87,27 @@ type PGSyncRow struct {
 	PublishedBy      string `json:"publishedBy,omitempty"`
 }
 
-type PGSyncTable struct {
+type SyncJSONBTable struct {
 	TableName string
-	Rows      []PGSyncRow
+	Rows      []SyncJSONBRow
 }
 
-type PGSyncSchema struct {
+type SyncJSONBSchema struct {
 	SchemaName     string
 	AssetTableName string
-	Tables         []PGSyncTable
-	Deleted        []PGSyncTable
+	Tables         []SyncJSONBTable
+	Deleted        []SyncJSONBTable
 }
 
-func NewPGSyncSchema(schemaName string, assetTableName string, items []Entry) PGSyncSchema {
-	schema := PGSyncSchema{
+func NewSyncJSONBSchema(schemaName string, assetTableName string, items []*Entry) SyncJSONBSchema {
+	schema := SyncJSONBSchema{
 		SchemaName: schemaName,
-		Tables:     make([]PGSyncTable, 0),
-		Deleted:    make([]PGSyncTable, 0),
+		Tables:     make([]SyncJSONBTable, 0),
+		Deleted:    make([]SyncJSONBTable, 0),
 	}
 
-	tables := make(map[string][]PGSyncRow)
-	deleted := make(map[string][]PGSyncRow)
+	tables := make(map[string][]SyncJSONBRow)
+	deleted := make(map[string][]SyncJSONBRow)
 
 	for _, item := range items {
 		tableName := ""
@@ -128,34 +128,34 @@ func NewPGSyncSchema(schemaName string, assetTableName string, items []Entry) PG
 		}
 
 		if tableName != "" {
-			rowToUpsert := NewPGSyncRow(item)
+			rowToUpsert := NewSyncJSONBRow(item)
 			if tables[tableName] == nil {
-				tables[tableName] = make([]PGSyncRow, 0)
+				tables[tableName] = make([]SyncJSONBRow, 0)
 			}
 			tables[tableName] = append(tables[tableName], rowToUpsert)
 		}
 		if deletedName != "" {
-			rowToDelete := NewPGSyncRow(item)
+			rowToDelete := NewSyncJSONBRow(item)
 			if deleted[deletedName] == nil {
-				deleted[deletedName] = make([]PGSyncRow, 0)
+				deleted[deletedName] = make([]SyncJSONBRow, 0)
 			}
 			deleted[tableName] = append(deleted[tableName], rowToDelete)
 		}
 	}
 	for k, r := range tables {
-		table := NewPGSyncTable(k, r)
+		table := NewSyncJSONBTable(k, r)
 		schema.Tables = append(schema.Tables, table)
 	}
 	for k, r := range deleted {
-		table := NewPGSyncTable(k, r)
+		table := NewSyncJSONBTable(k, r)
 		schema.Deleted = append(schema.Deleted, table)
 	}
 
 	return schema
 }
 
-func NewPGSyncRow(item Entry) PGSyncRow {
-	row := PGSyncRow{
+func NewSyncJSONBRow(item *Entry) SyncJSONBRow {
+	row := SyncJSONBRow{
 		ID:               item.Sys.ID,
 		Type:             item.Sys.Type,
 		Version:          item.Sys.Version,
@@ -187,8 +187,8 @@ func NewPGSyncRow(item Entry) PGSyncRow {
 	return row
 }
 
-func NewPGSyncTable(tableName string, rows []PGSyncRow) PGSyncTable {
-	table := PGSyncTable{
+func NewSyncJSONBTable(tableName string, rows []SyncJSONBRow) SyncJSONBTable {
+	table := SyncJSONBTable{
 		TableName: tableName,
 		Rows:      rows,
 	}
@@ -196,7 +196,7 @@ func NewPGSyncTable(tableName string, rows []PGSyncRow) PGSyncTable {
 	return table
 }
 
-func (s *PGSyncSchema) Render() (string, error) {
+func (s *SyncJSONBSchema) Render() (string, error) {
 	tmpl, err := template.New("").Parse(jsonbSyncTemplate)
 	if err != nil {
 		return "", err

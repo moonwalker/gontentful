@@ -39,7 +39,20 @@ var pgSchemaCmd = &cobra.Command{
 			CdnToken: CdnToken,
 		})
 
-		data, err := client.ContentTypes.Get(nil)
+		data, err := client.Spaces.Get(nil)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		space := &gontentful.Space{}
+		err = json.Unmarshal(data, space)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		data, err = client.ContentTypes.Get(nil)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
@@ -52,14 +65,27 @@ var pgSchemaCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		schema := gontentful.NewPGSQLSchema(SpaceId, resp.Items)
+		schema := gontentful.NewPGSQLSchema(SpaceId, space, resp.Items)
 		str, err := schema.Render()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		fmt.Println(str)
+		bytes := []byte(str)
+		err = ioutil.WriteFile("/tmp/schema_pgsql", bytes, 0644)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		// fmt.Println(str)
+
+		ok, err := repo.Exec(str)
+		if !ok {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		fmt.Println("schema created succesfuly")
 	},
 }
 

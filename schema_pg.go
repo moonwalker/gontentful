@@ -4,55 +4,70 @@ package gontentful
 
 import (
 	"bytes"
+	"encoding/json"
+	"strings"
 	"text/template"
 )
 
-const pgTemplate = `BEGIN;
-
-CREATE SCHEMA {{ .SchemaName }};
-{{ range $tblidx, $tbl := .Tables }}
-CREATE TABLE {{ $.SchemaName }}.{{ .TableName }} (
-  id serial primary key,
-  {{- range $colidx, $col := .Columns }}
-  {{- if $colidx }},{{- end }}
-  {{ .ColumnName }} {{ .ColumnDesc }}
-  {{- end }}
-);
-{{ end -}}
-{{ range $refidx, $ref := .References }}
-ALTER TABLE {{ $.SchemaName }}.{{ .TableName }}
-  {{- range $colidx, $col := .Columns }}
-  {{- if $colidx }},{{- end }}
-  ADD COLUMN {{ .ColumnName }} integer references {{ $.SchemaName }}.{{ .ColumnDesc }}(id)
-  {{- end }};
-{{ end }}
-COMMIT;`
-
 type PGSQLColumn struct {
 	ColumnName string
+	ColumnType string
 	ColumnDesc string
+}
+
+type PGSQLData struct {
+	Label        string
+	Description  string
+	DisplayField string
+	Version      int
+	CreatedAt    string
+	CreatedBy    string
+	UpdatedAt    string
+	UpdatedBy    string
+	Metas        []*PGSQLMeta
+}
+
+type PGSQLMeta struct {
+	Name        string
+	Label       string
+	Type        string
+	LinkType    string
+	Items       string
+	Required    bool
+	Localized   bool
+	Disabled    bool
+	Omitted     bool
+	Validations string
 }
 
 type PGSQLTable struct {
 	TableName string
+	Data      *PGSQLData
 	Columns   []PGSQLColumn
 }
 
 type PGSQLSchema struct {
 	SchemaName string
+	Space      *Space
 	Tables     []PGSQLTable
-	References map[string]PGSQLTable
+	References []PGSQLTable
 }
 
-func NewPGSQLSchema(schemaName string, items []ContentType) PGSQLSchema {
+var funcMap = template.FuncMap{
+	"fmtLocale": func(code string) string {
+		return strings.ToLower(strings.ReplaceAll(code, "-", "_"))
+	},
+}
+
+func NewPGSQLSchema(schemaName string, space *Space, items []ContentType) PGSQLSchema {
 	schema := PGSQLSchema{
 		SchemaName: schemaName,
+		Space:      space,
 		Tables:     make([]PGSQLTable, 0),
-		References: make(map[string]PGSQLTable, 0),
 	}
 
 	for _, item := range items {
-		table := NewPGSQLTable(item.Sys.ID, item.Fields)
+		table := NewPGSQLTable(item)
 		schema.Tables = append(schema.Tables, table)
 
 		schema.collectAlters(item)
@@ -76,16 +91,18 @@ func (s *PGSQLSchema) collectAlters(item ContentType) {
 							ColumnDesc: link,
 						}
 						alterTable.Columns = append(alterTable.Columns, refColumn)
-						s.References[item.Sys.ID] = alterTable
 					}
 				}
 			}
 		}
 	}
+	if len(alterTable.Columns) > 0 {
+		s.References = append(s.References, alterTable)
+	}
 }
 
 func (s *PGSQLSchema) Render() (string, error) {
-	tmpl, err := template.New("").Parse(pgTemplate)
+	tmpl, err := template.New("").Funcs(funcMap).Parse(pgTemplate)
 	if err != nil {
 		return "", err
 	}
@@ -99,17 +116,21 @@ func (s *PGSQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewPGSQLTable(tableName string, fields []*ContentTypeField) PGSQLTable {
+func NewPGSQLTable(item ContentType) PGSQLTable {
+	tableName := item.Sys.ID
 	table := PGSQLTable{
 		TableName: tableName,
 		Columns:   make([]PGSQLColumn, 0),
+		Data:      makeModelData(item),
 	}
 
-	for _, field := range fields {
+	for _, field := range item.Fields {
 		if field.Items == nil || field.Items.Type != "Link" {
 			column := NewPGSQLColumn(*field)
 			table.Columns = append(table.Columns, column)
 		}
+		meta := makeMeta(field)
+		table.Data.Metas = append(table.Data.Metas, meta)
 	}
 
 	return table
@@ -124,11 +145,12 @@ func NewPGSQLColumn(field ContentTypeField) PGSQLColumn {
 }
 
 func (c *PGSQLColumn) getColumnDesc(field ContentTypeField) {
-	columnType := c.getColumnType(field)
+	columnDesc := ""
 	if c.isUnique(field.Validations) {
-		columnType += " unique"
+		columnDesc += " unique"
 	}
-	c.ColumnDesc = columnType
+	c.ColumnType = c.getColumnType(field)
+	c.ColumnDesc = columnDesc
 }
 
 func (c *PGSQLColumn) getColumnType(field ContentTypeField) string {
@@ -163,4 +185,46 @@ func (c *PGSQLColumn) isUnique(validations []FieldValidation) bool {
 		}
 	}
 	return false
+}
+
+func makeModelData(item ContentType) *PGSQLData {
+	data := &PGSQLData{
+		Label:        formatText(item.Name),
+		Description:  formatText(item.Description),
+		DisplayField: item.DisplayField,
+		Version:      item.Sys.Revision,
+		CreatedAt:    item.Sys.CreatedAt,
+		UpdatedAt:    item.Sys.UpdatedAt,
+		Metas:        make([]*PGSQLMeta, 0),
+	}
+
+	return data
+}
+
+func makeMeta(field *ContentTypeField) *PGSQLMeta {
+	meta := &PGSQLMeta{
+		Name:      field.ID,
+		Label:     formatText(field.Name),
+		Type:      field.Type,
+		LinkType:  field.LinkType,
+		Required:  field.Required,
+		Localized: field.Localized,
+		Disabled:  field.Disabled,
+		Omitted:   field.Omitted,
+	}
+	if field.Items != nil {
+		i, err := json.Marshal(field.Items)
+		if err == nil {
+			meta.Items = formatText(string(i))
+		}
+	}
+
+	if field.Validations != nil {
+		v, err := json.Marshal(field.Validations)
+		if err == nil {
+			meta.Validations = formatText(string(v))
+		}
+	}
+
+	return meta
 }
