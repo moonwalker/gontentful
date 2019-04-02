@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets__publish (
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ .SchemaName }}._assets__publish(sysId);
 --
-CREATE OR REPLACE FUNCTION assets_publish(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text)
+CREATE OR REPLACE FUNCTION assets_publish(_aid integer)
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}._assets__publish (
@@ -190,19 +190,19 @@ INSERT INTO {{ $.SchemaName }}._assets__publish (
 	contentType,
 	url,
 	version,
-	created_at,
 	created_by
-) VALUES (
-	_sysId,
-	_title,
-	_description,
-	_fileName,
-	_contentType,
-	_url,
-	_version,
-	_created_at,
-	_created_by
 )
+SELECT
+	sysId,
+	title,
+	description,
+	fileName,
+	contentType,
+	url,
+	version,
+	updated_by
+FROM {{ $.SchemaName }}._assets
+WHERE _id = _aid
 ON CONFLICT (sysId) DO UPDATE
 SET
 	title = EXCLUDED.title,
@@ -451,7 +451,7 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish(sysId);
 --
-CREATE OR REPLACE FUNCTION {{ $tbl.TableName }}_{{ $locale }}_publish(_sysId text,{{ range $colidx, $col := $tbl.Columns }} _{{ .ColumnName }} {{ .ColumnType }},{{ end }} _version integer, _created_at timestamp, _created_by text)
+CREATE OR REPLACE FUNCTION {{ $tbl.TableName }}_{{ $locale }}_publish(_aid integer)
 RETURNS integer AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish (
@@ -460,17 +460,17 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish (
 	{{ .ColumnName }},
 	{{- end }}
 	version,
-	created_at,
 	created_by
-) VALUES (
-	_sysId,
-	{{- range $colidx, $col := $tbl.Columns }}
-	_{{ .ColumnName }},
-	{{- end }}
-	_version,
-	_created_at,
-	_created_by
 )
+SELECT
+	sysId,
+	{{- range $colidx, $col := $tbl.Columns }}
+	{{ .ColumnName }},
+	{{- end }}
+	version,
+	updated_by
+FROM {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
+WHERE _id = _aid
 ON CONFLICT (sysId) DO UPDATE
 SET
 	{{- range $colidx, $col := $tbl.Columns }}
