@@ -157,23 +157,22 @@ var queryCmd = &cobra.Command{
 		fmt.Println("query generated successfuly in ", d.Seconds(), "s")
 		split = time.Now()
 
-		if execute {
-			ok, err := repo.Exec(str)
-			if !ok {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			d = time.Since(split)
-			fmt.Println("query executed successfuly in ", d.Seconds(), "s")
-		} else {
-			bytes := []byte(str)
-			err := ioutil.WriteFile("/tmp/schema_query", bytes, 0644)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			fmt.Println(str)
+		bytes := []byte(str)
+		err = ioutil.WriteFile("/tmp/schema_query", bytes, 0644)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
 		}
+		fmt.Println(str)
+
+		ok, err := repo.Exec(str)
+		if !ok {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		d = time.Since(split)
+		fmt.Println("query executed successfuly in ", d.Seconds(), "s")
+
 		d = time.Since(start)
 		fmt.Println("completed successfuly in ", d.Seconds(), "s")
 	},

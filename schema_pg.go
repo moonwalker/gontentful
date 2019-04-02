@@ -54,9 +54,11 @@ type PGSQLSchema struct {
 }
 
 var funcMap = template.FuncMap{
-	"fmtLocale": func(code string) string {
-		return strings.ToLower(strings.ReplaceAll(code, "-", "_"))
-	},
+	"fmtLocale": fmtLocale,
+}
+
+func fmtLocale(code string) string {
+	return strings.ToLower(strings.ReplaceAll(code, "-", "_"))
 }
 
 func NewPGSQLSchema(schemaName string, space *Space, items []ContentType) PGSQLSchema {

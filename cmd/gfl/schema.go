@@ -65,7 +65,7 @@ var pgSchemaCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		schema := gontentful.NewPGSQLSchema(SpaceId, space, resp.Items)
+		schema := gontentful.NewPGSQLSchema(schemaName, space, resp.Items)
 		str, err := schema.Render()
 		if err != nil {
 			fmt.Println(err)
@@ -144,7 +144,7 @@ var jsonbSchemaCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		schema := gontentful.NewPGJSONBSchema(SpaceId, assetTableName, resp.Items)
+		schema := gontentful.NewPGJSONBSchema(schemaName, assetTableName, resp.Items)
 		str, err := schema.Render()
 		if err != nil {
 			fmt.Println(err)

@@ -20,11 +20,12 @@ var (
 const (
 	apiURL         = "cdn.contentful.com"
 	assetTableName = "_assets"
+	schemaName     = "content"
 )
 
 func init() {
 	cache = getCache()
-	r, err := getRepository()
+	r, err := dal.NewPostgresRepo()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -41,15 +42,6 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-}
-
-func getRepository() (dal.Repository, error) {
-	host := "localhost"
-	url := fmt.Sprintf("postgres://postgres@%s:5432/content", host)
-	if host == "localhost" {
-		url += "?sslmode=disable"
-	}
-	return dal.NewRepository("postgres", url)
 }
 
 func getCache() store.Store {

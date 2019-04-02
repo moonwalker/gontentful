@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets (
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ .SchemaName }}._assets(sysId);
 --
-CREATE OR REPLACE FUNCTION assets_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}.assets_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}._assets (
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets__publish (
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ .SchemaName }}._assets__publish(sysId);
 --
-CREATE OR REPLACE FUNCTION assets_publish(_aid integer)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}.assets_publish(_aid integer)
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}._assets__publish (
@@ -402,7 +402,7 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}(sysId);
 --
-CREATE OR REPLACE FUNCTION {{ $tbl.TableName }}_{{ $locale }}_upsert(_sysId text,{{ range $colidx, $col := $tbl.Columns }} _{{ .ColumnName }} {{ .ColumnType }},{{ end }} _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_upsert(_sysId text,{{ range $colidx, $col := $tbl.Columns }} _{{ .ColumnName }} {{ .ColumnType }},{{ end }} _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }} (
@@ -451,7 +451,7 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish(sysId);
 --
-CREATE OR REPLACE FUNCTION {{ $tbl.TableName }}_{{ $locale }}_publish(_aid integer)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_publish(_aid integer)
 RETURNS integer AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish (

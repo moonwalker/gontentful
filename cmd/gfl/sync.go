@@ -14,7 +14,6 @@ import (
 
 var (
 	nextPageToken string
-	execute       bool
 )
 
 func getCacheKey(page string) string {
@@ -22,10 +21,8 @@ func getCacheKey(page string) string {
 }
 
 func init() {
-	initSyncCmd.PersistentFlags().BoolVarP(&execute, "exec", "e", false, "execute script")
 	syncCmd.AddCommand(initSyncCmd)
 	syncNextPageCmd.PersistentFlags().StringVarP(&nextPageToken, "page", "p", "", "next page token")
-	syncNextPageCmd.PersistentFlags().BoolVarP(&execute, "exec", "e", false, "execute script")
 	syncCmd.AddCommand(syncNextPageCmd)
 	rootCmd.AddCommand(syncCmd)
 }
@@ -52,7 +49,28 @@ var initSyncCmd = &cobra.Command{
 		fmt.Println("initSync executed successfuly in ", d.Seconds(), "s")
 		split := time.Now()
 
-		schema := gontentful.NewPGSyncSchema(SpaceId, assetTableName, res.Items)
+		client := gontentful.NewClient(&gontentful.ClientOptions{
+			CdnURL:   apiURL,
+			SpaceID:  SpaceId,
+			CdnToken: CdnToken,
+		})
+
+		data, err := client.Spaces.Get(nil)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		space := &gontentful.Space{}
+		err = json.Unmarshal(data, space)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Println("creating schema...")
+
+		schema := gontentful.NewPGSyncSchema(schemaName, assetTableName, space, res.Items)
 
 		str, err := schema.Render()
 		if err != nil {
@@ -62,23 +80,23 @@ var initSyncCmd = &cobra.Command{
 		d = time.Since(split)
 		fmt.Println("schema rendered successfuly in ", d.Seconds(), "s")
 		split = time.Now()
-		if execute {
-			ok, err := repo.Exec(str)
-			if !ok {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			d = time.Since(split)
-			fmt.Println("script executed successfuly in ", d.Seconds(), "s")
-		} else {
-			bytes := []byte(str)
-			err := ioutil.WriteFile("/tmp/schema_initsync", bytes, 0644)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			fmt.Println(str)
+
+		bytes := []byte(str)
+		err = ioutil.WriteFile("/tmp/schema_initsync", bytes, 0644)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
 		}
+		// fmt.Println(str)
+
+		ok, err := repo.Exec(str)
+		if !ok {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		d = time.Since(split)
+		fmt.Println("script executed successfuly in ", d.Seconds(), "s")
+
 		d = time.Since(start)
 		fmt.Println("completed successfuly in ", d.Seconds(), "s")
 	},
@@ -117,7 +135,39 @@ var syncNextPageCmd = &cobra.Command{
 		fmt.Println("sync token executed successfuly in ", d.Seconds(), "s")
 		split := time.Now()
 
-		schema := gontentful.NewPGSyncSchema(SpaceId, assetTableName, res.Items)
+		client := gontentful.NewClient(&gontentful.ClientOptions{
+			CdnURL:   apiURL,
+			SpaceID:  SpaceId,
+			CdnToken: CdnToken,
+		})
+
+		data, err := client.Spaces.Get(nil)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		space := &gontentful.Space{}
+		err = json.Unmarshal(data, space)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		data, err = client.ContentTypes.Get(nil)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		resp := &gontentful.ContentTypes{}
+		err = json.Unmarshal(data, resp)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		schema := gontentful.NewPGSyncSchema(schemaName, assetTableName, space, res.Items)
 
 		str, err := schema.Render()
 		if err != nil {
@@ -129,29 +179,28 @@ var syncNextPageCmd = &cobra.Command{
 		fmt.Println("schema rendered successfuly in ", d.Seconds(), "s")
 		split = time.Now()
 
-		if execute {
-			ok, err := repo.Exec(str)
-			if !ok {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			d = time.Since(split)
-			fmt.Println("script executed successfuly in ", d.Seconds(), "s")
-		} else {
-			bytes := []byte(str)
-			err := ioutil.WriteFile("/tmp/schema_sync", bytes, 0644)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-			fmt.Println(str)
+		bytes := []byte(str)
+		err = ioutil.WriteFile("/tmp/schema_sync", bytes, 0644)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
 		}
+		// fmt.Println(str)
+
+		ok, err := repo.Exec(str)
+		if !ok {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		d = time.Since(split)
+		fmt.Println("script executed successfuly in ", d.Seconds(), "s")
+
 		d = time.Since(start)
 		fmt.Println("completed successfuly in ", d.Seconds(), "s")
 	},
 }
 
-func sync(token string) (*gontentful.SyncResponse, error) {
+func sync(token string) (*gontentful.SyncResult, error) {
 	key := token
 	if key == "" {
 		key = "initial"
@@ -166,7 +215,7 @@ func sync(token string) (*gontentful.SyncResponse, error) {
 		return nil, err
 	}
 	if res == nil {
-		res, err := client.Spaces.Sync(token)
+		res, err = client.Spaces.Sync(token)
 		if err != nil {
 			return nil, err
 		}
@@ -174,22 +223,22 @@ func sync(token string) (*gontentful.SyncResponse, error) {
 			storeToCache(getCacheKey("next_token"), []byte(res.Token))
 		}
 	}
-
 	return res, err
 }
 
-func fetchCachedSync(key string) (*gontentful.SyncResponse, error) {
-
+func fetchCachedSync(key string) (*gontentful.SyncResult, error) {
 	cached, err := cache.Get(getCacheKey(key))
 	if err != nil {
 		return nil, err
 	}
-
 	if cached != nil && len(cached) > 0 {
-		res := &gontentful.SyncResponse{}
-		err := json.Unmarshal(cached, res)
-		for res.NextPageURL != "" {
-			body, err := cache.Get(getCacheKey(res.NextPageURL))
+		res := &gontentful.SyncResult{}
+		first := &gontentful.SyncResponse{}
+		err := json.Unmarshal(cached, first)
+		nextPageURL := first.NextPageURL
+		res.Items = append(res.Items, first.Items...)
+		for nextPageURL != "" {
+			body, err := cache.Get(getCacheKey(nextPageURL))
 			if err != nil {
 				return nil, err
 			}
@@ -198,13 +247,11 @@ func fetchCachedSync(key string) (*gontentful.SyncResponse, error) {
 			if err != nil {
 				return nil, err
 			}
-			res.NextPageURL = page.NextPageURL
-			res.NextSyncURL = page.NextSyncURL
+			nextPageURL = page.NextPageURL
 			res.Items = append(res.Items, page.Items...)
 		}
 		return res, err
 	}
-
 	return nil, nil
 }
 
