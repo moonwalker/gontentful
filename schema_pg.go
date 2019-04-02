@@ -47,10 +47,11 @@ type PGSQLTable struct {
 }
 
 type PGSQLSchema struct {
-	SchemaName string
-	Space      *Space
-	Tables     []PGSQLTable
-	References []PGSQLTable
+	SchemaName      string
+	Space           *Space
+	Tables          []PGSQLTable
+	References      []PGSQLTable
+	AssetReferences []PGSQLTable
 }
 
 var funcMap = template.FuncMap{
@@ -83,6 +84,10 @@ func (s *PGSQLSchema) collectAlters(item ContentType, assetTableName string) {
 		TableName: item.Sys.ID,
 		Columns:   make([]PGSQLColumn, 0),
 	}
+	alterAssets := PGSQLTable{
+		TableName: item.Sys.ID,
+		Columns:   make([]PGSQLColumn, 0),
+	}
 	for _, field := range item.Fields {
 		if field.Items != nil {
 			if field.Items.LinkType == "Asset" {
@@ -90,7 +95,7 @@ func (s *PGSQLSchema) collectAlters(item ContentType, assetTableName string) {
 					ColumnName: field.ID,
 					ColumnDesc: assetTableName,
 				}
-				alterTable.Columns = append(alterTable.Columns, refColumn)
+				alterAssets.Columns = append(alterAssets.Columns, refColumn)
 			} else if field.Items.LinkType == "Entry" {
 				for _, v := range field.Items.Validations {
 					if len(v.LinkContentType) > 0 {
@@ -108,6 +113,8 @@ func (s *PGSQLSchema) collectAlters(item ContentType, assetTableName string) {
 	}
 	if len(alterTable.Columns) > 0 {
 		s.References = append(s.References, alterTable)
+	} else if len(alterAssets.Columns) > 0 {
+		s.AssetReferences = append(s.AssetReferences, alterAssets)
 	}
 }
 

@@ -171,7 +171,7 @@ func NewPGSyncRow(item *Entry, locale string) PGSyncRow {
 						}
 					}
 				}
-				fmt.Println(k, fieldType, row.Fields[k])
+				// fmt.Println(k, fieldType, row.Fields[k])
 			}
 		}
 	}

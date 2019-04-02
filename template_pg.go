@@ -526,6 +526,18 @@ COMMIT;
 BEGIN;
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
+{{ range $refidx, $ref := $.AssetReferences }}
+ALTER TABLE {{ $.SchemaName }}.{{ .TableName }}_{{ $locale }}
+  {{- range $colidx, $col := .Columns }}
+  {{- if $colidx }},{{- end }}
+  ADD COLUMN IF NOT EXISTS {{ .ColumnName }} integer references {{ $.SchemaName }}._assets(_id)
+{{- end }};
+ALTER TABLE {{ $.SchemaName }}.{{ .TableName }}_{{ $locale }}__publish
+  {{- range $colidx, $col := .Columns }}
+  {{- if $colidx }},{{- end }}
+  ADD COLUMN IF NOT EXISTS {{ .ColumnName }} integer references {{ $.SchemaName }}._assets__publish(_id)
+{{- end }};
+{{ end -}}
 {{ range $refidx, $ref := $.References }}
 ALTER TABLE {{ $.SchemaName }}.{{ .TableName }}_{{ $locale }}
   {{- range $colidx, $col := .Columns }}
