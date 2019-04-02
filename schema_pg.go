@@ -61,7 +61,7 @@ func fmtLocale(code string) string {
 	return strings.ToLower(strings.ReplaceAll(code, "-", "_"))
 }
 
-func NewPGSQLSchema(schemaName string, space *Space, items []ContentType) PGSQLSchema {
+func NewPGSQLSchema(schemaName string, assetTableName string, space *Space, items []ContentType) PGSQLSchema {
 	schema := PGSQLSchema{
 		SchemaName: schemaName,
 		Space:      space,
@@ -72,27 +72,35 @@ func NewPGSQLSchema(schemaName string, space *Space, items []ContentType) PGSQLS
 		table := NewPGSQLTable(item)
 		schema.Tables = append(schema.Tables, table)
 
-		schema.collectAlters(item)
+		schema.collectAlters(item, assetTableName)
 	}
 
 	return schema
 }
 
-func (s *PGSQLSchema) collectAlters(item ContentType) {
+func (s *PGSQLSchema) collectAlters(item ContentType, assetTableName string) {
 	alterTable := PGSQLTable{
 		TableName: item.Sys.ID,
 		Columns:   make([]PGSQLColumn, 0),
 	}
 	for _, field := range item.Fields {
 		if field.Items != nil {
-			for _, v := range field.Items.Validations {
-				if len(v.LinkContentType) > 0 {
-					for _, link := range v.LinkContentType {
-						refColumn := PGSQLColumn{
-							ColumnName: field.ID,
-							ColumnDesc: link,
+			if field.Items.LinkType == "Asset" {
+				refColumn := PGSQLColumn{
+					ColumnName: field.ID,
+					ColumnDesc: assetTableName,
+				}
+				alterTable.Columns = append(alterTable.Columns, refColumn)
+			} else if field.Items.LinkType == "Entry" {
+				for _, v := range field.Items.Validations {
+					if len(v.LinkContentType) > 0 {
+						for _, link := range v.LinkContentType {
+							refColumn := PGSQLColumn{
+								ColumnName: field.ID,
+								ColumnDesc: link,
+							}
+							alterTable.Columns = append(alterTable.Columns, refColumn)
 						}
-						alterTable.Columns = append(alterTable.Columns, refColumn)
 					}
 				}
 			}

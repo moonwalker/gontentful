@@ -65,7 +65,7 @@ var pgSchemaCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		schema := gontentful.NewPGSQLSchema(schemaName, space, resp.Items)
+		schema := gontentful.NewPGSQLSchema(schemaName, assetTableName, space, resp.Items)
 		str, err := schema.Render()
 		if err != nil {
 			fmt.Println(err)
