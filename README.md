@@ -1,6 +1,6 @@
 # Gontentful
 
-Minimal Contentful client library for Go with a command line interface.
+Contentful client library for Go with a command line interface.
 
 ## CLI:
 
