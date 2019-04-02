@@ -173,8 +173,8 @@ CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets__publish (
 	contentType text,
 	url text,
 	version integer not null default 0,
-	created_at timestamp without time zone default now(),
-	created_by text not null
+	published_at timestamp without time zone default now(),
+	published_by text not null
 );
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ .SchemaName }}._assets__publish(sysId);
@@ -190,7 +190,7 @@ INSERT INTO {{ $.SchemaName }}._assets__publish (
 	contentType,
 	url,
 	version,
-	created_by
+	published_by
 )
 SELECT
 	sysId,
@@ -211,8 +211,8 @@ SET
 	contentType = EXCLUDED.contentType,
 	url = EXCLUDED.url,
 	version = EXCLUDED.version,
-	created_at = now(),
-	created_by = EXCLUDED.created_by
+	published_at = now(),
+	published_by = EXCLUDED.published_by
 ;
 END;
 $$  LANGUAGE plpgsql;
@@ -445,8 +445,8 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
 	{{ .ColumnName }} {{ .ColumnType }},
 	{{- end }}
 	version integer not null default 0,
-	created_at timestamp without time zone default now(),
-	created_by text not null
+	published_at timestamp without time zone default now(),
+	published_by text not null
 );
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish(sysId);
@@ -460,7 +460,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish (
 	{{ .ColumnName }},
 	{{- end }}
 	version,
-	created_by
+	published_by
 )
 SELECT
 	sysId,
@@ -477,8 +477,8 @@ SET
 	{{ .ColumnName }} = EXCLUDED.{{ .ColumnName }},
 	{{- end }}
 	version = EXCLUDED.version,
-	created_at = now(),
-	created_by = EXCLUDED.created_by
+	published_at = now(),
+	published_by = EXCLUDED.published_by
 ;
 END;
 $$  LANGUAGE plpgsql;
