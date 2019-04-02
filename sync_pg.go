@@ -14,7 +14,7 @@ BEGIN;
 {{ range $itemidx, $item := .Rows }}
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	sysId,
-	{{- range $k := .Fields }}
+	{{- range $k, $v := .Fields }}
 	{{ $k }},
 	{{- end }}
 	version,
@@ -44,7 +44,7 @@ SET
 ;
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__publish (
 	sysId,
-	{{- range $k := .Fields }}
+	{{- range $k, $v := .Fields }}
 	{{ $k }},
 	{{- end }}
 	version,
@@ -157,20 +157,21 @@ func NewPGSyncRow(item *Entry, locale string) PGSyncRow {
 	if item.Fields != nil {
 		row.Fields = make(map[string]interface{})
 		for k, f := range item.Fields {
+			row.Fields[k] = nil
 			lf, ok := f.(map[string]interface{})
 			if ok {
 				f := lf[locale]
-				row.Fields[k] = f
+				fieldType := ""
 				if f != nil {
 					ft := reflect.TypeOf(f)
 					if ft != nil {
-						fieldType := ft.String()
+						fieldType = ft.String()
 						if fieldType == "string" {
 							row.Fields[k] = fmt.Sprintf("'%s'", strings.ReplaceAll(f.(string), "'", "''"))
-							continue
 						}
 					}
 				}
+				fmt.Println(k, fieldType, row.Fields[k])
 			}
 		}
 	}
