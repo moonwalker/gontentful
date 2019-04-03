@@ -88,7 +88,7 @@ var initSyncCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		// fmt.Println(str)
-
+		fmt.Println("executing schema...")
 		ok, err := repo.Exec(str)
 		if !ok {
 			fmt.Println(err)
@@ -186,7 +186,7 @@ var syncNextPageCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		// fmt.Println(str)
-
+		fmt.Println("executing schema...")
 		ok, err := repo.Exec(str)
 		if !ok {
 			fmt.Println(err)

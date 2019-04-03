@@ -2,6 +2,7 @@ package gontentful
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -9,8 +10,8 @@ import (
 )
 
 const pgSyncTemplate = `
-{{ range $tblidx, $tbl := .Tables }}
-BEGIN;
+BEGIN
+{{ range $tblidx, $tbl := .Tables }};
 {{ range $itemidx, $item := .Rows }}
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	sysId,
@@ -69,9 +70,8 @@ SET
 	published_by = EXCLUDED.published_by
 ;
 {{ end -}}
-COMMIT;
 {{ end -}}
-`
+COMMIT;`
 
 type PGSyncRow struct {
 	SysID            string
@@ -162,21 +162,55 @@ func NewPGSyncRow(item *Entry, locale string) PGSyncRow {
 			lf, ok := f.(map[string]interface{})
 			if ok {
 				f := lf[locale]
-				fieldType := ""
-				if f != nil {
-					ft := reflect.TypeOf(f)
-					if ft != nil {
-						fieldType = ft.String()
-						if fieldType == "string" {
-							row.Fields[k] = fmt.Sprintf("'%s'", strings.ReplaceAll(f.(string), "'", "''"))
-						}
-					}
-				}
-				// fmt.Println(k, fieldType, row.Fields[k])
+				row.Fields[k] = evaluateField(f)
+
 			}
 		}
 	}
 	return row
+}
+
+func evaluateField(field interface{}) string {
+	if field != nil {
+		ft := reflect.TypeOf(field)
+		if ft != nil {
+			fieldType := ft.String()
+
+			if fieldType == "string" {
+				return fmt.Sprintf("'%s'", strings.ReplaceAll(field.(string), "'", "''"))
+			} else if strings.HasPrefix(fieldType, "[]") {
+				arr := make([]string, 0)
+				a, ok := field.([]interface{})
+				if ok {
+					for i := 0; i < len(a); i++ {
+						fs := evaluateField(a[i])
+						if fs != "" {
+							arr = append(arr, fs)
+						}
+					}
+				}
+				return fmt.Sprintf("ARRAY[%s]", strings.Join(arr, ","))
+			} else if strings.HasPrefix(fieldType, "map[string]") {
+				e, ok := field.(map[string]interface{})
+				if ok && e["sys"] != nil {
+					s, ok := e["sys"].(map[string]interface{})
+					if ok {
+						if s["type"] == "Link" {
+							return fmt.Sprintf("'%v'", s["id"])
+						}
+					}
+				}
+				data, err := json.Marshal(e)
+				if err != nil {
+					fmt.Println(fieldType, " Marshal ERROR.", field, err)
+					return "'{}'"
+				}
+				return fmt.Sprintf("'%s'", string(data))
+			}
+			return fmt.Sprintf("%v", field)
+		}
+	}
+	return ""
 }
 
 func NewPGSyncTable(tableName string, rows []PGSyncRow) PGSyncTable {

@@ -95,6 +95,7 @@ func (s *PGSQLSchema) collectAlters(item ContentType, assetTableName string) {
 				assetRefColumn := PGSQLColumn{
 					ColumnName: field.ID,
 					ColumnDesc: assetTableName,
+					ColumnType: getColumnType(field.Type, field.Items),
 				}
 				alterAssets.Columns = append(alterAssets.Columns, assetRefColumn)
 			} else if field.Items.LinkType == "Entry" {
@@ -104,6 +105,7 @@ func (s *PGSQLSchema) collectAlters(item ContentType, assetTableName string) {
 							refColumn := PGSQLColumn{
 								ColumnName: field.ID,
 								ColumnDesc: link,
+								ColumnType: getColumnType(field.Type, field.Items),
 							}
 							alterTable.Columns = append(alterTable.Columns, refColumn)
 						}
@@ -168,11 +170,11 @@ func (c *PGSQLColumn) getColumnDesc(field ContentTypeField) {
 	if c.isUnique(field.Validations) {
 		columnDesc += " unique"
 	}
-	c.ColumnType = c.getColumnType(field.Type, field.Items)
+	c.ColumnType = getColumnType(field.Type, field.Items)
 	c.ColumnDesc = columnDesc
 }
 
-func (c *PGSQLColumn) getColumnType(fieldType string, fieldItems *FieldTypeArrayItem) string {
+func getColumnType(fieldType string, fieldItems *FieldTypeArrayItem) string {
 	switch fieldType {
 	case "Symbol":
 		return "text"
@@ -192,7 +194,7 @@ func (c *PGSQLColumn) getColumnType(fieldType string, fieldItems *FieldTypeArray
 		return "text"
 	case "Array":
 		if fieldItems != nil {
-			return fmt.Sprintf("%s ARRAY", c.getColumnType(fieldItems.Type, nil))
+			return fmt.Sprintf("%s ARRAY", getColumnType(fieldItems.Type, nil))
 		}
 		return "text ARRAY"
 	case "Object":
