@@ -5,6 +5,7 @@ package gontentful
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"text/template"
 )
@@ -167,12 +168,12 @@ func (c *PGSQLColumn) getColumnDesc(field ContentTypeField) {
 	if c.isUnique(field.Validations) {
 		columnDesc += " unique"
 	}
-	c.ColumnType = c.getColumnType(field)
+	c.ColumnType = c.getColumnType(field.Type, field.Items)
 	c.ColumnDesc = columnDesc
 }
 
-func (c *PGSQLColumn) getColumnType(field ContentTypeField) string {
-	switch field.Type {
+func (c *PGSQLColumn) getColumnType(fieldType string, fieldItems *FieldTypeArrayItem) string {
+	switch fieldType {
 	case "Symbol":
 		return "text"
 	case "Text":
@@ -187,7 +188,12 @@ func (c *PGSQLColumn) getColumnType(field ContentTypeField) string {
 		return "point"
 	case "Boolean":
 		return "boolean"
+	case "Link":
+		return "text"
 	case "Array":
+		if fieldItems != nil {
+			return fmt.Sprintf("%s ARRAY", c.getColumnType(fieldItems.Type, nil))
+		}
 		return "text ARRAY"
 	case "Object":
 		return "jsonb"

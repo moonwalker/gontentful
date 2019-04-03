@@ -249,7 +249,7 @@ BEGIN
 		OLD.sysId,
 		row_to_json(OLD),
 		OLD.version,
-		NEW.updated_by
+		NEW.published_by
 	);
 	RETURN NULL;
 END;
@@ -523,7 +523,7 @@ BEGIN
 		OLD.sysId,
 		row_to_json(OLD),
 		OLD.version,
-		NEW.updated_by
+		NEW.published_by
 	);
 	RETURN NULL;
 END;
