@@ -9,8 +9,8 @@ import (
 )
 
 const pgSyncTemplate = `
-BEGIN;
 {{ range $tblidx, $tbl := .Tables }}
+BEGIN;
 {{ range $itemidx, $item := .Rows }}
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	sysId,
@@ -69,8 +69,9 @@ SET
 	published_by = EXCLUDED.published_by
 ;
 {{ end -}}
+COMMIT;
 {{ end -}}
-COMMIT;`
+`
 
 type PGSyncRow struct {
 	SysID            string

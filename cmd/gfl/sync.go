@@ -205,12 +205,13 @@ func sync(token string) (*gontentful.SyncResult, error) {
 	if key == "" {
 		key = "initial"
 	}
+	cacheKey := getCacheKey(key)
 	client := gontentful.NewClient(&gontentful.ClientOptions{
 		CdnURL:   apiURL,
 		SpaceID:  SpaceId,
 		CdnToken: CdnToken,
 	})
-	res, err := fetchCachedSync(key)
+	res, err := fetchCachedSync(cacheKey)
 	if err != nil {
 		return nil, err
 	}
@@ -219,6 +220,8 @@ func sync(token string) (*gontentful.SyncResult, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		storeSyncResponse(cacheKey, res)
 		if res.Token != "" {
 			storeToCache(getCacheKey("next_token"), []byte(res.Token))
 		}
@@ -227,7 +230,7 @@ func sync(token string) (*gontentful.SyncResult, error) {
 }
 
 func fetchCachedSync(key string) (*gontentful.SyncResult, error) {
-	cached, err := cache.Get(getCacheKey(key))
+	cached, err := cache.Get(key)
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +258,7 @@ func fetchCachedSync(key string) (*gontentful.SyncResult, error) {
 	return nil, nil
 }
 
-func storeSyncResponse(key string, res *gontentful.SyncResponse) {
+func storeSyncResponse(key string, res *gontentful.SyncResult) {
 	body, err := json.Marshal(res)
 	if err != nil {
 		fmt.Println(fmt.Errorf("Marshal error: %s", err))

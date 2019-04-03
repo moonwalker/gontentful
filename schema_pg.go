@@ -91,11 +91,11 @@ func (s *PGSQLSchema) collectAlters(item ContentType, assetTableName string) {
 	for _, field := range item.Fields {
 		if field.Items != nil {
 			if field.Items.LinkType == "Asset" {
-				refColumn := PGSQLColumn{
+				assetRefColumn := PGSQLColumn{
 					ColumnName: field.ID,
 					ColumnDesc: assetTableName,
 				}
-				alterAssets.Columns = append(alterAssets.Columns, refColumn)
+				alterAssets.Columns = append(alterAssets.Columns, assetRefColumn)
 			} else if field.Items.LinkType == "Entry" {
 				for _, v := range field.Items.Validations {
 					if len(v.LinkContentType) > 0 {
@@ -113,7 +113,8 @@ func (s *PGSQLSchema) collectAlters(item ContentType, assetTableName string) {
 	}
 	if len(alterTable.Columns) > 0 {
 		s.References = append(s.References, alterTable)
-	} else if len(alterAssets.Columns) > 0 {
+	}
+	if len(alterAssets.Columns) > 0 {
 		s.AssetReferences = append(s.AssetReferences, alterAssets)
 	}
 }

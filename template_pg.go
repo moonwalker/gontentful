@@ -78,7 +78,9 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._models__history(
 	created_by text not null
 );
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}.on__models_update()
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__models_update() CASCADE;
+--
+CREATE FUNCTION {{ $.SchemaName }}.on__models_update()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._models__history (
@@ -122,7 +124,9 @@ CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets (
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ .SchemaName }}._assets(sysId);
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}.assets_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
+--
+CREATE FUNCTION {{ $.SchemaName }}.assets_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}._assets (
@@ -179,7 +183,9 @@ CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets__publish (
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ .SchemaName }}._assets__publish(sysId);
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}.assets_publish(_aid integer)
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets_publish(integer) CASCADE;
+--
+CREATE FUNCTION {{ $.SchemaName }}.assets_publish(_aid integer)
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}._assets__publish (
@@ -227,7 +233,9 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets__history(
 	created_by text not null
 );
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}.on__assets_update()
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets_update() CASCADE;
+--
+CREATE FUNCTION {{ $.SchemaName }}.on__assets_update()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._assets__history (
@@ -316,7 +324,9 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__meta_history
 	created_by text not null
 );
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__meta_update()
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}__meta_update() CASCADE;
+--
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__meta_update()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__meta_history (
@@ -402,7 +412,9 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}(sysId);
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_upsert(_sysId text,{{ range $colidx, $col := $tbl.Columns }} _{{ .ColumnName }} {{ .ColumnType }},{{ end }} _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_upsert(text,{{ range $colidx, $col := $tbl.Columns }} {{ .ColumnType }},{{ end }} integer, timestamp, text, timestamp, text) CASCADE;
+--
+CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_upsert(_sysId text,{{ range $colidx, $col := $tbl.Columns }} _{{ .ColumnName }} {{ .ColumnType }},{{ end }} _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }} (
@@ -451,7 +463,9 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish(sysId);
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_publish(_aid integer)
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_publish(integer) CASCADE;
+--
+CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_publish(_aid integer)
 RETURNS integer AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish (
@@ -493,7 +507,9 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
 	created_by text not null
 );
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_update()
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_update() CASCADE;
+--
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_update()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__history (
