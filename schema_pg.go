@@ -146,10 +146,10 @@ func NewPGSQLTable(item ContentType) PGSQLTable {
 	}
 
 	for _, field := range item.Fields {
-		if field.Items == nil || field.Items.Type != "Link" {
-			column := NewPGSQLColumn(*field)
-			table.Columns = append(table.Columns, column)
-		}
+		//if field.Items == nil || field.Items.Type != "Link" {
+		column := NewPGSQLColumn(*field)
+		table.Columns = append(table.Columns, column)
+		//}
 		meta := makeMeta(field)
 		table.Data.Metas = append(table.Data.Metas, meta)
 	}
