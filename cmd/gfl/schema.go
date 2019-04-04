@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -80,8 +81,19 @@ var pgSchemaCmd = &cobra.Command{
 		}
 		// fmt.Println(str)
 
-		ok, err := repo.Exec(str)
-		if !ok {
+		db, _ := sql.Open("postgres", "postgres://postgres@localhost:5432/?sslmode=disable")
+		txn, err := db.Begin()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		_, err = db.Exec(str)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		err = txn.Commit()
+		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
@@ -152,11 +164,17 @@ var jsonbSchemaCmd = &cobra.Command{
 		}
 
 		if createSchema {
-			ok, err := repo.Exec(str)
-			if !ok {
-				fmt.Println(err)
-				os.Exit(1)
-			}
+			// repo, err := dal.NewPostgresRepo()
+			// if err != nil {
+			// 	fmt.Println(err)
+			// 	os.Exit(1)
+			// }
+
+			// ok, err := repo.Exec(str)
+			// if !ok {
+			// 	fmt.Println(err)
+			// 	os.Exit(1)
+			// }
 			fmt.Println("schema created succesfuly")
 		} else {
 			bytes := []byte(str)

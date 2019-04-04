@@ -165,11 +165,16 @@ var queryCmd = &cobra.Command{
 		}
 		fmt.Println(str)
 
-		ok, err := repo.Exec(str)
-		if !ok {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		// repo, err := dal.NewPostgresRepo()
+		// if err != nil {
+		// 	fmt.Println(err)
+		// 	os.Exit(1)
+		// }
+		// ok, err := repo.Exec(str)
+		// if !ok {
+		// 	fmt.Println(err)
+		// 	os.Exit(1)
+		// }
 		d = time.Since(split)
 		fmt.Println("query executed successfuly in ", d.Seconds(), "s")
 
@@ -180,9 +185,14 @@ var queryCmd = &cobra.Command{
 
 func getMetadata(contentType string) ([]*gontentful.PGJSONBMetaRow, error) {
 	metaRows := make([]*gontentful.PGJSONBMetaRow, 0)
-	err := repo.List(&metaRows, fmt.Sprintf(gontentful.MetaQueryFormat, SpaceId, contentType))
-	if err != nil {
-		return nil, err
-	}
+	// repo, err := dal.NewPostgresRepo()
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	os.Exit(1)
+	// }
+	// err = repo.List(&metaRows, fmt.Sprintf(gontentful.MetaQueryFormat, SpaceId, contentType))
+	// if err != nil {
+	// 	return nil, err
+	// }
 	return metaRows, nil
 }

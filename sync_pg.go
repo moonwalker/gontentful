@@ -2,11 +2,15 @@ package gontentful
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
 	"text/template"
+
+	"github.com/lib/pq"
 )
 
 const pgSyncTemplate = `
@@ -85,6 +89,7 @@ type PGSyncRow struct {
 
 type PGSyncTable struct {
 	TableName string
+	Columns   []string
 	Rows      []PGSyncRow
 }
 
@@ -216,8 +221,19 @@ func evaluateField(field interface{}) string {
 func NewPGSyncTable(tableName string, rows []PGSyncRow) PGSyncTable {
 	table := PGSyncTable{
 		TableName: tableName,
+		Columns:   []string{"sysId"},
 		Rows:      rows,
 	}
+
+	// append fields if any
+	if len(rows) > 0 {
+		for f := range rows[0].Fields {
+			table.Columns = append(table.Columns, f)
+		}
+	}
+
+	// append the rest
+	table.Columns = append(table.Columns, "version", "created_at", "created_by", "updated_at", "updated_by")
 
 	return table
 }
@@ -237,11 +253,57 @@ func (s *PGSyncSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
+func (s *PGSyncSchema) BulkInsert(connectionString string) error {
+	db, _ := sql.Open("postgres", connectionString)
+
+	// db.SetMaxIdleConns(10)
+	// db.SetMaxOpenConns(10)
+	// db.SetConnMaxLifetime(0)
+
+	txn, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, tbl := range s.Tables {
+		stmt, err := txn.Prepare(pq.CopyIn(tbl.TableName, tbl.Columns...))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, row := range tbl.Rows {
+			values := []interface{}{
+				row.SysID,
+			}
+			for _, f := range row.Fields {
+				values = append(values, f)
+			}
+			values = append(values, row.Version, row.CreatedAt, "sync", row.UpdatedAt, "sync")
+			_, err = stmt.Exec(values...)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		_, err = stmt.Exec()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		err = stmt.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	return txn.Commit()
+}
+
 func appendTables(tables map[string][]PGSyncRow, item *Entry, locales []string) map[string][]PGSyncRow {
 	contentType := item.Sys.ContentType.Sys.ID
 	for _, loc := range locales {
 		locale := fmtLocale(loc)
-		tableName := fmt.Sprintf("%s_%s", contentType, locale)
+		tableName := fmt.Sprintf("%s_%s", strings.ToLower(contentType), locale)
 
 		if tables[tableName] == nil {
 			tables[tableName] = make([]PGSyncRow, 0)

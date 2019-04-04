@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"time"
 
@@ -37,68 +38,64 @@ var initSyncCmd = &cobra.Command{
 	Short: "Run initial sync",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		start := time.Now()
-		fmt.Println("starting initSync...")
-		res, err := sync("")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		d := time.Since(start)
-		fmt.Println("initSync executed successfuly in ", d.Seconds(), "s")
-		split := time.Now()
-
 		client := gontentful.NewClient(&gontentful.ClientOptions{
 			CdnURL:   apiURL,
 			SpaceID:  SpaceId,
 			CdnToken: CdnToken,
 		})
 
-		data, err := client.Spaces.Get(nil)
+		log.Println("init sync...")
+		res, err := client.Spaces.Sync("")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+		log.Println("init sync done")
 
-		space := &gontentful.Space{}
-		err = json.Unmarshal(data, space)
+		log.Println("get space...")
+		space, err := client.Spaces.GetSpace()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+		log.Println("get space done")
 
-		fmt.Println("creating schema...")
-
+		log.Println("bulk insert...")
 		schema := gontentful.NewPGSyncSchema(schemaName, assetTableName, space, res.Items)
-
-		str, err := schema.Render()
+		err = schema.BulkInsert("postgres://postgres@localhost:5432/?sslmode=disable")
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		d = time.Since(split)
-		fmt.Println("schema rendered successfuly in ", d.Seconds(), "s")
-		split = time.Now()
+		log.Println("bulk insert done")
 
-		bytes := []byte(str)
-		err = ioutil.WriteFile("/tmp/schema_initsync", bytes, 0644)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		// fmt.Println(str)
-		fmt.Println("executing schema...")
-		ok, err := repo.Exec(str)
-		if !ok {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		d = time.Since(split)
-		fmt.Println("script executed successfuly in ", d.Seconds(), "s")
+		// str, err := schema.Render()
+		// if err != nil {
+		// 	fmt.Println(err)
+		// 	os.Exit(1)
+		// }
+		// d = time.Since(split)
+		// fmt.Println("schema rendered successfuly in ", d.Seconds(), "s")
+		// split = time.Now()
 
-		d = time.Since(start)
-		fmt.Println("completed successfuly in ", d.Seconds(), "s")
+		// bytes := []byte(str)
+		// err = ioutil.WriteFile("/tmp/schema_initsync", bytes, 0644)
+		// if err != nil {
+		// 	fmt.Println(err)
+		// 	os.Exit(1)
+		// }
+		// // fmt.Println(str)
+		// fmt.Println("executing schema...")
+		// ok, err := repo.Exec(str)
+		// if !ok {
+		// 	fmt.Println(err)
+		// 	os.Exit(1)
+		// }
+		// d = time.Since(split)
+		// fmt.Println("script executed successfuly in ", d.Seconds(), "s")
+
+		// d = time.Since(start)
+		// fmt.Println("completed successfuly in ", d.Seconds(), "s")
 	},
 }
 
@@ -187,11 +184,16 @@ var syncNextPageCmd = &cobra.Command{
 		}
 		// fmt.Println(str)
 		fmt.Println("executing schema...")
-		ok, err := repo.Exec(str)
-		if !ok {
-			fmt.Println(err)
-			os.Exit(1)
-		}
+		// repo, err := dal.NewPostgresRepo()
+		// if err != nil {
+		// 	fmt.Println(err)
+		// 	os.Exit(1)
+		// }
+		// ok, err := repo.Exec(str)
+		// if !ok {
+		// 	fmt.Println(err)
+		// 	os.Exit(1)
+		// }
 		d = time.Since(split)
 		fmt.Println("script executed successfuly in ", d.Seconds(), "s")
 
