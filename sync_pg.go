@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"text/template"
@@ -221,14 +220,14 @@ func evaluateField(field interface{}) string {
 func NewPGSyncTable(tableName string, rows []PGSyncRow) PGSyncTable {
 	table := PGSyncTable{
 		TableName: tableName,
-		Columns:   []string{"sysId"},
+		Columns:   []string{"sysid"},
 		Rows:      rows,
 	}
 
 	// append fields if any
 	if len(rows) > 0 {
 		for f := range rows[0].Fields {
-			table.Columns = append(table.Columns, f)
+			table.Columns = append(table.Columns, strings.ToLower(f))
 		}
 	}
 
@@ -262,13 +261,13 @@ func (s *PGSyncSchema) BulkInsert(connectionString string) error {
 
 	txn, err := db.Begin()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	for _, tbl := range s.Tables {
 		stmt, err := txn.Prepare(pq.CopyIn(tbl.TableName, tbl.Columns...))
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		for _, row := range tbl.Rows {
@@ -281,18 +280,18 @@ func (s *PGSyncSchema) BulkInsert(connectionString string) error {
 			values = append(values, row.Version, row.CreatedAt, "sync", row.UpdatedAt, "sync")
 			_, err = stmt.Exec(values...)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 		}
 
 		_, err = stmt.Exec()
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		err = stmt.Close()
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 	}
 
