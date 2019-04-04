@@ -62,7 +62,7 @@ var initSyncCmd = &cobra.Command{
 
 		log.Println("bulk insert...")
 		schema := gontentful.NewPGSyncSchema(schemaName, assetTableName, space, res.Items)
-		err = schema.BulkInsert("postgres://postgres@localhost:5432/?sslmode=disable&search_path=content")
+		err = schema.BulkInsert("postgres://postgres@localhost:5432/?sslmode=disable", schemaName)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
