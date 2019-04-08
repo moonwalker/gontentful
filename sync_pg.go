@@ -3,7 +3,6 @@ package gontentful
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/lib/pq"
@@ -140,25 +139,46 @@ func NewPGSyncSchema(schemaName string, assetTableName string, space *Space, typ
 	return schema
 }
 
+type rowField struct {
+	FieldName  string
+	FieldValue interface{}
+}
+
 func makeTables(tables map[string]*PGSyncTable, types []ContentType, item *Entry) {
 	contentType := item.Sys.ContentType.Sys.ID
+	rowFields := make(map[string][]*rowField)
 
 	for fieldName, field := range item.Fields {
 		locFields, ok := field.(map[string]interface{})
-		if ok {
-			for loc, val := range locFields {
-				tableName := fmt.Sprintf("%s_%s", strings.ToLower(contentType), fmtLocale(loc))
-				tbl := tables[tableName]
-				if tbl == nil {
-					fieldColumns := getFieldColumns(types, contentType)
-					tbl = NewPGSyncTable(tableName, fieldColumns)
-					tables[tableName] = tbl
-				}
-				row := NewPGSyncRow(item, tbl.FieldColumns, fieldName, val)
-				tbl.Rows = append(tbl.Rows, row)
+		if !ok {
+			continue
+		}
+
+		for locale, fieldValue := range locFields {
+			tableName := fmtTableName(contentType, locale)
+			tbl := tables[tableName]
+			if tbl == nil {
+				fieldColumns := getFieldColumns(types, contentType)
+				tbl = NewPGSyncTable(tableName, fieldColumns)
+				tables[tableName] = tbl
 			}
+
+			rowFields[locale] = append(rowFields[locale], &rowField{fieldName, fieldValue})
 		}
 	}
+
+	for locale, rows := range rowFields {
+		tableName := fmtTableName(contentType, locale)
+		tbl := tables[tableName]
+		if tbl != nil {
+			row := NewPGSyncRow(item, tbl.FieldColumns, rows)
+			tbl.Rows = append(tbl.Rows, row)
+		}
+	}
+}
+
+func fmtTableName(contentType string, locale string) string {
+	return fmt.Sprintf("%s_%s", strings.ToLower(contentType), fmtLocale(locale))
 }
 
 func getFieldColumns(types []ContentType, contentType string) []string {
@@ -188,7 +208,7 @@ func NewPGSyncTable(tableName string, fieldColumns []string) *PGSyncTable {
 	}
 }
 
-func NewPGSyncRow(item *Entry, fieldColumns []string, fieldName string, v interface{}) *PGSyncRow {
+func NewPGSyncRow(item *Entry, fieldColumns []string, rowFields []*rowField) *PGSyncRow {
 	row := &PGSyncRow{
 		SysID:            item.Sys.ID,
 		Fields:           make(map[string]interface{}, len(fieldColumns)),
@@ -207,7 +227,9 @@ func NewPGSyncRow(item *Entry, fieldColumns []string, fieldName string, v interf
 	for _, fieldCol := range fieldColumns {
 		row.Fields[fieldCol] = nil
 	}
-	row.Fields[fieldName] = nil // getFieldValue(v)
+	for _, rowField := range rowFields {
+		row.Fields[rowField.FieldName] = nil // getFieldValue(rowField.FieldValue)
+	}
 	return row
 }
 
@@ -247,7 +269,7 @@ func (s *PGSyncSchema) BulkInsert(databaseURL string) error {
 			continue
 		}
 
-		log.Printf("table: %s, rows: %d\n", tbl.TableName, len(tbl.Rows))
+		// log.Printf("table: %s, rows: %d\n", tbl.TableName, len(tbl.Rows))
 
 		stmt, err := txn.Prepare(pq.CopyIn(tbl.TableName, tbl.Columns...))
 		if err != nil {
@@ -255,7 +277,6 @@ func (s *PGSyncSchema) BulkInsert(databaseURL string) error {
 		}
 
 		for _, row := range tbl.Rows {
-			fmt.Println(row.Values(tbl.FieldColumns)...)
 			_, err = stmt.Exec(row.Values(tbl.FieldColumns)...)
 			if err != nil {
 				return err
