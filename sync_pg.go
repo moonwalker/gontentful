@@ -167,7 +167,7 @@ func getFieldColumns(types []ContentType, contentType string) []string {
 	for _, t := range types {
 		if t.Sys.ID == contentType {
 			for _, f := range t.Fields {
-				fieldColumns = append(fieldColumns, f.ID)
+				fieldColumns = append(fieldColumns, strings.ToLower(f.ID))
 			}
 		}
 	}
@@ -207,7 +207,7 @@ func NewPGSyncRow(item *Entry, fieldColumns []string, fieldName string, v interf
 	for _, fieldCol := range fieldColumns {
 		row.Fields[fieldCol] = nil
 	}
-	row.Fields[fieldName] = getFieldValue(v)
+	row.Fields[fieldName] = nil // getFieldValue(v)
 	return row
 }
 
@@ -255,6 +255,7 @@ func (s *PGSyncSchema) BulkInsert(databaseURL string) error {
 		}
 
 		for _, row := range tbl.Rows {
+			fmt.Println(row.Values(tbl.FieldColumns)...)
 			_, err = stmt.Exec(row.Values(tbl.FieldColumns)...)
 			if err != nil {
 				return err
