@@ -143,7 +143,7 @@ var queryCmd = &cobra.Command{
 		}
 
 		d := time.Since(start)
-		fmt.Println("data gathered successfuly in ", d.Seconds(), "s")
+		fmt.Println("data gathered successfully in ", d.Seconds(), "s")
 		split := time.Now()
 
 		query := gontentful.NewDBContentQuery(SpaceId, contentType, locale, defaultLocale, selectedFields, q, order)
@@ -154,7 +154,7 @@ var queryCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		d = time.Since(start)
-		fmt.Println("query generated successfuly in ", d.Seconds(), "s")
+		fmt.Println("query generated successfully in ", d.Seconds(), "s")
 		split = time.Now()
 
 		bytes := []byte(str)
@@ -176,10 +176,10 @@ var queryCmd = &cobra.Command{
 		// 	os.Exit(1)
 		// }
 		d = time.Since(split)
-		fmt.Println("query executed successfuly in ", d.Seconds(), "s")
+		fmt.Println("query executed successfully in ", d.Seconds(), "s")
 
 		d = time.Since(start)
-		fmt.Println("completed successfuly in ", d.Seconds(), "s")
+		fmt.Println("completed successfully in ", d.Seconds(), "s")
 	},
 }
 

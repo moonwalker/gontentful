@@ -9,15 +9,17 @@ import (
 )
 
 var (
-	SpaceId  string
-	CdnToken string
-	cache    store.Store
+	SpaceId     string
+	CdnToken    string
+	databaseURL string
+	cache       store.Store
 )
 
 const (
-	apiURL         = "cdn.contentful.com"
-	assetTableName = "_assets"
-	schemaName     = "content"
+	apiURL             = "cdn.contentful.com"
+	assetTableName     = "_assets"
+	schemaName         = "content"
+	defaultPostgresURL = "postgres://postgres@localhost:5432/?sslmode=disable"
 )
 
 func init() {

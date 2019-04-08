@@ -1,4 +1,4 @@
-// $ ... | docker exec -i  <containerid> psql -U postgres
+// $ ... | docker exec -i <containerid> psql -U postgres
 
 package gontentful
 

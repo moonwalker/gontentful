@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -13,14 +14,15 @@ import (
 )
 
 var (
-	createSchema bool
+	execSchema bool
 )
 
 func init() {
 	schemaCmd.AddCommand(pgSchemaCmd)
 	schemaCmd.AddCommand(gqlSchemaCmd)
-	jsonbSchemaCmd.PersistentFlags().BoolVarP(&createSchema, "create", "c", false, "create schema")
 	schemaCmd.AddCommand(jsonbSchemaCmd)
+	schemaCmd.PersistentFlags().BoolVarP(&execSchema, "exec", "e", false, "execute schema")
+	schemaCmd.PersistentFlags().StringVarP(&databaseURL, "url", "u", defaultPostgresURL, "database url")
 	rootCmd.AddCommand(schemaCmd)
 }
 
@@ -34,70 +36,63 @@ var pgSchemaCmd = &cobra.Command{
 	Short: "Creates postgres schema",
 
 	Run: func(cmd *cobra.Command, args []string) {
+		if execSchema {
+			log.Println("creating postgres schema...")
+		}
+
 		client := gontentful.NewClient(&gontentful.ClientOptions{
 			CdnURL:   apiURL,
 			SpaceID:  SpaceId,
 			CdnToken: CdnToken,
 		})
 
-		data, err := client.Spaces.Get(nil)
+		space, err := client.Spaces.GetSpace()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		space := &gontentful.Space{}
-		err = json.Unmarshal(data, space)
+		types, err := client.ContentTypes.GetTypes()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		data, err = client.ContentTypes.Get(nil)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		resp := &gontentful.ContentTypes{}
-		err = json.Unmarshal(data, resp)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		schema := gontentful.NewPGSQLSchema(schemaName, assetTableName, space, resp.Items)
+		schema := gontentful.NewPGSQLSchema(schemaName, assetTableName, space, types.Items)
 		str, err := schema.Render()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		bytes := []byte(str)
-		err = ioutil.WriteFile("/tmp/schema_pgsql", bytes, 0644)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+		if !execSchema {
+			fmt.Println(str)
+			return
+		} else {
+			log.Println("postgres schema successfully created")
 		}
-		// fmt.Println(str)
 
-		db, _ := sql.Open("postgres", "postgres://postgres@localhost:5432/?sslmode=disable")
+		log.Println("executing postgres schema...")
+		db, _ := sql.Open("postgres", databaseURL)
 		txn, err := db.Begin()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+
 		_, err = db.Exec(str)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+
 		err = txn.Commit()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		fmt.Println("schema created succesfuly")
+
+		log.Println("postgres schema successfully executed")
 	},
 }
 
@@ -163,7 +158,7 @@ var jsonbSchemaCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		if createSchema {
+		if execSchema {
 			// repo, err := dal.NewPostgresRepo()
 			// if err != nil {
 			// 	fmt.Println(err)

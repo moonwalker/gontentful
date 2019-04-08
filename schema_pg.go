@@ -1,4 +1,4 @@
-// $ ... | docker exec -i  <containerid> psql -U postgres
+// $ ... | docker exec -i <containerid> psql -U postgres
 
 package gontentful
 
@@ -44,15 +44,15 @@ type PGSQLMeta struct {
 type PGSQLTable struct {
 	TableName string
 	Data      *PGSQLData
-	Columns   []PGSQLColumn
+	Columns   []*PGSQLColumn
 }
 
 type PGSQLSchema struct {
 	SchemaName      string
 	Space           *Space
-	Tables          []PGSQLTable
-	References      []PGSQLTable
-	AssetReferences []PGSQLTable
+	Tables          []*PGSQLTable
+	References      []*PGSQLTable
+	AssetReferences []*PGSQLTable
 }
 
 var funcMap = template.FuncMap{
@@ -63,17 +63,16 @@ func fmtLocale(code string) string {
 	return strings.ToLower(strings.ReplaceAll(code, "-", "_"))
 }
 
-func NewPGSQLSchema(schemaName string, assetTableName string, space *Space, items []ContentType) PGSQLSchema {
-	schema := PGSQLSchema{
+func NewPGSQLSchema(schemaName string, assetTableName string, space *Space, items []ContentType) *PGSQLSchema {
+	schema := &PGSQLSchema{
 		SchemaName: schemaName,
 		Space:      space,
-		Tables:     make([]PGSQLTable, 0),
+		Tables:     make([]*PGSQLTable, 0),
 	}
 
 	for _, item := range items {
 		table := NewPGSQLTable(item)
 		schema.Tables = append(schema.Tables, table)
-
 		schema.collectAlters(item, assetTableName)
 	}
 
@@ -81,18 +80,18 @@ func NewPGSQLSchema(schemaName string, assetTableName string, space *Space, item
 }
 
 func (s *PGSQLSchema) collectAlters(item ContentType, assetTableName string) {
-	alterTable := PGSQLTable{
+	alterTable := &PGSQLTable{
 		TableName: item.Sys.ID,
-		Columns:   make([]PGSQLColumn, 0),
+		Columns:   make([]*PGSQLColumn, 0),
 	}
-	alterAssets := PGSQLTable{
+	alterAssets := &PGSQLTable{
 		TableName: item.Sys.ID,
-		Columns:   make([]PGSQLColumn, 0),
+		Columns:   make([]*PGSQLColumn, 0),
 	}
 	for _, field := range item.Fields {
 		if field.Items != nil {
 			if field.Items.LinkType == "Asset" {
-				assetRefColumn := PGSQLColumn{
+				assetRefColumn := &PGSQLColumn{
 					ColumnName: field.ID,
 					ColumnDesc: assetTableName,
 					ColumnType: getColumnType(field.Type, field.Items),
@@ -102,7 +101,7 @@ func (s *PGSQLSchema) collectAlters(item ContentType, assetTableName string) {
 				for _, v := range field.Items.Validations {
 					if len(v.LinkContentType) > 0 {
 						for _, link := range v.LinkContentType {
-							refColumn := PGSQLColumn{
+							refColumn := &PGSQLColumn{
 								ColumnName: field.ID,
 								ColumnDesc: link,
 								ColumnType: getColumnType(field.Type, field.Items),
@@ -137,19 +136,17 @@ func (s *PGSQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewPGSQLTable(item ContentType) PGSQLTable {
+func NewPGSQLTable(item ContentType) *PGSQLTable {
 	tableName := item.Sys.ID
-	table := PGSQLTable{
+	table := &PGSQLTable{
 		TableName: tableName,
-		Columns:   make([]PGSQLColumn, 0),
+		Columns:   make([]*PGSQLColumn, 0),
 		Data:      makeModelData(item),
 	}
 
 	for _, field := range item.Fields {
-		//if field.Items == nil || field.Items.Type != "Link" {
 		column := NewPGSQLColumn(*field)
 		table.Columns = append(table.Columns, column)
-		//}
 		meta := makeMeta(field)
 		table.Data.Metas = append(table.Data.Metas, meta)
 	}
@@ -157,8 +154,8 @@ func NewPGSQLTable(item ContentType) PGSQLTable {
 	return table
 }
 
-func NewPGSQLColumn(field ContentTypeField) PGSQLColumn {
-	column := PGSQLColumn{
+func NewPGSQLColumn(field ContentTypeField) *PGSQLColumn {
+	column := &PGSQLColumn{
 		ColumnName: field.ID,
 	}
 	column.getColumnDesc(field)

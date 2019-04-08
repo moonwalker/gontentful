@@ -2,6 +2,7 @@ package gontentful
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/url"
 )
@@ -11,6 +12,19 @@ type ContentTypesService service
 func (s *ContentTypesService) Get(query url.Values) ([]byte, error) {
 	path := fmt.Sprintf(pathContentTypes, s.client.Options.SpaceID)
 	return s.client.get(path, query)
+}
+
+func (s *ContentTypesService) GetTypes() (*ContentTypes, error) {
+	data, err := s.Get(nil)
+	if err != nil {
+		return nil, err
+	}
+	res := &ContentTypes{}
+	err = json.Unmarshal(data, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 func (s *ContentTypesService) GetSingle(contentTypeId string) ([]byte, error) {

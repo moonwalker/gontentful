@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"time"
@@ -23,8 +22,9 @@ func getCacheKey(page string) string {
 
 func init() {
 	syncCmd.AddCommand(initSyncCmd)
-	syncNextPageCmd.PersistentFlags().StringVarP(&nextPageToken, "page", "p", "", "next page token")
 	syncCmd.AddCommand(syncNextPageCmd)
+	syncCmd.PersistentFlags().StringVarP(&databaseURL, "url", "u", defaultPostgresURL, "database url")
+	syncNextPageCmd.PersistentFlags().StringVarP(&nextPageToken, "page", "p", "", "next page token")
 	rootCmd.AddCommand(syncCmd)
 }
 
@@ -44,14 +44,6 @@ var initSyncCmd = &cobra.Command{
 			CdnToken: CdnToken,
 		})
 
-		log.Println("init sync...")
-		res, err := client.Spaces.Sync("")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		log.Println("init sync done")
-
 		log.Println("get space...")
 		space, err := client.Spaces.GetSpace()
 		if err != nil {
@@ -60,42 +52,30 @@ var initSyncCmd = &cobra.Command{
 		}
 		log.Println("get space done")
 
+		log.Println("get types...")
+		types, err := client.ContentTypes.GetTypes()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		log.Println("get types done")
+
+		log.Println("init sync...")
+		res, err := client.Spaces.Sync("")
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		log.Println("init sync done")
+
 		log.Println("bulk insert...")
-		schema := gontentful.NewPGSyncSchema(schemaName, assetTableName, space, res.Items)
-		err = schema.BulkInsert("postgres://postgres@localhost:5432/?sslmode=disable", schemaName)
+		schema := gontentful.NewPGSyncSchema(schemaName, assetTableName, space, types.Items, res.Items)
+		err = schema.BulkInsert(databaseURL)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 		log.Println("bulk insert done")
-
-		// str, err := schema.Render()
-		// if err != nil {
-		// 	fmt.Println(err)
-		// 	os.Exit(1)
-		// }
-		// d = time.Since(split)
-		// fmt.Println("schema rendered successfuly in ", d.Seconds(), "s")
-		// split = time.Now()
-
-		// bytes := []byte(str)
-		// err = ioutil.WriteFile("/tmp/schema_initsync", bytes, 0644)
-		// if err != nil {
-		// 	fmt.Println(err)
-		// 	os.Exit(1)
-		// }
-		// // fmt.Println(str)
-		// fmt.Println("executing schema...")
-		// ok, err := repo.Exec(str)
-		// if !ok {
-		// 	fmt.Println(err)
-		// 	os.Exit(1)
-		// }
-		// d = time.Since(split)
-		// fmt.Println("script executed successfuly in ", d.Seconds(), "s")
-
-		// d = time.Since(start)
-		// fmt.Println("completed successfuly in ", d.Seconds(), "s")
 	},
 }
 
@@ -122,14 +102,16 @@ var syncNextPageCmd = &cobra.Command{
 				os.Exit(1)
 			}
 		}
+
 		res, err := sync(token)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
+		fmt.Println(res)
 
 		d := time.Since(start)
-		fmt.Println("sync token executed successfuly in ", d.Seconds(), "s")
+		fmt.Println("sync token executed successfully in ", d.Seconds(), "s")
 		split := time.Now()
 
 		client := gontentful.NewClient(&gontentful.ClientOptions{
@@ -164,24 +146,8 @@ var syncNextPageCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		schema := gontentful.NewPGSyncSchema(schemaName, assetTableName, space, res.Items)
+		// schema := gontentful.NewPGSyncSchema(schemaName, assetTableName, space, res.Items)
 
-		str, err := schema.Render()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		d = time.Since(split)
-		fmt.Println("schema rendered successfuly in ", d.Seconds(), "s")
-		split = time.Now()
-
-		bytes := []byte(str)
-		err = ioutil.WriteFile("/tmp/schema_sync", bytes, 0644)
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
 		// fmt.Println(str)
 		fmt.Println("executing schema...")
 		// repo, err := dal.NewPostgresRepo()
@@ -195,10 +161,10 @@ var syncNextPageCmd = &cobra.Command{
 		// 	os.Exit(1)
 		// }
 		d = time.Since(split)
-		fmt.Println("script executed successfuly in ", d.Seconds(), "s")
+		fmt.Println("script executed successfully in ", d.Seconds(), "s")
 
 		d = time.Since(start)
-		fmt.Println("completed successfuly in ", d.Seconds(), "s")
+		fmt.Println("completed successfully in ", d.Seconds(), "s")
 	},
 }
 
