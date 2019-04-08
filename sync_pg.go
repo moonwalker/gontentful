@@ -228,16 +228,32 @@ func NewPGSyncRow(item *Entry, fieldColumns []string, rowFields []*rowField) *PG
 		row.Fields[fieldCol] = nil
 	}
 	for _, rowField := range rowFields {
-		row.Fields[rowField.FieldName] = nil // getFieldValue(rowField.FieldValue)
+		row.Fields[rowField.FieldName] = getFieldValue(rowField.FieldValue)
 	}
 	return row
 }
 
 func getFieldValue(v interface{}) interface{} {
-	sys, ok := v.(Sys)
-	if ok {
-		return sys.ID
+	switch f := v.(type) {
+	case map[string]interface{}:
+		if f["sys"] != nil {
+			s, ok := f["sys"].(map[string]interface{})
+			if ok {
+				if s["type"] == "Link" {
+					return fmt.Sprintf("%v", s["id"])
+				}
+			}
+		}
+
+	case []interface{}:
+		arr := make([]string, 0)
+		for i := 0; i < len(f); i++ {
+			fs := getFieldValue(f[i])
+			arr = append(arr, fmt.Sprintf("%v", fs))
+		}
+		return arr
 	}
+
 	return v
 }
 
