@@ -2,7 +2,9 @@ package gontentful
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/lib/pq"
@@ -243,6 +245,12 @@ func getFieldValue(v interface{}) interface{} {
 					return fmt.Sprintf("%v", s["id"])
 				}
 			}
+		} else {
+			data, err := json.Marshal(f)
+			if err != nil {
+				log.Fatal("failed to marshal content field")
+			}
+			return string(data)
 		}
 
 	case []interface{}:
@@ -251,7 +259,16 @@ func getFieldValue(v interface{}) interface{} {
 			fs := getFieldValue(f[i])
 			arr = append(arr, fmt.Sprintf("%v", fs))
 		}
-		return arr
+		return pq.Array(arr)
+
+	case []string:
+		arr := make([]string, 0)
+		for i := 0; i < len(f); i++ {
+			fs := getFieldValue(f[i])
+			arr = append(arr, fmt.Sprintf("%v", fs))
+		}
+		return pq.Array(arr)
+
 	}
 
 	return v
