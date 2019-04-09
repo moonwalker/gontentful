@@ -1,11 +1,13 @@
 package gontentful
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
+	"text/template"
 
 	"github.com/lib/pq"
 )
@@ -204,7 +206,7 @@ func (r *PGSyncRow) Values(fieldColumns []string) []interface{} {
 	return append(values, r.Version, r.CreatedAt, "sync", r.UpdatedAt, "sync")
 }
 
-func (s *PGSyncSchema) BulkInsert(databaseURL string) error {
+func (s *PGSyncSchema) Insert(databaseURL string, initSync bool) error {
 	db, _ := sql.Open("postgres", databaseURL)
 
 	_, err := db.Exec(fmt.Sprintf("set search_path='%s'", s.SchemaName))
@@ -212,6 +214,14 @@ func (s *PGSyncSchema) BulkInsert(databaseURL string) error {
 		return err
 	}
 
+	if initSync {
+		return s.bulkInsert(db)
+	}
+
+	return s.deltaInsert(db)
+}
+
+func (s *PGSyncSchema) bulkInsert(db *sql.DB) error {
 	txn, err := db.Begin()
 	if err != nil {
 		return err
@@ -246,4 +256,20 @@ func (s *PGSyncSchema) BulkInsert(databaseURL string) error {
 	}
 
 	return txn.Commit()
+}
+
+func (s *PGSyncSchema) deltaInsert(db *sql.DB) error {
+	tmpl, err := template.New("").Parse(pgSyncTemplate)
+	if err != nil {
+		return err
+	}
+
+	var buff bytes.Buffer
+	err = tmpl.Execute(&buff, s)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(buff.String())
+	return err
 }
