@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"log"
 
-	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
 
 	"github.com/moonwalker/gontentful"
 )
 
 const (
-	createSyncTable = "CREATE TABLE IF NOT EXISTS %s._sync ( token text );"
-	insertSyncToken = "INSERT INTO %s._sync (token) VALUES (%s);"
+	createSyncTable = "CREATE TABLE IF NOT EXISTS %s._sync ( id int primary key, token text );"
+	insertSyncToken = "INSERT INTO %s._sync (id, token) VALUES (0, '%s') ON CONFLICT (id) DO UPDATE SET token = EXCLUDED.token;"
+	selectSyncToken = "SELECT token FROM %s._sync WHERE id = 0;"
 )
 
 var (
@@ -36,24 +36,40 @@ var pgSyncCmd = &cobra.Command{
 			CdnToken: CdnToken,
 		})
 
+		var syncToken string
+		if !initSync {
+			// retrieve token from db, if exists
+			if len(databaseURL) > 0 {
+				log.Println("retrieving sync token...")
+				db, _ := sql.Open("postgres", databaseURL)
+				row := db.QueryRow(fmt.Sprintf(selectSyncToken, schemaName))
+				err := row.Scan(&syncToken)
+				if err != nil {
+					log.Println("no sync token found")
+				} else {
+					log.Println("sync token found")
+				}
+			}
+		}
+
+		if len(syncToken) == 0 {
+			log.Println("init sync...")
+		} else {
+			log.Println("continue sync...")
+		}
+
+		res, err := client.Spaces.Sync(syncToken)
+		log.Println("sync done")
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		log.Println("get types...")
 		types, err := client.ContentTypes.GetTypes()
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Println("get types done")
-
-		var syncToken string
-		if !initSync {
-			// TODO: try to get the token from db if exists
-		}
-
-		log.Println("sync...")
-		res, err := client.Spaces.Sync(syncToken)
-		log.Println("sync done")
-		if err != nil {
-			log.Fatal(err)
-		}
 
 		log.Println("bulk insert...")
 		schema := gontentful.NewPGSyncSchema(schemaName, assetTableName, types.Items, res.Items)
@@ -63,7 +79,7 @@ var pgSyncCmd = &cobra.Command{
 		}
 		log.Println("bulk insert done")
 
-		// store token to db
+		// save token to db, overwrite if exists
 		if len(databaseURL) > 0 {
 			log.Println("saving sync token...")
 			db, _ := sql.Open("postgres", databaseURL)

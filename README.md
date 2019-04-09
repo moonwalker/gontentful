@@ -65,7 +65,7 @@ Data sync:
 $ gfl sync pg --space <spaceid> --token <token> --url postgres://user:pass@host:port/db
 
 # sync data to postgres (init sync always start from scratch)
-$ gfl sync pg --space <spaceid> --token <token> --url postgres://user:pass@host:port/db --init
+$ gfl sync pg --init --space <spaceid> --token <token> --url postgres://user:pass@host:port/db
 ```
 
 ## Dependencies
