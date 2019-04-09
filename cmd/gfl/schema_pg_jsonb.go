@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/spf13/cobra"
 
@@ -31,15 +30,13 @@ var jsonbSchemaCmd = &cobra.Command{
 
 		types, err := client.ContentTypes.GetTypes()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 
 		schema := gontentful.NewPGJSONBSchema(schemaName, assetTableName, types.Items)
 		str, err := schema.Render()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 
 		if len(databaseURL) == 0 {

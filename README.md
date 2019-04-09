@@ -25,13 +25,13 @@ client := gontentful.NewClient(&gontentful.ClientOptions{
 	CdnToken: <cdntoken>,
 })
 
+// get entries
 query := url.Values{}
 query.Set("content_type", "foo")
 query.Set("locale", "en")
-
 entries, err := client.Entries.GetEntries(query)
 
-// or
+// get entry
 entry, err := client.Entries.GetSingle(<entryid>)
 ```
 

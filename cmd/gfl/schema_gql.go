@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"log"
 
 	"github.com/spf13/cobra"
 
@@ -26,15 +26,13 @@ var gqlSchemaCmd = &cobra.Command{
 
 		types, err := client.ContentTypes.GetTypes()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 
 		schema := gontentful.NewGraphQLSchema(types.Items)
 		str, err := schema.Render()
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 
 		fmt.Println(str)

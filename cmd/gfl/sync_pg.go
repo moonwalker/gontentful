@@ -1,10 +1,19 @@
 package main
 
 import (
+	"database/sql"
+	"fmt"
 	"log"
 
-	"github.com/moonwalker/gontentful"
+	_ "github.com/lib/pq"
 	"github.com/spf13/cobra"
+
+	"github.com/moonwalker/gontentful"
+)
+
+const (
+	createSyncTable = "CREATE TABLE IF NOT EXISTS %s._sync ( token text );"
+	insertSyncToken = "INSERT INTO %s._sync (token) VALUES (%s);"
 )
 
 var (
@@ -54,6 +63,19 @@ var pgSyncCmd = &cobra.Command{
 		}
 		log.Println("bulk insert done")
 
-		// TODO: store token to db
+		// store token to db
+		if len(databaseURL) > 0 {
+			log.Println("saving sync token...")
+			db, _ := sql.Open("postgres", databaseURL)
+			_, err := db.Exec(fmt.Sprintf(createSyncTable, schemaName))
+			if err != nil {
+				log.Fatal(err)
+			}
+			_, err = db.Exec(fmt.Sprintf(insertSyncToken, schemaName, res.Token))
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Println("sync token saved")
+		}
 	},
 }
