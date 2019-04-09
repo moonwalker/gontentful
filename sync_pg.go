@@ -32,6 +32,7 @@ type PGSyncTable struct {
 type PGSyncSchema struct {
 	SchemaName string
 	Tables     map[string]*PGSyncTable
+	Deleted    []string
 }
 
 func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *PGSyncSchema {
@@ -52,10 +53,16 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 			makeTables(schema.Tables, "_assets", columns, item)
 			break
 		case DELETED_ENTRY:
-			// deleted = appendTables(deleted, item, locales)
+			if schema.Deleted == nil {
+				schema.Deleted = make([]string, 0)
+			}
+			schema.Deleted = append(schema.Deleted, item.Sys.ID)
 			break
 		case DELETED_ASSET:
-			// deleted = appendAssets(deleted, assetTableName, item, defaultLocale)
+			if schema.Deleted == nil {
+				schema.Deleted = make([]string, 0)
+			}
+			schema.Deleted = append(schema.Deleted, item.Sys.ID)
 			break
 		}
 	}
@@ -237,23 +244,39 @@ func (s *PGSyncSchema) bulkInsert(db *sql.DB) error {
 		if err != nil {
 			return err
 		}
+		// estmt, err := txn.Prepare(pq.CopyIn("_entries", "sysId", "tableName"))
+		// if err != nil {
+		// 	return err
+		// }
 
 		for _, row := range tbl.Rows {
 			_, err = stmt.Exec(row.Values(tbl.FieldColumns)...)
 			if err != nil {
 				return err
 			}
+			// _, err = estmt.Exec(row.SysID, tbl.TableName)
+			// if err != nil {
+			// 	return err
+			// }
 		}
 
 		_, err = stmt.Exec()
 		if err != nil {
 			return err
 		}
+		// _, err = estmt.Exec()
+		// if err != nil {
+		// 	return err
+		// }
 
 		err = stmt.Close()
 		if err != nil {
 			return err
 		}
+		// err = estmt.Close()
+		// if err != nil {
+		// 	return err
+		// }
 	}
 
 	return txn.Commit()

@@ -60,4 +60,13 @@ SET
 	published_by = EXCLUDED.published_by
 ;
 {{ end -}}
-{{ end -}}`
+{{ range $idx, $sys_id := $.Deleted }}
+DO $$
+DECLARE ct TEXT;
+BEGIN
+  SELECT contentType INTO ct FROM content._entries WHERE sysId = '{{ $sys_id }}';
+  EXECUTE 'DELETE FROM content.' || ct || '__publish WHERE sysId = ''{{ $sys_id }}''';
+END $$;
+{{ end -}}
+{{ end -}}
+`
