@@ -107,7 +107,9 @@ CREATE TRIGGER {{ $.SchemaName }}__models_update
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on__models_update();
 --
-CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets (
+{{ range $locidx, $loc := $.Space.Locales }}
+{{$locale:=(fmtLocale $loc.Code)}}
+CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets_{{ $locale }} (
 	_id serial primary key,
 	sysId text not null unique,
 	title text not null,
@@ -122,14 +124,14 @@ CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ .SchemaName }}._assets(sysId);
+CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ .SchemaName }}._assets_{{ $locale }}(sysId);
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets_{{ $locale }}_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.assets_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
+CREATE FUNCTION {{ $.SchemaName }}.assets_{{ $locale }}_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
 RETURNS void AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}._assets (
+INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }} (
 	sysId,
 	title,
 	description,
@@ -168,7 +170,7 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets__publish (
+CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets_{{ $locale }}__publish (
 	_id serial primary key,
 	sysId text not null unique,
 	title text not null,
@@ -181,14 +183,14 @@ CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets__publish (
 	published_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ .SchemaName }}._assets__publish(sysId);
+CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ .SchemaName }}._assets_{{ $locale }}__publish(sysId);
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets_publish(integer) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets_{{ $locale }}_publish(integer) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.assets_publish(_aid integer)
+CREATE FUNCTION {{ $.SchemaName }}.assets_{{ $locale }}_publish(_aid integer)
 RETURNS void AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}._assets__publish (
+INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }}__publish (
 	sysId,
 	title,
 	description,
@@ -207,7 +209,7 @@ SELECT
 	url,
 	version,
 	updated_by
-FROM {{ $.SchemaName }}._assets
+FROM {{ $.SchemaName }}._assets_{{ $locale }}
 WHERE _id = _aid
 ON CONFLICT (sysId) DO UPDATE
 SET
@@ -223,7 +225,7 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets__history(
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets_{{ $locale }}__history(
 	_id serial primary key,
 	pubId integer not null,
 	sysId text not null,
@@ -233,12 +235,12 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets__history(
 	created_by text not null
 );
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets_update() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets_{{ $locale }}_update() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__assets_update()
+CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}_update()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}._assets__history (
+	INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }}__history (
 		pubId,
 		sysId,
 		fields,
@@ -255,12 +257,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets_update ON {{ $.SchemaName }}._assets__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets_{{ $locale }}_update ON {{ $.SchemaName }}._assets_{{ $locale }}__publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}__assets_update
-    AFTER UPDATE ON {{ $.SchemaName }}._assets__publish
+CREATE TRIGGER {{ $.SchemaName }}__assets_{{ $locale }}_update
+    AFTER UPDATE ON {{ $.SchemaName }}._assets_{{ $locale }}__publish
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets_update();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets_{{ $locale }}_update();
+{{ end -}}
 COMMIT;
 ----
 {{ range $tblidx, $tbl := $.Tables }}
