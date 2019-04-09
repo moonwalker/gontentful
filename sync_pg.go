@@ -48,7 +48,7 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 			makeTables(schema.Tables, contentType, columns, item)
 			break
 		case ASSET:
-			columns := []string{"title", "url", "fileName", "contentType"}
+			columns := []string{"title", "url", "filename", "contenttype"}
 			makeTables(schema.Tables, "_assets", columns, item)
 			break
 		case DELETED_ENTRY:
