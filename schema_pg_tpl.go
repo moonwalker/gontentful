@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._entries (
 	contentType text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._entries(name);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._entries(sysId);
 --
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
