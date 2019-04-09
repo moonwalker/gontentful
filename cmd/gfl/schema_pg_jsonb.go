@@ -33,7 +33,7 @@ var jsonbSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		schema := gontentful.NewPGJSONBSchema(schemaName, assetTableName, types.Items)
+		schema := gontentful.NewPGJSONBSchema(schemaName, types.Items)
 		str, err := schema.Render()
 		if err != nil {
 			log.Fatal(err)

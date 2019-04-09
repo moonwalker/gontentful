@@ -48,12 +48,10 @@ type PGSQLTable struct {
 }
 
 type PGSQLSchema struct {
-	SchemaName      string
-	Drop            bool
-	Space           *Space
-	Tables          []*PGSQLTable
-	References      []*PGSQLTable
-	AssetReferences []*PGSQLTable
+	SchemaName string
+	Drop       bool
+	Space      *Space
+	Tables     []*PGSQLTable
 }
 
 var funcMap = template.FuncMap{

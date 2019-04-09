@@ -199,10 +199,10 @@ type PGJSONBSchema struct {
 	Tables          []*PGJSONBModelTable
 }
 
-func NewPGJSONBSchema(schemaName string, assetTableName string, items []*ContentType) *PGJSONBSchema {
+func NewPGJSONBSchema(schemaName string, items []*ContentType) *PGJSONBSchema {
 	schema := &PGJSONBSchema{
 		SchemaName:      schemaName,
-		AssetTableName:  assetTableName,
+		AssetTableName:  "_assets",
 		ModelsTableName: "_models",
 		Tables:          make([]*PGJSONBModelTable, 0),
 	}

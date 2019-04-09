@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	ENTRY = "Entry"
+	ENTRY         = "Entry"
+	DELETED_ENTRY = "DeletedEntry"
 )
 
 type EntriesService service
