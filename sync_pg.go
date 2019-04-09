@@ -48,7 +48,7 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 			makeTables(schema.Tables, contentType, columns, item)
 			break
 		case ASSET:
-			columns := []string{"title", "file"}
+			columns := []string{"title", "url", "fileName", "contentType"}
 			makeTables(schema.Tables, "_assets", columns, item)
 			break
 		case DELETED_ENTRY:
@@ -149,14 +149,15 @@ func NewPGSyncRow(item *Entry, fieldColumns []string, rowFields []*rowField) *PG
 	for _, fieldCol := range fieldColumns {
 		row.Fields[fieldCol] = nil
 	}
-	for _, rowField := range rowFields {
-		row.Fields[rowField.FieldName] = getFieldValue(rowField.FieldValue)
+	for i, rowField := range rowFields {
+		row.Fields[rowField.FieldName] = getFieldValue(fieldColumns[i], rowField.FieldValue)
 	}
 	return row
 }
 
-func getFieldValue(v interface{}) interface{} {
+func getFieldValue(fieldCol string, v interface{}) interface{} {
 	switch f := v.(type) {
+
 	case map[string]interface{}:
 		if f["sys"] != nil {
 			s, ok := f["sys"].(map[string]interface{})
@@ -165,6 +166,8 @@ func getFieldValue(v interface{}) interface{} {
 					return fmt.Sprintf("%v", s["id"])
 				}
 			}
+		} else if f["fileName"] != nil {
+			return f[fieldCol]
 		} else {
 			data, err := json.Marshal(f)
 			if err != nil {
@@ -176,7 +179,7 @@ func getFieldValue(v interface{}) interface{} {
 	case []interface{}:
 		arr := make([]string, 0)
 		for i := 0; i < len(f); i++ {
-			fs := getFieldValue(f[i])
+			fs := getFieldValue("", f[i])
 			arr = append(arr, fmt.Sprintf("%v", fs))
 		}
 		return pq.Array(arr)
@@ -184,7 +187,7 @@ func getFieldValue(v interface{}) interface{} {
 	case []string:
 		arr := make([]string, 0)
 		for i := 0; i < len(f); i++ {
-			fs := getFieldValue(f[i])
+			fs := getFieldValue("", f[i])
 			arr = append(arr, fmt.Sprintf("%v", fs))
 		}
 		return pq.Array(arr)
