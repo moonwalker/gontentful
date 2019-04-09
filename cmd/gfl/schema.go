@@ -5,8 +5,7 @@ import (
 )
 
 const (
-	schemaName     = "content"
-	assetTableName = "_assets"
+	schemaName = "content"
 )
 
 var (

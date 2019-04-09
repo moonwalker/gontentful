@@ -72,7 +72,7 @@ var pgSyncCmd = &cobra.Command{
 		log.Println("get types done")
 
 		log.Println("bulk insert...")
-		schema := gontentful.NewPGSyncSchema(schemaName, assetTableName, types.Items, res.Items)
+		schema := gontentful.NewPGSyncSchema(schemaName, types.Items, res.Items)
 		err = schema.Insert(databaseURL, len(syncToken) == 0)
 		if err != nil {
 			log.Fatal(err)
