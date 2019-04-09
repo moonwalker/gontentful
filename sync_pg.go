@@ -51,10 +51,10 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 			columns := []string{"title", "file"}
 			makeTables(schema.Tables, "_assets", columns, item)
 			break
-		case "DeletedEntry":
+		case DELETED_ENTRY:
 			// deleted = appendTables(deleted, item, locales)
 			break
-		case "DeletedAsset":
+		case DELETED_ASSET:
 			// deleted = appendAssets(deleted, assetTableName, item, defaultLocale)
 			break
 		}

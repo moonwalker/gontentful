@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	ASSET = "Asset"
+	ASSET         = "Asset"
+	DELETED_ASSET = "DeletedAsset"
 )
 
 type AssetsService service
