@@ -39,7 +39,7 @@ var pgSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		schema := gontentful.NewPGSQLSchema(schemaName, assetTableName, space, types.Items)
+		schema := gontentful.NewPGSQLSchema(schemaName, space, types.Items)
 		str, err := schema.Render()
 		if err != nil {
 			log.Fatal(err)

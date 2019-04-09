@@ -48,11 +48,9 @@ type PGSQLTable struct {
 }
 
 type PGSQLSchema struct {
-	SchemaName      string
-	Space           *Space
-	Tables          []*PGSQLTable
-	References      []*PGSQLTable
-	AssetReferences []*PGSQLTable
+	SchemaName string
+	Space      *Space
+	Tables     []*PGSQLTable
 }
 
 var funcMap = template.FuncMap{
@@ -63,7 +61,7 @@ func fmtLocale(code string) string {
 	return strings.ToLower(strings.ReplaceAll(code, "-", "_"))
 }
 
-func NewPGSQLSchema(schemaName string, assetTableName string, space *Space, items []*ContentType) *PGSQLSchema {
+func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType) *PGSQLSchema {
 	schema := &PGSQLSchema{
 		SchemaName: schemaName,
 		Space:      space,
@@ -73,52 +71,9 @@ func NewPGSQLSchema(schemaName string, assetTableName string, space *Space, item
 	for _, item := range items {
 		table := NewPGSQLTable(item)
 		schema.Tables = append(schema.Tables, table)
-		schema.collectAlters(item, assetTableName)
 	}
 
 	return schema
-}
-
-func (s *PGSQLSchema) collectAlters(item *ContentType, assetTableName string) {
-	alterTable := &PGSQLTable{
-		TableName: item.Sys.ID,
-		Columns:   make([]*PGSQLColumn, 0),
-	}
-	alterAssets := &PGSQLTable{
-		TableName: item.Sys.ID,
-		Columns:   make([]*PGSQLColumn, 0),
-	}
-	for _, field := range item.Fields {
-		if field.Items != nil {
-			if field.Items.LinkType == "Asset" {
-				assetRefColumn := &PGSQLColumn{
-					ColumnName: field.ID,
-					ColumnDesc: assetTableName,
-					ColumnType: getColumnType(field.Type, field.Items),
-				}
-				alterAssets.Columns = append(alterAssets.Columns, assetRefColumn)
-			} else if field.Items.LinkType == "Entry" {
-				for _, v := range field.Items.Validations {
-					if len(v.LinkContentType) > 0 {
-						for _, link := range v.LinkContentType {
-							refColumn := &PGSQLColumn{
-								ColumnName: field.ID,
-								ColumnDesc: link,
-								ColumnType: getColumnType(field.Type, field.Items),
-							}
-							alterTable.Columns = append(alterTable.Columns, refColumn)
-						}
-					}
-				}
-			}
-		}
-	}
-	if len(alterTable.Columns) > 0 {
-		s.References = append(s.References, alterTable)
-	}
-	if len(alterAssets.Columns) > 0 {
-		s.AssetReferences = append(s.AssetReferences, alterAssets)
-	}
 }
 
 func (s *PGSQLSchema) Render() (string, error) {

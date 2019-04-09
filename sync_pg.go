@@ -34,19 +34,28 @@ type PGSyncSchema struct {
 	Tables     map[string]*PGSyncTable
 }
 
-func NewPGSyncSchema(schemaName string, assetTableName string, types []*ContentType, items []*Entry) *PGSyncSchema {
+func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *PGSyncSchema {
 	schema := &PGSyncSchema{
 		SchemaName: schemaName,
 		Tables:     make(map[string]*PGSyncTable, 0),
 	}
 
 	for _, item := range items {
+		contentType := item.Sys.ContentType.Sys.ID
 		switch item.Sys.Type {
 		case ENTRY:
-			appendEntries(schema.Tables, types, item)
+			columns := getFieldColumns(types, contentType)
+			makeTables(schema.Tables, contentType, columns, item)
 			break
 		case ASSET:
-			appendAssets(schema.Tables, assetTableName, item)
+			columns := []string{"title", "file"}
+			makeTables(schema.Tables, "_assets", columns, item)
+			break
+		case "DeletedEntry":
+			// deleted = appendTables(deleted, item, locales)
+			break
+		case "DeletedAsset":
+			// deleted = appendAssets(deleted, assetTableName, item, defaultLocale)
 			break
 		}
 	}
@@ -59,12 +68,7 @@ type rowField struct {
 	FieldValue interface{}
 }
 
-func fmtTableName(contentType string, locale string) string {
-	return fmt.Sprintf("%s_%s", strings.ToLower(contentType), fmtLocale(locale))
-}
-
-func appendEntries(tables map[string]*PGSyncTable, types []*ContentType, item *Entry) {
-	contentType := item.Sys.ContentType.Sys.ID
+func makeTables(tables map[string]*PGSyncTable, contentType string, columns []string, item *Entry) {
 	rowFields := make(map[string][]*rowField)
 
 	for fieldName, field := range item.Fields {
@@ -77,8 +81,7 @@ func appendEntries(tables map[string]*PGSyncTable, types []*ContentType, item *E
 			tableName := fmtTableName(contentType, locale)
 			tbl := tables[tableName]
 			if tbl == nil {
-				fieldColumns := getFieldColumns(types, contentType)
-				tbl = NewPGSyncTable(tableName, fieldColumns)
+				tbl = NewPGSyncTable(tableName, columns)
 				tables[tableName] = tbl
 			}
 
@@ -96,13 +99,8 @@ func appendEntries(tables map[string]*PGSyncTable, types []*ContentType, item *E
 	}
 }
 
-func appendAssets(tables map[string]*PGSyncTable, tableName string, item *Entry) {
-	tbl := tables[tableName]
-	if tbl == nil {
-		assetColumns := []string{"title", "file"}
-		tbl = NewPGSyncTable(tableName, assetColumns)
-		tables[tableName] = tbl
-	}
+func fmtTableName(contentType string, locale string) string {
+	return fmt.Sprintf("%s_%s", strings.ToLower(contentType), fmtLocale(locale))
 }
 
 func getFieldColumns(types []*ContentType, contentType string) []string {
