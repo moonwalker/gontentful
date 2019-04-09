@@ -2,6 +2,7 @@ package gontentful
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/url"
 )
@@ -11,6 +12,19 @@ type EntriesService service
 func (s *EntriesService) Get(query url.Values) ([]byte, error) {
 	path := fmt.Sprintf(pathEntries, s.client.Options.SpaceID)
 	return s.client.get(path, query)
+}
+
+func (s *EntriesService) GetEntries(query url.Values) (*Entries, error) {
+	data, err := s.Get(nil)
+	if err != nil {
+		return nil, err
+	}
+	res := &Entries{}
+	err = json.Unmarshal(data, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 func (s *EntriesService) GetSingle(entryId string) ([]byte, error) {

@@ -2,9 +2,42 @@
 
 Contentful client library for Go with a command line interface for schema export and data sync.
 
-## CLI:
+## Library
 
-Install:
+### Install
+
+```sh
+$ go get -u github.com/moonwalker/gontentful
+```
+
+### Usage
+
+Create client:
+
+```sh
+import (
+	"github.com/moonwalker/gontentful"
+)
+
+client := gontentful.NewClient(&gontentful.ClientOptions{
+	CdnURL:   "cdn.contentful.com",
+	SpaceID:  <spaceid>,
+	CdnToken: <cdntoken>,
+})
+
+query := url.Values{}
+query.Set("content_type", "foo")
+query.Set("locale", "en")
+
+entries, err := client.Entries.GetEntries(query)
+
+// or
+entry, err := client.Entries.GetSingle(<entryid>)
+```
+
+## CLI
+
+### Install
 
 ```sh
 $ go get -u github.com/moonwalker/gontentful/cmd/gfl
