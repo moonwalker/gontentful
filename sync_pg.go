@@ -41,10 +41,10 @@ func NewPGSyncSchema(schemaName string, assetTableName string, types []*ContentT
 	for _, item := range items {
 		switch item.Sys.Type {
 		case ENTRY:
-			makeEntryTables(schema.Tables, types, item)
+			appendEntries(schema.Tables, types, item)
 			break
 		case ASSET:
-			appendAssetTable(schema.Tables, assetTableName, item)
+			appendAssets(schema.Tables, assetTableName, item)
 			break
 		}
 	}
@@ -61,7 +61,7 @@ func fmtTableName(contentType string, locale string) string {
 	return fmt.Sprintf("%s_%s", strings.ToLower(contentType), fmtLocale(locale))
 }
 
-func makeEntryTables(tables map[string]*PGSyncTable, types []*ContentType, item *Entry) {
+func appendEntries(tables map[string]*PGSyncTable, types []*ContentType, item *Entry) {
 	contentType := item.Sys.ContentType.Sys.ID
 	rowFields := make(map[string][]*rowField)
 
@@ -94,8 +94,13 @@ func makeEntryTables(tables map[string]*PGSyncTable, types []*ContentType, item 
 	}
 }
 
-func appendAssetTable(tables map[string]*PGSyncTable, assetTableName string, item *Entry) {
-	//
+func appendAssets(tables map[string]*PGSyncTable, tableName string, item *Entry) {
+	tbl := tables[tableName]
+	if tbl == nil {
+		assetColumns := []string{"title", "file"}
+		tbl = NewPGSyncTable(tableName, assetColumns)
+		tables[tableName] = tbl
+	}
 }
 
 func getFieldColumns(types []*ContentType, contentType string) []string {
