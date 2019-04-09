@@ -271,6 +271,15 @@ func (s *PGSyncSchema) deltaInsert(db *sql.DB) error {
 		return err
 	}
 
-	_, err = db.Exec(buff.String())
-	return err
+	txn, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = txn.Exec(buff.String())
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
 }

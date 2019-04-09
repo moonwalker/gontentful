@@ -1,7 +1,6 @@
 package gontentful
 
 const pgSyncTemplate = `
-BEGIN
 {{ range $tblidx, $tbl := .Tables }};
 {{ range $itemidx, $item := .Rows }}
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
@@ -61,5 +60,4 @@ SET
 	published_by = EXCLUDED.published_by
 ;
 {{ end -}}
-{{ end -}}
-COMMIT;`
+{{ end -}}`
