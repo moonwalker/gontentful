@@ -107,6 +107,14 @@ CREATE TRIGGER {{ $.SchemaName }}__models_update
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on__models_update();
 --
+CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._entries (
+	_id serial primary key,
+	sysId text not null unique,
+	contentType text not null
+);
+--
+CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._entries(name);
+--
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
 CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets_{{ $locale }} (
