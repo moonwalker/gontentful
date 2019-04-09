@@ -5,6 +5,10 @@ import (
 	"fmt"
 )
 
+const (
+	ASSET = "Asset"
+)
+
 type AssetsService service
 
 func (s *AssetsService) Create(body []byte) ([]byte, error) {

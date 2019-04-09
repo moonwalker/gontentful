@@ -7,6 +7,10 @@ import (
 	"net/url"
 )
 
+const (
+	ENTRY = "Entry"
+)
+
 type EntriesService service
 
 func (s *EntriesService) Get(query url.Values) ([]byte, error) {

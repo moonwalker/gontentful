@@ -10,70 +10,6 @@ import (
 	"github.com/lib/pq"
 )
 
-const pgSyncTemplate = `
-BEGIN
-{{ range $tblidx, $tbl := .Tables }};
-{{ range $itemidx, $item := .Rows }}
-INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
-	sysId,
-	{{- range $k, $v := .Fields }}
-	{{ $k }},
-	{{- end }}
-	version,
-	created_at,
-	created_by,
-	updated_at,
-	updated_by
-) VALUES (
-	'{{ .SysID }}',
-	{{- range $k, $v := .Fields }}
-	{{ if $v }}{{ $v }}{{ else }}NULL{{ end }},
-	{{- end }}
-	{{ .Version }},
-	'{{ .CreatedAt }}',
-	'sync',
-	'{{ .UpdatedAt }}',
-	'sync'
-)
-ON CONFLICT (sysId) DO UPDATE
-SET
-	{{- range $k, $v := .Fields }}
-	{{ $k }} = EXCLUDED.{{ $k }},
-	{{- end }}
-	version = EXCLUDED.version,
-	updated_at = now(),
-	updated_by = EXCLUDED.updated_by
-;
-INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__publish (
-	sysId,
-	{{- range $k, $v := .Fields }}
-	{{ $k }},
-	{{- end }}
-	version,
-	published_at,
-	published_by
-) VALUES (
-	'{{ .SysID }}',
-	{{- range $k, $v := .Fields }}
-	{{ if $v }}{{ $v }}{{ else }}NULL{{ end }},
-	{{- end }}
-	{{ .PublishedVersion }},
-	{{ if .PublishedAt }}to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ss.mssZ'){{ else }}now(){{ end }},
-	'sync'
-)
-ON CONFLICT (sysId) DO UPDATE
-SET
-	{{- range $k, $v := .Fields }}
-	{{ $k }} = EXCLUDED.{{ $k }},
-	{{- end }}
-	version = EXCLUDED.version,
-	published_at = now(),
-	published_by = EXCLUDED.published_by
-;
-{{ end -}}
-{{ end -}}
-COMMIT;`
-
 type PGSyncRow struct {
 	SysID            string
 	Fields           map[string]interface{}
@@ -94,49 +30,24 @@ type PGSyncTable struct {
 type PGSyncSchema struct {
 	SchemaName string
 	Tables     map[string]*PGSyncTable
-	Deleted    []*PGSyncTable
 }
 
 func NewPGSyncSchema(schemaName string, assetTableName string, types []*ContentType, items []*Entry) *PGSyncSchema {
 	schema := &PGSyncSchema{
 		SchemaName: schemaName,
 		Tables:     make(map[string]*PGSyncTable, 0),
-		Deleted:    make([]*PGSyncTable, 0),
 	}
-
-	// locales := make([]string, 0)
-	// // defaultLocale := ""
-	// for _, l := range space.Locales {
-	// 	if l.Default {
-	// 		// defaultLocale = l.Code
-	// 	}
-	// 	locales = append(locales, l.Code)
-	// }
 
 	for _, item := range items {
 		switch item.Sys.Type {
-		case "Entry":
-			makeTables(schema.Tables, types, item)
+		case ENTRY:
+			makeEntryTables(schema.Tables, types, item)
 			break
-			// case "Asset":
-			// 	tables = appendAssets(tables, assetTableName, item, defaultLocale)
-			// 	break
-			// case "DeletedEntry":
-			// 	deleted = c(deleted, item, locales)
-			// 	break
-			// case "DeletedAsset":
-			// 	deleted = appendAssets(deleted, assetTableName, item, defaultLocale)
-			// 	break
+		case ASSET:
+			appendAssetTable(schema.Tables, assetTableName, item)
+			break
 		}
 	}
-	// for k, r := range tables {
-	// 	table := NewPGSyncTable(k, r)
-	// 	schema.Tables = append(schema.Tables, table)
-	// }
-	// for k, r := range deleted {
-	// 	table := NewPGSyncTable(k, r)
-	// 	schema.Deleted = append(schema.Deleted, table)
-	// }
 
 	return schema
 }
@@ -146,7 +57,11 @@ type rowField struct {
 	FieldValue interface{}
 }
 
-func makeTables(tables map[string]*PGSyncTable, types []*ContentType, item *Entry) {
+func fmtTableName(contentType string, locale string) string {
+	return fmt.Sprintf("%s_%s", strings.ToLower(contentType), fmtLocale(locale))
+}
+
+func makeEntryTables(tables map[string]*PGSyncTable, types []*ContentType, item *Entry) {
 	contentType := item.Sys.ContentType.Sys.ID
 	rowFields := make(map[string][]*rowField)
 
@@ -179,8 +94,8 @@ func makeTables(tables map[string]*PGSyncTable, types []*ContentType, item *Entr
 	}
 }
 
-func fmtTableName(contentType string, locale string) string {
-	return fmt.Sprintf("%s_%s", strings.ToLower(contentType), fmtLocale(locale))
+func appendAssetTable(tables map[string]*PGSyncTable, assetTableName string, item *Entry) {
+	//
 }
 
 func getFieldColumns(types []*ContentType, contentType string) []string {
@@ -302,8 +217,6 @@ func (s *PGSyncSchema) BulkInsert(databaseURL string) error {
 			continue
 		}
 
-		// log.Printf("table: %s, rows: %d\n", tbl.TableName, len(tbl.Rows))
-
 		stmt, err := txn.Prepare(pq.CopyIn(tbl.TableName, tbl.Columns...))
 		if err != nil {
 			return err
@@ -328,88 +241,4 @@ func (s *PGSyncSchema) BulkInsert(databaseURL string) error {
 	}
 
 	return txn.Commit()
-}
-
-// func appendTables(tables map[string][]PGSyncRow, item *Entry, locales []string) map[string][]PGSyncRow {
-// 	contentType := item.Sys.ContentType.Sys.ID
-// 	for _, loc := range locales {
-// 		locale := fmtLocale(loc)
-// 		tableName := fmt.Sprintf("%s_%s", strings.ToLower(contentType), locale)
-
-// 		if tables[tableName] == nil {
-// 			tables[tableName] = make([]PGSyncRow, 0)
-// 		}
-// 		rowToUpsert := NewPGSyncRow(item, loc)
-// 		tables[tableName] = append(tables[tableName], rowToUpsert)
-// 	}
-// 	return tables
-// }
-
-// func appendAssets(tables map[string][]PGSyncRow, assetTableName string, item *Entry, defaultLocale string) map[string][]PGSyncRow {
-// 	if tables[assetTableName] == nil {
-// 		tables[assetTableName] = make([]PGSyncRow, 0)
-// 	}
-// 	rowToUpsert := NewPGSyncRow(item, defaultLocale)
-// 	tables[assetTableName] = append(tables[assetTableName], rowToUpsert)
-// 	return tables
-// }
-
-func evaluateField(field interface{}) interface{} {
-	// ft := reflect.TypeOf(field)
-	// fmt.Println(">>>", ft)
-
-	a, ok := field.([]interface{})
-	if ok {
-		for i := 0; i < len(a); i++ {
-			// fmt.Println(a[i])
-		}
-	} else {
-		return field
-	}
-
-	return nil
-
-	// if field != nil {
-	// 	ft := reflect.TypeOf(field)
-	// 	if ft != nil {
-	// 		fieldType := ft.String()
-
-	// 		fmt.Println(fieldType)
-	// 		if fieldType == "integer" {
-	// 			return fmt.Sprintf("%v", field)
-	// 		} else if fieldType == "string" {
-	// 			return fmt.Sprintf("'%s'", strings.ReplaceAll(field.(string), "'", "''"))
-	// 		} else if strings.HasPrefix(fieldType, "[]") {
-	// 			arr := make([]string, 0)
-	// 			a, ok := field.([]interface{})
-	// 			if ok {
-	// 				for i := 0; i < len(a); i++ {
-	// 					fs := evaluateField(a[i])
-	// 					if fs != "" {
-	// 						arr = append(arr, fs)
-	// 					}
-	// 				}
-	// 			}
-	// 			return strings.Join(arr, ",") // fmt.Sprintf("ARRAY[%s]", strings.Join(arr, ","))
-	// 		} else if strings.HasPrefix(fieldType, "map[string]") {
-	// 			e, ok := field.(map[string]interface{})
-	// 			if ok && e["sys"] != nil {
-	// 				s, ok := e["sys"].(map[string]interface{})
-	// 				if ok {
-	// 					if s["type"] == "Link" {
-	// 						return fmt.Sprintf("'%v'", s["id"])
-	// 					}
-	// 				}
-	// 			}
-	// 			data, err := json.Marshal(e)
-	// 			if err != nil {
-	// 				fmt.Println(fieldType, " Marshal ERROR.", field, err)
-	// 				return "'{}'"
-	// 			}
-	// 			return fmt.Sprintf("'%s'", string(data))
-	// 		}
-	// 		return fmt.Sprintf("%v", field)
-	// 	}
-	// }
-	// return ""
 }
