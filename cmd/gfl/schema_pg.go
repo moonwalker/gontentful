@@ -10,7 +10,12 @@ import (
 	"github.com/moonwalker/gontentful"
 )
 
+var (
+	dropSchema bool
+)
+
 func init() {
+	schemaCmd.PersistentFlags().BoolVarP(&dropSchema, "drop", "d", false, "drop schema")
 	schemaCmd.AddCommand(pgSchemaCmd)
 }
 
@@ -39,7 +44,7 @@ var pgSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		schema := gontentful.NewPGSQLSchema(schemaName, assetTableName, space, types.Items)
+		schema := gontentful.NewPGSQLSchema(schemaName, dropSchema, space, types.Items)
 		str, err := schema.Render()
 		if err != nil {
 			log.Fatal(err)

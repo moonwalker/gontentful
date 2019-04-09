@@ -1,9 +1,12 @@
 package gontentful
 
 const pgTemplate = `BEGIN;
-CREATE SCHEMA IF NOT EXISTS {{ .SchemaName }};
+{{ if .Drop }}
+DROP SCHEMA IF EXISTS {{ $.SchemaName }} CASCADE;
+{{ end -}}
+CREATE SCHEMA IF NOT EXISTS{{ $.SchemaName }};
 --
-CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._space (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._space (
 	_id serial primary key,
 	spaceId text not null unique,
 	name text not null,
@@ -12,9 +15,9 @@ CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._space (
 	updated_at timestamp without time zone default now(),
 	updated_by text not null
 );
-CREATE UNIQUE INDEX IF NOT EXISTS spaceId ON {{ .SchemaName }}._space(spaceId);
+CREATE UNIQUE INDEX IF NOT EXISTS spaceId ON {{ $.SchemaName }}._space(spaceId);
 --
-CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._locales (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._locales (
 	_id serial primary key,
 	code text not null unique,
 	name text not null,
@@ -25,7 +28,7 @@ CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._locales (
 	updated_at timestamp without time zone default now(),
 	updated_by text not null
 );
-CREATE UNIQUE INDEX IF NOT EXISTS code ON {{ .SchemaName }}._locales(code);
+CREATE UNIQUE INDEX IF NOT EXISTS code ON {{ $.SchemaName }}._locales(code);
 --
 {{ range $locidx, $loc := $.Space.Locales }}
 INSERT INTO {{ $.SchemaName }}._locales (
@@ -53,7 +56,7 @@ SET
 ;
 {{ end }}
 --
-CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._models (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._models (
 	_id serial primary key,
 	name text not null unique,
 	label text not null,
@@ -107,7 +110,7 @@ CREATE TRIGGER {{ $.SchemaName }}__models_update
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on__models_update();
 --
-CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._entries (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._entries (
 	_id serial primary key,
 	sysId text not null unique,
 	contentType text not null
@@ -117,7 +120,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._entries(name);
 --
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
-CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets_{{ $locale }} (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets_{{ $locale }} (
 	_id serial primary key,
 	sysId text not null unique,
 	title text not null,
@@ -132,7 +135,7 @@ CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets_{{ $locale }} (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ .SchemaName }}._assets_{{ $locale }}(sysId);
+CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ $.SchemaName }}._assets_{{ $locale }}(sysId);
 --
 DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets_{{ $locale }}_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
 --
@@ -178,7 +181,7 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets_{{ $locale }}__publish (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets_{{ $locale }}__publish (
 	_id serial primary key,
 	sysId text not null unique,
 	title text not null,
@@ -191,7 +194,7 @@ CREATE TABLE IF NOT EXISTS {{ .SchemaName }}._assets_{{ $locale }}__publish (
 	published_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ .SchemaName }}._assets_{{ $locale }}__publish(sysId);
+CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ $.SchemaName }}._assets_{{ $locale }}__publish(sysId);
 --
 DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets_{{ $locale }}_publish(integer) CASCADE;
 --
