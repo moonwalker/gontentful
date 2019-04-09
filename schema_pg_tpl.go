@@ -4,7 +4,7 @@ const pgTemplate = `BEGIN;
 {{ if .Drop }}
 DROP SCHEMA IF EXISTS {{ $.SchemaName }} CASCADE;
 {{ end -}}
-CREATE SCHEMA IF NOT EXISTS{{ $.SchemaName }};
+CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._space (
 	_id serial primary key,
