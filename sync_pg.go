@@ -97,7 +97,7 @@ type PGSyncSchema struct {
 	Deleted    []*PGSyncTable
 }
 
-func NewPGSyncSchema(schemaName string, assetTableName string, space *Space, types []ContentType, items []*Entry) *PGSyncSchema {
+func NewPGSyncSchema(schemaName string, assetTableName string, types []*ContentType, items []*Entry) *PGSyncSchema {
 	schema := &PGSyncSchema{
 		SchemaName: schemaName,
 		Tables:     make(map[string]*PGSyncTable, 0),
@@ -146,7 +146,7 @@ type rowField struct {
 	FieldValue interface{}
 }
 
-func makeTables(tables map[string]*PGSyncTable, types []ContentType, item *Entry) {
+func makeTables(tables map[string]*PGSyncTable, types []*ContentType, item *Entry) {
 	contentType := item.Sys.ContentType.Sys.ID
 	rowFields := make(map[string][]*rowField)
 
@@ -183,7 +183,7 @@ func fmtTableName(contentType string, locale string) string {
 	return fmt.Sprintf("%s_%s", strings.ToLower(contentType), fmtLocale(locale))
 }
 
-func getFieldColumns(types []ContentType, contentType string) []string {
+func getFieldColumns(types []*ContentType, contentType string) []string {
 	fieldColumns := make([]string, 0)
 
 	for _, t := range types {

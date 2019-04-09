@@ -4,27 +4,24 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/moonwalker/backend/pkg/store"
-	redistore "github.com/moonwalker/backend/pkg/store/redis"
+	"github.com/spf13/cobra"
 )
 
 var (
-	SpaceId     string
-	CdnToken    string
-	databaseURL string
-	cache       store.Store
+	SpaceId  string
+	CdnToken string
 )
 
 const (
-	apiURL             = "cdn.contentful.com"
-	assetTableName     = "_assets"
-	schemaName         = "content"
-	defaultPostgresURL = "postgres://postgres@localhost:5432/?sslmode=disable"
+	apiURL = "cdn.contentful.com"
 )
 
-func init() {
-	cache = getCache()
+var rootCmd = &cobra.Command{
+	Use:   "gontentful",
+	Short: "cli for contentful",
+}
 
+func init() {
 	rootCmd.PersistentFlags().StringVarP(&SpaceId, "space", "s", "", "cf space id (required)")
 	rootCmd.PersistentFlags().StringVarP(&CdnToken, "token", "t", "", "token token (required)")
 	rootCmd.MarkFlagRequired("space")
@@ -36,12 +33,4 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-}
-
-func getCache() store.Store {
-	redisURL := os.Getenv("CACHE_URL")
-	if len(redisURL) == 0 {
-		redisURL = "redis://127.0.0.1:6379"
-	}
-	return redistore.New(redisURL)
 }

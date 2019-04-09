@@ -83,32 +83,32 @@ type Asset {
 }`
 
 var (
-	singleArgs = []GraphQLResolverArg{
-		GraphQLResolverArg{"id", "ID"},
-		GraphQLResolverArg{"locale", "String"},
-		GraphQLResolverArg{"include", "Int"},
-		GraphQLResolverArg{"select", "String"},
+	singleArgs = []*GraphQLResolverArg{
+		&GraphQLResolverArg{"id", "ID"},
+		&GraphQLResolverArg{"locale", "String"},
+		&GraphQLResolverArg{"include", "Int"},
+		&GraphQLResolverArg{"select", "String"},
 	}
-	singleExtraArgs = []GraphQLResolverArg{
-		GraphQLResolverArg{"slug", "String"},
-		GraphQLResolverArg{"code", "String"},
-		GraphQLResolverArg{"name", "String"},
-		GraphQLResolverArg{"key", "String"},
+	singleExtraArgs = []*GraphQLResolverArg{
+		&GraphQLResolverArg{"slug", "String"},
+		&GraphQLResolverArg{"code", "String"},
+		&GraphQLResolverArg{"name", "String"},
+		&GraphQLResolverArg{"key", "String"},
 	}
-	collectionArgs = []GraphQLResolverArg{
-		GraphQLResolverArg{"locale", "String"},
-		GraphQLResolverArg{"skip", "Int"},
-		GraphQLResolverArg{"limit", "Int"},
-		GraphQLResolverArg{"include", "Int"},
-		GraphQLResolverArg{"select", "String"},
-		GraphQLResolverArg{"order", "String"},
-		GraphQLResolverArg{"q", "String"},
+	collectionArgs = []*GraphQLResolverArg{
+		&GraphQLResolverArg{"locale", "String"},
+		&GraphQLResolverArg{"skip", "Int"},
+		&GraphQLResolverArg{"limit", "Int"},
+		&GraphQLResolverArg{"include", "Int"},
+		&GraphQLResolverArg{"select", "String"},
+		&GraphQLResolverArg{"order", "String"},
+		&GraphQLResolverArg{"q", "String"},
 	}
 )
 
 type GraphQLResolver struct {
 	Name   string
-	Args   []GraphQLResolverArg
+	Args   []*GraphQLResolverArg
 	Result string
 }
 
@@ -125,13 +125,13 @@ type GraphQLField struct {
 type GraphQLType struct {
 	Schema    GraphQLSchema
 	TypeName  string
-	Fields    []GraphQLField
-	Resolvers []GraphQLResolver
+	Fields    []*GraphQLField
+	Resolvers []*GraphQLResolver
 }
 
 type GraphQLSchema struct {
-	Items    []ContentType
-	TypeDefs []GraphQLType
+	Items    []*ContentType
+	TypeDefs []*GraphQLType
 }
 
 func init() {
@@ -139,10 +139,10 @@ func init() {
 	inflection.AddPlural("(hero)$", "${1}es")
 }
 
-func NewGraphQLSchema(items []ContentType) GraphQLSchema {
-	schema := GraphQLSchema{
+func NewGraphQLSchema(items []*ContentType) *GraphQLSchema {
+	schema := &GraphQLSchema{
 		Items:    items,
-		TypeDefs: make([]GraphQLType, 0),
+		TypeDefs: make([]*GraphQLType, 0),
 	}
 
 	for _, item := range items {
@@ -168,11 +168,11 @@ func (s *GraphQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewGraphQLTypeDef(schema GraphQLSchema, typeName string, fields []*ContentTypeField) GraphQLType {
-	typeDef := GraphQLType{
+func NewGraphQLTypeDef(schema *GraphQLSchema, typeName string, fields []*ContentTypeField) *GraphQLType {
+	typeDef := &GraphQLType{
 		TypeName:  strings.Title(typeName),
-		Fields:    make([]GraphQLField, 0),
-		Resolvers: make([]GraphQLResolver, 0),
+		Fields:    make([]*GraphQLField, 0),
+		Resolvers: make([]*GraphQLResolver, 0),
 	}
 
 	// single
@@ -197,26 +197,26 @@ func NewGraphQLTypeDef(schema GraphQLSchema, typeName string, fields []*ContentT
 	return typeDef
 }
 
-func NewGraphQLResolver(collection bool, name string, args []GraphQLResolverArg, result string) GraphQLResolver {
+func NewGraphQLResolver(collection bool, name string, args []*GraphQLResolverArg, result string) *GraphQLResolver {
 	if collection {
 		result = fmt.Sprintf("[%s]", result)
 	}
 
-	return GraphQLResolver{
+	return &GraphQLResolver{
 		Name:   name,
 		Args:   args,
 		Result: result,
 	}
 }
 
-func getResolverArgs(collection bool, fields []*ContentTypeField) []GraphQLResolverArg {
+func getResolverArgs(collection bool, fields []*ContentTypeField) []*GraphQLResolverArg {
 	if collection {
 		return getCollectionArgs(fields)
 	}
 	return getSingleArgs(fields)
 }
 
-func getSingleArgs(fields []*ContentTypeField) []GraphQLResolverArg {
+func getSingleArgs(fields []*ContentTypeField) []*GraphQLResolverArg {
 	args := singleArgs
 	for _, a := range singleExtraArgs {
 		if hasField(fields, a.ArgName) {
@@ -226,12 +226,12 @@ func getSingleArgs(fields []*ContentTypeField) []GraphQLResolverArg {
 	return args
 }
 
-func getCollectionArgs(fields []*ContentTypeField) []GraphQLResolverArg {
+func getCollectionArgs(fields []*ContentTypeField) []*GraphQLResolverArg {
 	args := collectionArgs
 	for _, f := range fields {
 		t := isOwnField(f)
 		if len(t) > 0 {
-			args = append(args, GraphQLResolverArg{
+			args = append(args, &GraphQLResolverArg{
 				ArgName: f.ID,
 				ArgType: t,
 			})
@@ -265,8 +265,8 @@ func hasField(fields []*ContentTypeField, id string) bool {
 	return false
 }
 
-func NewGraphQLField(schema GraphQLSchema, f *ContentTypeField) GraphQLField {
-	return GraphQLField{
+func NewGraphQLField(schema *GraphQLSchema, f *ContentTypeField) *GraphQLField {
+	return &GraphQLField{
 		FieldName: f.ID,
 		FieldType: isRequired(f.Required, getFieldType(schema, f)),
 	}
@@ -279,7 +279,7 @@ func isRequired(r bool, s string) string {
 	return s
 }
 
-func getFieldType(schema GraphQLSchema, field *ContentTypeField) string {
+func getFieldType(schema *GraphQLSchema, field *ContentTypeField) string {
 	switch field.Type {
 	case "Symbol":
 		return "String"
@@ -306,18 +306,18 @@ func getFieldType(schema GraphQLSchema, field *ContentTypeField) string {
 	}
 }
 
-func getArrayType(schema GraphQLSchema, field *ContentTypeField) string {
+func getArrayType(schema *GraphQLSchema, field *ContentTypeField) string {
 	if field.Items == nil || len(field.Items.LinkType) == 0 {
 		return "[String]"
 	}
 	return fmt.Sprintf("[%s]", getValidationContentType(schema, field.Items.LinkType, field.Items.Validations))
 }
 
-func getLinkType(schema GraphQLSchema, field *ContentTypeField) string {
+func getLinkType(schema *GraphQLSchema, field *ContentTypeField) string {
 	return getValidationContentType(schema, field.LinkType, field.Validations)
 }
 
-func getValidationContentType(schema GraphQLSchema, t string, validations []FieldValidation) string {
+func getValidationContentType(schema *GraphQLSchema, t string, validations []*FieldValidation) string {
 	if len(validations) > 0 && len(validations[0].LinkContentType) > 0 {
 		vt := validations[0].LinkContentType[0]
 		// check if validation content type exists

@@ -19,17 +19,17 @@ type Sys struct {
 }
 
 type Entries struct {
-	Sys      *Sys    `json:"sys"`
-	Total    int     `json:"total"`
-	Skip     int     `json:"skip"`
-	Limit    int     `json:"limit"`
-	Items    []Entry `json:"items"`
-	Includes Include `json:"includes,omitempty"`
+	Sys      *Sys     `json:"sys"`
+	Total    int      `json:"total"`
+	Skip     int      `json:"skip"`
+	Limit    int      `json:"limit"`
+	Items    []*Entry `json:"items"`
+	Includes *Include `json:"includes,omitempty"`
 }
 
 type Include struct {
-	Entry []Entry `json:"entry,omitempty"`
-	Asset []Entry `json:"asset,omitempty"`
+	Entry []*Entry `json:"entry,omitempty"`
+	Asset []*Entry `json:"asset,omitempty"`
 }
 
 type Entry struct {
@@ -39,17 +39,17 @@ type Entry struct {
 }
 
 type Space struct {
-	Sys     *Sys     `json:"sys"`
-	Name    string   `json:"name"`
-	Locales []Locale `json:"locales"`
+	Sys     *Sys      `json:"sys"`
+	Name    string    `json:"name"`
+	Locales []*Locale `json:"locales"`
 }
 
 type Spaces struct {
-	Sys   *Sys    `json:"sys"`
-	Total int     `json:"total"`
-	Limit int     `json:"limit"`
-	Skip  int     `json:"skip"`
-	Items []Space `json:"items"`
+	Sys   *Sys     `json:"sys"`
+	Total int      `json:"total"`
+	Limit int      `json:"limit"`
+	Skip  int      `json:"skip"`
+	Items []*Space `json:"items"`
 }
 
 type Locale struct {
@@ -68,10 +68,10 @@ type ContentType struct {
 }
 
 type ContentTypes struct {
-	Total int           `json:"total"`
-	Limit int           `json:"limit"`
-	Skip  int           `json:"skip"`
-	Items []ContentType `json:"items"`
+	Total int            `json:"total"`
+	Limit int            `json:"limit"`
+	Skip  int            `json:"skip"`
+	Items []*ContentType `json:"items"`
 }
 
 type ContentTypeField struct {
@@ -84,13 +84,13 @@ type ContentTypeField struct {
 	Localized   bool                `json:"localized,omitempty"`
 	Disabled    bool                `json:"disabled,omitempty"`
 	Omitted     bool                `json:"omitted,omitempty"`
-	Validations []FieldValidation   `json:"validations,omitempty"`
+	Validations []*FieldValidation  `json:"validations,omitempty"`
 }
 
 type FieldTypeArrayItem struct {
-	Type        string            `json:"type,omitempty"`
-	Validations []FieldValidation `json:"validations,omitempty"`
-	LinkType    string            `json:"linkType,omitempty"`
+	Type        string             `json:"type,omitempty"`
+	Validations []*FieldValidation `json:"validations,omitempty"`
+	LinkType    string             `json:"linkType,omitempty"`
 }
 
 type FieldValidation struct {

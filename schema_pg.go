@@ -63,7 +63,7 @@ func fmtLocale(code string) string {
 	return strings.ToLower(strings.ReplaceAll(code, "-", "_"))
 }
 
-func NewPGSQLSchema(schemaName string, assetTableName string, space *Space, items []ContentType) *PGSQLSchema {
+func NewPGSQLSchema(schemaName string, assetTableName string, space *Space, items []*ContentType) *PGSQLSchema {
 	schema := &PGSQLSchema{
 		SchemaName: schemaName,
 		Space:      space,
@@ -79,7 +79,7 @@ func NewPGSQLSchema(schemaName string, assetTableName string, space *Space, item
 	return schema
 }
 
-func (s *PGSQLSchema) collectAlters(item ContentType, assetTableName string) {
+func (s *PGSQLSchema) collectAlters(item *ContentType, assetTableName string) {
 	alterTable := &PGSQLTable{
 		TableName: item.Sys.ID,
 		Columns:   make([]*PGSQLColumn, 0),
@@ -136,7 +136,7 @@ func (s *PGSQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewPGSQLTable(item ContentType) *PGSQLTable {
+func NewPGSQLTable(item *ContentType) *PGSQLTable {
 	tableName := item.Sys.ID
 	table := &PGSQLTable{
 		TableName: tableName,
@@ -145,7 +145,7 @@ func NewPGSQLTable(item ContentType) *PGSQLTable {
 	}
 
 	for _, field := range item.Fields {
-		column := NewPGSQLColumn(*field)
+		column := NewPGSQLColumn(field)
 		table.Columns = append(table.Columns, column)
 		meta := makeMeta(field)
 		table.Data.Metas = append(table.Data.Metas, meta)
@@ -154,7 +154,7 @@ func NewPGSQLTable(item ContentType) *PGSQLTable {
 	return table
 }
 
-func NewPGSQLColumn(field ContentTypeField) *PGSQLColumn {
+func NewPGSQLColumn(field *ContentTypeField) *PGSQLColumn {
 	column := &PGSQLColumn{
 		ColumnName: field.ID,
 	}
@@ -162,7 +162,7 @@ func NewPGSQLColumn(field ContentTypeField) *PGSQLColumn {
 	return column
 }
 
-func (c *PGSQLColumn) getColumnDesc(field ContentTypeField) {
+func (c *PGSQLColumn) getColumnDesc(field *ContentTypeField) {
 	columnDesc := ""
 	if c.isUnique(field.Validations) {
 		columnDesc += " unique"
@@ -201,7 +201,7 @@ func getColumnType(fieldType string, fieldItems *FieldTypeArrayItem) string {
 	}
 }
 
-func (c *PGSQLColumn) isUnique(validations []FieldValidation) bool {
+func (c *PGSQLColumn) isUnique(validations []*FieldValidation) bool {
 	for _, v := range validations {
 		if v.Unique {
 			return true
@@ -210,7 +210,7 @@ func (c *PGSQLColumn) isUnique(validations []FieldValidation) bool {
 	return false
 }
 
-func makeModelData(item ContentType) *PGSQLData {
+func makeModelData(item *ContentType) *PGSQLData {
 	data := &PGSQLData{
 		Label:        formatText(item.Name),
 		Description:  formatText(item.Description),

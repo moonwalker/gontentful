@@ -163,20 +163,20 @@ RETURNING 1;
 COMMIT;`
 
 type PGJSONBModelTable struct {
-	TableName        string           `json:"tableName,omitempty"`
-	Name             string           `json:"name,omitempty"`
-	Description      string           `json:"description,omitempty"`
-	DisplayField     string           `json:"displayField,omitempty"`
-	Version          int              `json:"version,omitempty"`
-	Revision         int              `json:"revision,omitempty"`
-	PublishedVersion int              `json:"publishedVersion,omitempty"`
-	CreatedAt        string           `json:"createdAt,omitempty"`
-	CreatedBy        string           `json:"createdBy,omitempty"`
-	UpdatedAt        string           `json:"updatedAt,omitempty"`
-	UpdatedBy        string           `json:"updatedBy,omitempty"`
-	PublishedAt      string           `json:"publishedAt,omitempty"`
-	PublishedBy      string           `json:"publishedBy,omitempty"`
-	Metas            []PGJSONBMetaRow `json:"metas,omitempty"`
+	TableName        string            `json:"tableName,omitempty"`
+	Name             string            `json:"name,omitempty"`
+	Description      string            `json:"description,omitempty"`
+	DisplayField     string            `json:"displayField,omitempty"`
+	Version          int               `json:"version,omitempty"`
+	Revision         int               `json:"revision,omitempty"`
+	PublishedVersion int               `json:"publishedVersion,omitempty"`
+	CreatedAt        string            `json:"createdAt,omitempty"`
+	CreatedBy        string            `json:"createdBy,omitempty"`
+	UpdatedAt        string            `json:"updatedAt,omitempty"`
+	UpdatedBy        string            `json:"updatedBy,omitempty"`
+	PublishedAt      string            `json:"publishedAt,omitempty"`
+	PublishedBy      string            `json:"publishedBy,omitempty"`
+	Metas            []*PGJSONBMetaRow `json:"metas,omitempty"`
 }
 
 type PGJSONBMetaRow struct {
@@ -196,15 +196,15 @@ type PGJSONBSchema struct {
 	SchemaName      string
 	AssetTableName  string
 	ModelsTableName string
-	Tables          []PGJSONBModelTable
+	Tables          []*PGJSONBModelTable
 }
 
-func NewPGJSONBSchema(schemaName string, assetTableName string, items []ContentType) PGJSONBSchema {
-	schema := PGJSONBSchema{
+func NewPGJSONBSchema(schemaName string, assetTableName string, items []*ContentType) *PGJSONBSchema {
+	schema := &PGJSONBSchema{
 		SchemaName:      schemaName,
 		AssetTableName:  assetTableName,
 		ModelsTableName: "_models",
-		Tables:          make([]PGJSONBModelTable, 0),
+		Tables:          make([]*PGJSONBModelTable, 0),
 	}
 
 	for _, item := range items {
@@ -215,8 +215,8 @@ func NewPGJSONBSchema(schemaName string, assetTableName string, items []ContentT
 	return schema
 }
 
-func NewPGJSONBModelTable(item ContentType) PGJSONBModelTable {
-	table := PGJSONBModelTable{
+func NewPGJSONBModelTable(item *ContentType) *PGJSONBModelTable {
+	table := &PGJSONBModelTable{
 		TableName:    item.Sys.ID,
 		Name:         formatText(item.Name),
 		Description:  formatText(item.Description),
@@ -224,7 +224,7 @@ func NewPGJSONBModelTable(item ContentType) PGJSONBModelTable {
 		Revision:     item.Sys.Revision,
 		CreatedAt:    item.Sys.CreatedAt,
 		UpdatedAt:    item.Sys.UpdatedAt,
-		Metas:        make([]PGJSONBMetaRow, 0),
+		Metas:        make([]*PGJSONBMetaRow, 0),
 	}
 
 	for _, field := range item.Fields {
@@ -235,8 +235,8 @@ func NewPGJSONBModelTable(item ContentType) PGJSONBModelTable {
 	return table
 }
 
-func NewPGJSONBMetaRow(field *ContentTypeField) PGJSONBMetaRow {
-	meta := PGJSONBMetaRow{
+func NewPGJSONBMetaRow(field *ContentTypeField) *PGJSONBMetaRow {
+	meta := &PGJSONBMetaRow{
 		Name:      formatText(field.Name),
 		Type:      field.Type,
 		LinkType:  field.LinkType,

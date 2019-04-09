@@ -539,33 +539,3 @@ CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}_update
 {{ end -}}
 COMMIT;
 {{ end -}}`
-
-// BEGIN;
-// {{ range $locidx, $loc := $.Space.Locales }}
-// {{$locale:=(fmtLocale $loc.Code)}}
-// {{ range $refidx, $ref := $.AssetReferences }}
-// ALTER TABLE {{ $.SchemaName }}.{{ .TableName }}_{{ $locale }}
-//   {{- range $colidx, $col := .Columns }}
-//   {{- if $colidx }},{{- end }}
-//   ADD COLUMN IF NOT EXISTS {{ .ColumnName }} {{ .ColumnType }} references {{ $.SchemaName }}._assets(sysId)
-// {{- end }};
-// ALTER TABLE {{ $.SchemaName }}.{{ .TableName }}_{{ $locale }}__publish
-//   {{- range $colidx, $col := .Columns }}
-//   {{- if $colidx }},{{- end }}
-//   ADD COLUMN IF NOT EXISTS {{ .ColumnName }} {{ .ColumnType }} references {{ $.SchemaName }}._assets__publish(sysId)
-// {{- end }};
-// {{ end -}}
-// {{ range $refidx, $ref := $.References }}
-// ALTER TABLE {{ $.SchemaName }}.{{ .TableName }}_{{ $locale }}
-//   {{- range $colidx, $col := .Columns }}
-//   {{- if $colidx }},{{- end }}
-//   ADD COLUMN IF NOT EXISTS {{ .ColumnName }} {{ .ColumnType }} references {{ $.SchemaName }}.{{ .ColumnDesc }}_{{ $locale }}(sysId)
-// {{- end }};
-// ALTER TABLE {{ $.SchemaName }}.{{ .TableName }}_{{ $locale }}__publish
-//   {{- range $colidx, $col := .Columns }}
-//   {{- if $colidx }},{{- end }}
-//   ADD COLUMN IF NOT EXISTS {{ .ColumnName }} {{ .ColumnType }} references {{ $.SchemaName }}.{{ .ColumnDesc }}_{{ $locale }}__publish(sysId)
-// {{- end }};
-// {{ end -}}
-// {{ end -}}
-// COMMIT;`
