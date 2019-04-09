@@ -41,9 +41,9 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 	}
 
 	for _, item := range items {
-		contentType := item.Sys.ContentType.Sys.ID
 		switch item.Sys.Type {
 		case ENTRY:
+			contentType := item.Sys.ContentType.Sys.ID
 			columns := getFieldColumns(types, contentType)
 			makeTables(schema.Tables, contentType, columns, item)
 			break
