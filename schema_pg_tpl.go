@@ -8,21 +8,21 @@ CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._space (
 	_id serial primary key,
-	spaceId text not null unique,
+	spaceid text not null unique,
 	name text not null,
 	created_at timestamp without time zone default now(),
 	created_by text not null,
 	updated_at timestamp without time zone default now(),
 	updated_by text not null
 );
-CREATE UNIQUE INDEX IF NOT EXISTS spaceId ON {{ $.SchemaName }}._space(spaceId);
+CREATE UNIQUE INDEX IF NOT EXISTS spaceid ON {{ $.SchemaName }}._space(spaceid);
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._locales (
 	_id serial primary key,
 	code text not null unique,
 	name text not null,
-	isDefault boolean,
-	fallbackCode text,
+	isdefault boolean,
+	fallbackcode text,
 	created_at timestamp without time zone default now(),
 	created_by text not null,
 	updated_at timestamp without time zone default now(),
@@ -34,8 +34,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS code ON {{ $.SchemaName }}._locales(code);
 INSERT INTO {{ $.SchemaName }}._locales (
 	code,
 	name,
-	isDefault,
-	fallbackCode,
+	isdefault,
+	fallbackcode,
 	created_by,
 	updated_by
 ) VALUES (
@@ -49,8 +49,8 @@ INSERT INTO {{ $.SchemaName }}._locales (
 ON CONFLICT (code) DO UPDATE
 SET
 	name = EXCLUDED.name,
-	isDefault = EXCLUDED.isDefault,
-	fallbackCode = EXCLUDED.fallbackCode,
+	isdefault = EXCLUDED.isdefault,
+	fallbackcode = EXCLUDED.fallbackcode,
 	updated_at = EXCLUDED.updated_at,
 	updated_by = EXCLUDED.updated_by
 ;
@@ -73,7 +73,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._models(name);
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._models__history(
 	_id serial primary key,
-	pubId integer not null,
+	pub_id integer not null,
 	name text not null,
 	fields jsonb not null,
 	version integer not null default 0,
@@ -87,7 +87,7 @@ CREATE FUNCTION {{ $.SchemaName }}.on__models_update()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._models__history (
-		pubId,
+		pub_id,
 		name,
 		fields,
 		version,
@@ -112,21 +112,21 @@ CREATE TRIGGER {{ $.SchemaName }}__models_update
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._entries (
 	_id serial primary key,
-	sysId text not null unique,
+	sysid text not null unique,
 	tableName text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._entries(sysId);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._entries(sysid);
 --
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets_{{ $locale }} (
 	_id serial primary key,
-	sysId text not null unique,
+	sysid text not null unique,
 	title text not null,
 	description text,
-	fileName text,
-	contentType text,
+	filename text,
+	contenttype text,
 	url text,
 	version integer not null default 0,
 	created_at timestamp without time zone default now(),
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets_{{ $locale }} (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ $.SchemaName }}._assets_{{ $locale }}(sysId);
+CREATE UNIQUE INDEX IF NOT EXISTS sysid ON {{ $.SchemaName }}._assets_{{ $locale }}(sysid);
 --
 DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets_{{ $locale }}_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
 --
@@ -143,11 +143,11 @@ CREATE FUNCTION {{ $.SchemaName }}.assets_{{ $locale }}_upsert(_sysId text, _tit
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }} (
-	sysId,
+	sysid,
 	title,
 	description,
-	fileName,
-	contentType,
+	filename,
+	contenttype,
 	url,
 	version,
 	created_at,
@@ -167,12 +167,12 @@ INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }} (
 	_updatedAt,
 	_updatedBy
 )
-ON CONFLICT (sysId) DO UPDATE
+ON CONFLICT (sysid) DO UPDATE
 SET
 	title = EXCLUDED.title,
 	description = EXCLUDED.description,
-	fileName = EXCLUDED.fileName,
-	contentType = EXCLUDED.contentType,
+	filename = EXCLUDED.filename,
+	contenttype = EXCLUDED.contenttype,
 	url = EXCLUDED.url,
 	version = EXCLUDED.version,
 	updated_at = now(),
@@ -186,7 +186,7 @@ DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets_{{ $locale }}_delete() CAS
 CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sysId = OLD.sysId AND tableName = '_assets_{{ $locale }}';
+	DELETE FROM {{ $.SchemaName }}._entries WHERE sysid = OLD.sysid AND tableName = '_assets_{{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -200,18 +200,18 @@ CREATE TRIGGER {{ $.SchemaName }}__assets_{{ $locale }}_delete
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets_{{ $locale }}__publish (
 	_id serial primary key,
-	sysId text not null unique,
+	sysid text not null unique,
 	title text not null,
 	description text,
-	fileName text,
-	contentType text,
+	filename text,
+	contenttype text,
 	url text,
 	version integer not null default 0,
 	published_at timestamp without time zone default now(),
 	published_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ $.SchemaName }}._assets_{{ $locale }}__publish(sysId);
+CREATE UNIQUE INDEX IF NOT EXISTS sysid ON {{ $.SchemaName }}._assets_{{ $locale }}__publish(sysid);
 --
 DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets_{{ $locale }}_publish(integer) CASCADE;
 --
@@ -219,32 +219,32 @@ CREATE FUNCTION {{ $.SchemaName }}.assets_{{ $locale }}_publish(_aid integer)
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }}__publish (
-	sysId,
+	sysid,
 	title,
 	description,
-	fileName,
-	contentType,
+	filename,
+	contenttype,
 	url,
 	version,
 	published_by
 )
 SELECT
-	sysId,
+	sysid,
 	title,
 	description,
-	fileName,
-	contentType,
+	filename,
+	contenttype,
 	url,
 	version,
 	updated_by
 FROM {{ $.SchemaName }}._assets_{{ $locale }}
 WHERE _id = _aid
-ON CONFLICT (sysId) DO UPDATE
+ON CONFLICT (sysid) DO UPDATE
 SET
 	title = EXCLUDED.title,
 	description = EXCLUDED.description,
-	fileName = EXCLUDED.fileName,
-	contentType = EXCLUDED.contentType,
+	filename = EXCLUDED.filename,
+	contenttype = EXCLUDED.contenttype,
 	url = EXCLUDED.url,
 	version = EXCLUDED.version,
 	published_at = now(),
@@ -255,8 +255,8 @@ $$  LANGUAGE plpgsql;
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets_{{ $locale }}__history(
 	_id serial primary key,
-	pubId integer not null,
-	sysId text not null,
+	pub_id integer not null,
+	sysid text not null,
 	fields jsonb not null,
 	version integer not null default 0,
 	created_at timestamp without time zone default now(),
@@ -269,14 +269,14 @@ CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}__publish_update()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }}__history (
-		pubId,
-		sysId,
+		pub_id,
+		sysid,
 		fields,
 		version,
 		created_by
 	) VALUES (
 		OLD._id,
-		OLD.sysId,
+		OLD.sysid,
 		row_to_json(OLD),
 		OLD.version,
 		NEW.published_by
@@ -298,12 +298,12 @@ CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}__publish_insert()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._entries (
-		sysId,
+		sysid,
 		tableName
 	) VALUES (
-		NEW._sysId,
+		NEW.sysid,
 		'_assets_{{ $locale }}'
-	) ON CONFLICT (sysId) DO NOTHING;
+	) ON CONFLICT (sysid) DO NOTHING;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -372,7 +372,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}.{{ $tbl.TableName }
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__meta_history (
 	_id serial primary key,
-	metaId integer not null,
+	meta_id integer not null,
 	name text not null,
 	fields jsonb not null,
 	created_at timestamp without time zone default now(),
@@ -385,7 +385,7 @@ CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__meta_update()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__meta_history (
-		metaId,
+		meta_id,
 		name,
 		fields,
 		created_by
@@ -454,7 +454,7 @@ SET
 {{$locale:=(fmtLocale $loc.Code)}}
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }} (
 	_id serial primary key,
-	sysId text not null unique,
+	sysid text not null unique,
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }} {{ .ColumnType }}{{ .ColumnDesc }},
 	{{- end }}
@@ -465,7 +465,7 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}(sysId);
+CREATE UNIQUE INDEX IF NOT EXISTS sysid ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}(sysid);
 --
 DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_upsert(text,{{ range $colidx, $col := $tbl.Columns }} {{ .ColumnType }},{{ end }} integer, timestamp, text, timestamp, text) CASCADE;
 --
@@ -473,7 +473,7 @@ CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_upsert(_sy
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }} (
-	sysId,
+	sysid,
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }},
 	{{- end }}
@@ -493,7 +493,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }} (
 	_updated_at,
 	_updated_by
 )
-ON CONFLICT (sysId) DO UPDATE
+ON CONFLICT (sysid) DO UPDATE
 SET
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }} = EXCLUDED.{{ .ColumnName }},
@@ -510,7 +510,7 @@ DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}
 CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sysId = OLD.sysId AND tableName = '{{ $tbl.TableName }}_{{ $locale }}';
+	DELETE FROM {{ $.SchemaName }}._entries WHERE sysid = OLD.sysid AND tableName = '{{ $tbl.TableName }}_{{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -524,7 +524,7 @@ CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}_delete
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish (
 	_id serial primary key,
-	sysId text not null unique,
+	sysid text not null unique,
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }} {{ .ColumnType }},
 	{{- end }}
@@ -533,7 +533,7 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
 	published_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sysId ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish(sysId);
+CREATE UNIQUE INDEX IF NOT EXISTS sysid ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish(sysid);
 --
 DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_publish(integer) CASCADE;
 --
@@ -541,7 +541,7 @@ CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_publish(_a
 RETURNS integer AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish (
-	sysId,
+	sysid,
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }},
 	{{- end }}
@@ -549,7 +549,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish (
 	published_by
 )
 SELECT
-	sysId,
+	sysid,
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }},
 	{{- end }}
@@ -557,7 +557,7 @@ SELECT
 	updated_by
 FROM {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
 WHERE _id = _aid
-ON CONFLICT (sysId) DO UPDATE
+ON CONFLICT (sysid) DO UPDATE
 SET
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }} = EXCLUDED.{{ .ColumnName }},
@@ -571,8 +571,8 @@ $$  LANGUAGE plpgsql;
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__history(
 	_id serial primary key,
-	pubId integer not null,
-	sysId text not null,
+	pub_id integer not null,
+	sysid text not null,
 	fields jsonb not null,
 	version integer not null default 0,
 	created_at timestamp without time zone default now(),
@@ -585,14 +585,14 @@ CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publis
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__history (
-		pubId,
-		sysId,
+		pub_id,
+		sysid,
 		fields,
 		version,
 		created_by
 	) VALUES (
 		OLD._id,
-		OLD.sysId,
+		OLD.sysid,
 		row_to_json(OLD),
 		OLD.version,
 		NEW.published_by
@@ -614,13 +614,13 @@ CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publis
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__history (
-		pubId,
-		sysId,
+		pub_id,
+		sysid,
 		version,
 		created_by
 	) VALUES (
 		OLD._id,
-		OLD.sysId,
+		OLD.sysid,
 		OLD.version,
 		NEW.published_by
 	);
@@ -641,12 +641,12 @@ CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publis
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._entries (
-		sysId,
+		sysid,
 		tableName
 	) VALUES (
 		NEW._sysId,
 		'{{ $tbl.TableName }}_{{ $locale }}'
-	) ON CONFLICT (sysId) DO NOTHING;
+	) ON CONFLICT (sysid) DO NOTHING;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
