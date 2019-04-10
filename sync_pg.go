@@ -13,6 +13,7 @@ type PGSyncRow struct {
 	SysID            string
 	FieldColumns     []string
 	FieldValues      map[string]interface{}
+	MetaColumns      []string
 	Version          int
 	PublishedVersion int
 	CreatedAt        string
@@ -58,29 +59,33 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 		}
 	}
 
-	entriesTable := newPGSyncTable("_entries", []string{"sysid, tablename"})
+	// create a "global" entries table to store all entries with sysid for later delete
+	tableNamesBySysID := make(map[string]string, 0)
 	for _, table := range schema.Tables {
 		for _, row := range table.Rows {
-			enrtiesRow := &PGSyncRow{
-				SysID:        row.SysID,
-				FieldColumns: []string{"sysid, tablename"},
-				FieldValues: map[string]interface{}{
-					"sysid":     row.SysID,
-					"tablename": table.TableName,
-				},
-			}
-			entriesTable.Rows = append(entriesTable.Rows, enrtiesRow)
+			tableNamesBySysID[row.SysID] = table.TableName
 		}
+	}
+	entriesTable := newPGSyncTable("_entries", []string{"tablename"}, []string{})
+	for sysid, tablename := range tableNamesBySysID {
+		enrtiesRow := &PGSyncRow{
+			SysID:        sysid,
+			FieldColumns: []string{"tablename"},
+			FieldValues: map[string]interface{}{
+				"tablename": tablename,
+			},
+		}
+		entriesTable.Rows = append(entriesTable.Rows, enrtiesRow)
 	}
 	schema.Tables = append(schema.Tables, entriesTable)
 
 	return schema
 }
 
-func newPGSyncTable(tableName string, fieldColumns []string) *PGSyncTable {
+func newPGSyncTable(tableName string, fieldColumns []string, metaColumns []string) *PGSyncTable {
 	columns := []string{"sysid"}
 	columns = append(columns, fieldColumns...)
-	columns = append(columns, "version", "created_at", "created_by", "updated_at", "updated_by")
+	columns = append(columns, metaColumns...)
 
 	return &PGSyncTable{
 		TableName: tableName,
@@ -89,11 +94,12 @@ func newPGSyncTable(tableName string, fieldColumns []string) *PGSyncTable {
 	}
 }
 
-func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]interface{}) *PGSyncRow {
+func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]interface{}, metaColumns []string) *PGSyncRow {
 	row := &PGSyncRow{
 		SysID:            item.Sys.ID,
 		FieldColumns:     fieldColumns,
 		FieldValues:      fieldValues,
+		MetaColumns:      metaColumns,
 		Version:          item.Sys.Version,
 		CreatedAt:        item.Sys.CreatedAt,
 		UpdatedAt:        item.Sys.UpdatedAt,
@@ -106,6 +112,12 @@ func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]int
 	if row.PublishedVersion == 0 {
 		row.PublishedVersion = row.Version
 	}
+	if len(row.UpdatedAt) == 0 {
+		row.UpdatedAt = row.CreatedAt
+	}
+	if len(row.PublishedAt) == 0 {
+		row.PublishedAt = row.UpdatedAt
+	}
 	return row
 }
 
@@ -116,7 +128,25 @@ func (r *PGSyncRow) Fields() []interface{} {
 	for _, fieldColumn := range r.FieldColumns {
 		values = append(values, r.FieldValues[fieldColumn])
 	}
-	return append(values, r.Version, r.CreatedAt, "sync", r.UpdatedAt, "sync")
+	for _, metaColumn := range r.MetaColumns {
+		switch metaColumn {
+		case "version":
+			values = append(values, r.Version)
+		case "created_at":
+			values = append(values, r.CreatedAt)
+		case "created_by":
+			values = append(values, "sync")
+		case "updated_at":
+			values = append(values, r.UpdatedAt)
+		case "updated_by":
+			values = append(values, "sync")
+		case "published_at":
+			values = append(values, r.PublishedAt)
+		case "published_by":
+			values = append(values, "sync")
+		}
+	}
+	return values
 }
 
 func (s *PGSyncSchema) Exec(databaseURL string, initSync bool) error {

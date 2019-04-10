@@ -13,6 +13,10 @@ func fmtTableName(contentType string, locale string) string {
 	return fmt.Sprintf("%s_%s", strings.ToLower(contentType), fmtLocale(locale))
 }
 
+func fmtTablePublishName(contentType string, locale string) string {
+	return fmt.Sprintf("%s_%s__publish", strings.ToLower(contentType), fmtLocale(locale))
+}
+
 func getFieldColumns(types []*ContentType, contentType string) []string {
 	fieldColumns := make([]string, 0)
 	for _, t := range types {

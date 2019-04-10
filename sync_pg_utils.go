@@ -9,14 +9,17 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-func makeTables(item *Entry, baseName string, fieldColumns []string) []*PGSyncTable {
-	type rowField struct {
-		fieldName  string
-		fieldValue interface{}
-	}
+type rowField struct {
+	fieldName  string
+	fieldValue interface{}
+}
 
-	tablesByLocale := make(map[string]*PGSyncTable, 0)
+func makeTables(item *Entry, baseName string, fieldColumns []string) []*PGSyncTable {
+	tablesByName := make(map[string]*PGSyncTable, 0)
 	fieldsByLocale := make(map[string][]*rowField, 0)
+
+	tblMetaColumns := []string{"version", "created_at", "created_by", "updated_at", "updated_by"}
+	pubMetaColumns := []string{"version", "published_at", "published_by"}
 
 	// iterate over fields
 	for fieldName, f := range item.Fields {
@@ -27,11 +30,20 @@ func makeTables(item *Entry, baseName string, fieldColumns []string) []*PGSyncTa
 
 		// iterate over locale fields
 		for locale, fieldValue := range locFields {
+			// create table
 			tableName := fmtTableName(baseName, locale)
-			tbl := tablesByLocale[tableName]
+			tbl := tablesByName[tableName]
 			if tbl == nil {
-				tbl = newPGSyncTable(tableName, fieldColumns)
-				tablesByLocale[tableName] = tbl
+				tbl = newPGSyncTable(tableName, fieldColumns, tblMetaColumns)
+				tablesByName[tableName] = tbl
+			}
+
+			// create publish table
+			pubTableName := fmtTablePublishName(baseName, locale)
+			pubTable := tablesByName[pubTableName]
+			if pubTable == nil {
+				pubTable := newPGSyncTable(pubTableName, fieldColumns, pubMetaColumns)
+				tablesByName[pubTableName] = pubTable
 			}
 
 			// collect row fields by locale
@@ -41,31 +53,43 @@ func makeTables(item *Entry, baseName string, fieldColumns []string) []*PGSyncTa
 
 	// append rows with fields to tables
 	for locale, rowFields := range fieldsByLocale {
+		// table
 		tableName := fmtTableName(baseName, locale)
-		tbl := tablesByLocale[tableName]
+		tbl := tablesByName[tableName]
 		if tbl != nil {
-			fieldValues := make(map[string]interface{}, len(fieldColumns))
-			for _, rowField := range rowFields {
-				fieldValues[rowField.fieldName] = convertFieldValue(rowField.fieldValue)
-				assetFile, ok := fieldValues[rowField.fieldName].(*AssetFile)
-				if ok {
-					fieldValues["url"] = assetFile.URL
-					fieldValues["filename"] = assetFile.FileName
-					fieldValues["contenttype"] = assetFile.ContentType
-				}
-			}
-			row := newPGSyncRow(item, fieldColumns, fieldValues)
-			tbl.Rows = append(tbl.Rows, row)
+			appendRowsToTable(item, tbl, rowFields, fieldColumns, tblMetaColumns)
+		}
+
+		// publish table
+		pubTableName := fmtTablePublishName(baseName, locale)
+		pubTable := tablesByName[pubTableName]
+		if pubTable != nil {
+			appendRowsToTable(item, pubTable, rowFields, fieldColumns, pubMetaColumns)
 		}
 	}
 
 	// return tables as simple array, no need to keep them grouped any longer
 	tables := make([]*PGSyncTable, 0)
-	for tableName, table := range tablesByLocale {
+	for tableName, table := range tablesByName {
 		table.TableName = tableName
 		tables = append(tables, table)
 	}
 	return tables
+}
+
+func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fieldColumns []string, metaColums []string) {
+	fieldValues := make(map[string]interface{}, len(fieldColumns))
+	for _, rowField := range rowFields {
+		fieldValues[rowField.fieldName] = convertFieldValue(rowField.fieldValue)
+		assetFile, ok := fieldValues[rowField.fieldName].(*AssetFile)
+		if ok {
+			fieldValues["url"] = assetFile.URL
+			fieldValues["filename"] = assetFile.FileName
+			fieldValues["contenttype"] = assetFile.ContentType
+		}
+	}
+	row := newPGSyncRow(item, fieldColumns, fieldValues, metaColums)
+	tbl.Rows = append(tbl.Rows, row)
 }
 
 func convertFieldValue(v interface{}) interface{} {
