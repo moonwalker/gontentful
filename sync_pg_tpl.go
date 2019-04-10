@@ -62,10 +62,10 @@ SET
 {{ end -}}
 {{ range $idx, $sys_id := $.Deleted }}
 DO $$
-DECLARE ct TEXT;
+DECLARE tn TEXT;
 BEGIN
-  SELECT contentType INTO ct FROM content._entries WHERE sysid = '{{ $sys_id }}';
-  EXECUTE 'DELETE FROM content.' || ct || '__publish WHERE sysid = ''{{ $sys_id }}''';
+  SELECT tablename INTO tn FROM content._entries WHERE sysid = '{{ $sys_id }}';
+  EXECUTE 'DELETE FROM content.' || tn || '__publish WHERE sysid = ''{{ $sys_id }}''';
 END $$;
 {{ end -}}
 {{ end -}}

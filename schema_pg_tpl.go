@@ -113,7 +113,7 @@ CREATE TRIGGER {{ $.SchemaName }}__models_update
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._entries (
 	_id serial primary key,
 	sysid text not null unique,
-	tableName text not null
+	tablename text not null
 );
 --
 CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._entries(sysid);
@@ -186,7 +186,7 @@ DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets_{{ $locale }}_delete() CAS
 CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sysid = OLD.sysid AND tableName = '_assets_{{ $locale }}';
+	DELETE FROM {{ $.SchemaName }}._entries WHERE sysid = OLD.sysid AND tablename = '_assets_{{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -299,7 +299,7 @@ RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._entries (
 		sysid,
-		tableName
+		tablename
 	) VALUES (
 		NEW.sysid,
 		'_assets_{{ $locale }}'
@@ -510,7 +510,7 @@ DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}
 CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sysid = OLD.sysid AND tableName = '{{ $tbl.TableName }}_{{ $locale }}';
+	DELETE FROM {{ $.SchemaName }}._entries WHERE sysid = OLD.sysid AND tablename = '{{ $tbl.TableName }}_{{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -642,7 +642,7 @@ RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._entries (
 		sysid,
-		tableName
+		tablename
 	) VALUES (
 		NEW._sysId,
 		'{{ $tbl.TableName }}_{{ $locale }}'
