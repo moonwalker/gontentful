@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/lib/pq"
@@ -40,6 +41,19 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 		Deleted:    make([]string, 0),
 	}
 
+	// create a "global" entries table to store all entries with sysid for later delete
+	entriesTable := newPGSyncTable("_entries", []string{"tablename"}, []string{})
+	appendToEntries := func(tableName string, sysID string) {
+		enrtiesRow := &PGSyncRow{
+			SysID:        sysID,
+			FieldColumns: []string{"tablename"},
+			FieldValues: map[string]interface{}{
+				"tablename": strings.ToLower(tableName),
+			},
+		}
+		entriesTable.Rows = append(entriesTable.Rows, enrtiesRow)
+	}
+
 	for _, item := range items {
 		switch item.Sys.Type {
 		case ENTRY:
@@ -47,11 +61,16 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 			fieldColumns := getFieldColumns(types, contentType)
 			entryTables := makeTables(item, contentType, fieldColumns)
 			schema.Tables = append(schema.Tables, entryTables...)
+			// append to "global" entries table
+			appendToEntries(contentType, item.Sys.ID)
 			break
 		case ASSET:
+			baseName := "_assets"
 			fieldColumns := []string{"title", "url", "filename", "contenttype"}
-			assetTables := makeTables(item, "_assets", fieldColumns)
+			assetTables := makeTables(item, baseName, fieldColumns)
 			schema.Tables = append(schema.Tables, assetTables...)
+			// append to "global" entries table
+			appendToEntries(baseName, item.Sys.ID)
 			break
 		case DELETED_ENTRY, DELETED_ASSET:
 			schema.Deleted = append(schema.Deleted, item.Sys.ID)
@@ -59,24 +78,7 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 		}
 	}
 
-	// create a "global" entries table to store all entries with sysid for later delete
-	tableNamesBySysID := make(map[string]string, 0)
-	for _, table := range schema.Tables {
-		for _, row := range table.Rows {
-			tableNamesBySysID[row.SysID] = table.TableName
-		}
-	}
-	entriesTable := newPGSyncTable("_entries", []string{"tablename"}, []string{})
-	for sysid, tablename := range tableNamesBySysID {
-		enrtiesRow := &PGSyncRow{
-			SysID:        sysid,
-			FieldColumns: []string{"tablename"},
-			FieldValues: map[string]interface{}{
-				"tablename": tablename,
-			},
-		}
-		entriesTable.Rows = append(entriesTable.Rows, enrtiesRow)
-	}
+	// append the "global" entries table to the tables
 	schema.Tables = append(schema.Tables, entriesTable)
 
 	return schema
