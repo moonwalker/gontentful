@@ -58,6 +58,22 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 		}
 	}
 
+	entriesTable := newPGSyncTable("_entries", []string{"sysid, tablename"})
+	for _, table := range schema.Tables {
+		for _, row := range table.Rows {
+			enrtiesRow := &PGSyncRow{
+				SysID:        row.SysID,
+				FieldColumns: []string{"sysid, tablename"},
+				FieldValues: map[string]interface{}{
+					"sysid":     row.SysID,
+					"tablename": table.TableName,
+				},
+			}
+			entriesTable.Rows = append(entriesTable.Rows, enrtiesRow)
+		}
+	}
+	schema.Tables = append(schema.Tables, entriesTable)
+
 	return schema
 }
 
