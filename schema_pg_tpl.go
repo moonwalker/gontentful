@@ -181,6 +181,29 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets_{{ $locale }}_insert() CASCADE;
+--
+CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO {{ $.SchemaName }}._entries (
+		sysid,
+		tablename
+	) VALUES (
+		NEW.sysid,
+		'_assets_{{ $locale }}'
+	) ON CONFLICT (sysid) DO NOTHING;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+--
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets_{{ $locale }}_insert ON {{ $.SchemaName }}._assets_{{ $locale }};
+--
+CREATE TRIGGER {{ $.SchemaName }}__assets_{{ $locale }}_insert
+	AFTER INSERT ON {{ $.SchemaName }}._assets_{{ $locale }}
+	FOR EACH ROW
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets_{{ $locale }}_insert();
+--
 DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets_{{ $locale }}_delete() CASCADE;
 --
 CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}_delete()
@@ -291,29 +314,6 @@ CREATE TRIGGER {{ $.SchemaName }}__assets_{{ $locale }}__publish_update
     AFTER UPDATE ON {{ $.SchemaName }}._assets_{{ $locale }}__publish
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets_{{ $locale }}__publish_update();
---
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets_{{ $locale }}__publish_insert() CASCADE;
---
-CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}__publish_insert()
-RETURNS TRIGGER AS $$
-BEGIN
-	INSERT INTO {{ $.SchemaName }}._entries (
-		sysid,
-		tablename
-	) VALUES (
-		NEW.sysid,
-		'_assets_{{ $locale }}'
-	) ON CONFLICT (sysid) DO NOTHING;
-	RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
---
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets_{{ $locale }}__publish_insert ON {{ $.SchemaName }}._assets_{{ $locale }}__publish;
---
-CREATE TRIGGER {{ $.SchemaName }}__assets_{{ $locale }}__publish_insert
-	AFTER INSERT ON {{ $.SchemaName }}._assets_{{ $locale }}__publish
-	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets_{{ $locale }}__publish_insert();
 --
 {{ end -}}
 COMMIT;
@@ -505,6 +505,29 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_insert() CASCADE;
+--
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO {{ $.SchemaName }}._entries (
+		sysid,
+		tablename
+	) VALUES (
+		NEW.sysid,
+		'{{ $tbl.TableName }}_{{ $locale }}'
+	) ON CONFLICT (sysid) DO NOTHING;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+--
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}_insert ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }};
+--
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}_insert
+    AFTER INSERT ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
+    FOR EACH ROW
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_insert();
+--
 DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_delete() CASCADE;
 --
 CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_delete()
@@ -634,29 +657,6 @@ CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}__publish_de
     AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publish_delete();
---
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publish_insert() CASCADE;
---
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publish_insert()
-RETURNS TRIGGER AS $$
-BEGIN
-	INSERT INTO {{ $.SchemaName }}._entries (
-		sysid,
-		tablename
-	) VALUES (
-		NEW.sysid,
-		'{{ $tbl.TableName }}_{{ $locale }}'
-	) ON CONFLICT (sysid) DO NOTHING;
-	RETURN NULL;
-END;
-$$ LANGUAGE plpgsql;
---
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}__publish_insert ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish;
---
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}__publish_insert
-    AFTER INSERT ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish
-    FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publish_insert();
 --
 {{ end -}}
 COMMIT;
