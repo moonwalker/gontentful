@@ -24,7 +24,7 @@ var pgSchemaCmd = &cobra.Command{
 	Short: "Creates postgres schema",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(databaseURL) > 0 {
+		if len(schemaDatabaseURL) > 0 {
 			log.Println("creating postgres schema...")
 		}
 
@@ -50,7 +50,7 @@ var pgSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		if len(databaseURL) == 0 {
+		if len(schemaDatabaseURL) == 0 {
 			fmt.Println(str)
 			return
 		} else {
@@ -58,7 +58,10 @@ var pgSchemaCmd = &cobra.Command{
 		}
 
 		log.Println("executing postgres schema...")
-		db, _ := sql.Open("postgres", databaseURL)
+		if dropSchema {
+			log.Println("existing schema will be dropped")
+		}
+		db, _ := sql.Open("postgres", schemaDatabaseURL)
 		txn, err := db.Begin()
 		if err != nil {
 			log.Fatal(err)

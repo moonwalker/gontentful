@@ -18,7 +18,7 @@ var jsonbSchemaCmd = &cobra.Command{
 	Short: "Creates postgres jsonb schema",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(databaseURL) > 0 {
+		if len(schemaDatabaseURL) > 0 {
 			log.Println("creating postgres jsonb schema...")
 		}
 
@@ -39,7 +39,7 @@ var jsonbSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		if len(databaseURL) == 0 {
+		if len(schemaDatabaseURL) == 0 {
 			fmt.Println(str)
 			return
 		} else {

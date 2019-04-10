@@ -9,11 +9,11 @@ const (
 )
 
 var (
-	databaseURL string
+	schemaDatabaseURL string
 )
 
 func init() {
-	schemaCmd.PersistentFlags().StringVarP(&databaseURL, "url", "u", "", "database url")
+	schemaCmd.PersistentFlags().StringVarP(&schemaDatabaseURL, "url", "u", "", "database url")
 	rootCmd.AddCommand(schemaCmd)
 }
 

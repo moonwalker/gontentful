@@ -3,10 +3,7 @@ package gontentful
 import (
 	"bytes"
 	"database/sql"
-	"encoding/json"
 	"fmt"
-	"log"
-	"strings"
 	"text/template"
 
 	"github.com/lib/pq"
@@ -14,7 +11,8 @@ import (
 
 type PGSyncRow struct {
 	SysID            string
-	Fields           map[string]interface{}
+	FieldColumns     []string
+	FieldValues      map[string]interface{}
 	Version          int
 	PublishedVersion int
 	CreatedAt        string
@@ -23,45 +21,38 @@ type PGSyncRow struct {
 }
 
 type PGSyncTable struct {
-	TableName    string
-	Columns      []string
-	FieldColumns []string
-	Rows         []*PGSyncRow
+	TableName string
+	Columns   []string
+	Rows      []*PGSyncRow
 }
 
 type PGSyncSchema struct {
 	SchemaName string
-	Tables     map[string]*PGSyncTable
+	Tables     []*PGSyncTable
 	Deleted    []string
 }
 
 func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *PGSyncSchema {
 	schema := &PGSyncSchema{
 		SchemaName: schemaName,
-		Tables:     make(map[string]*PGSyncTable, 0),
+		Tables:     make([]*PGSyncTable, 0),
+		Deleted:    make([]string, 0),
 	}
 
 	for _, item := range items {
 		switch item.Sys.Type {
 		case ENTRY:
 			contentType := item.Sys.ContentType.Sys.ID
-			columns := getFieldColumns(types, contentType)
-			makeTables(schema.Tables, contentType, columns, item)
+			fieldColumns := getFieldColumns(types, contentType)
+			entryTables := makeTables(item, contentType, fieldColumns)
+			schema.Tables = append(schema.Tables, entryTables...)
 			break
 		case ASSET:
-			columns := []string{"title", "url", "filename", "contenttype"}
-			makeTables(schema.Tables, "_assets", columns, item)
+			fieldColumns := []string{"title", "url", "filename", "contenttype"}
+			assetTables := makeTables(item, "_assets", fieldColumns)
+			schema.Tables = append(schema.Tables, assetTables...)
 			break
-		case DELETED_ENTRY:
-			if schema.Deleted == nil {
-				schema.Deleted = make([]string, 0)
-			}
-			schema.Deleted = append(schema.Deleted, item.Sys.ID)
-			break
-		case DELETED_ASSET:
-			if schema.Deleted == nil {
-				schema.Deleted = make([]string, 0)
-			}
+		case DELETED_ENTRY, DELETED_ASSET:
 			schema.Deleted = append(schema.Deleted, item.Sys.ID)
 			break
 		}
@@ -70,77 +61,23 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 	return schema
 }
 
-type rowField struct {
-	FieldName  string
-	FieldValue interface{}
-}
-
-func makeTables(tables map[string]*PGSyncTable, contentType string, columns []string, item *Entry) {
-	rowFields := make(map[string][]*rowField)
-
-	for fieldName, field := range item.Fields {
-		locFields, ok := field.(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		for locale, fieldValue := range locFields {
-			tableName := fmtTableName(contentType, locale)
-			tbl := tables[tableName]
-			if tbl == nil {
-				tbl = NewPGSyncTable(tableName, columns)
-				tables[tableName] = tbl
-			}
-
-			rowFields[locale] = append(rowFields[locale], &rowField{fieldName, fieldValue})
-		}
-	}
-
-	for locale, rows := range rowFields {
-		tableName := fmtTableName(contentType, locale)
-		tbl := tables[tableName]
-		if tbl != nil {
-			row := NewPGSyncRow(item, tbl.FieldColumns, rows)
-			tbl.Rows = append(tbl.Rows, row)
-		}
-	}
-}
-
-func fmtTableName(contentType string, locale string) string {
-	return fmt.Sprintf("%s_%s", strings.ToLower(contentType), fmtLocale(locale))
-}
-
-func getFieldColumns(types []*ContentType, contentType string) []string {
-	fieldColumns := make([]string, 0)
-
-	for _, t := range types {
-		if t.Sys.ID == contentType {
-			for _, f := range t.Fields {
-				fieldColumns = append(fieldColumns, strings.ToLower(f.ID))
-			}
-		}
-	}
-
-	return fieldColumns
-}
-
-func NewPGSyncTable(tableName string, fieldColumns []string) *PGSyncTable {
+func newPGSyncTable(tableName string, fieldColumns []string) *PGSyncTable {
 	columns := []string{"sysid"}
 	columns = append(columns, fieldColumns...)
 	columns = append(columns, "version", "created_at", "created_by", "updated_at", "updated_by")
 
 	return &PGSyncTable{
-		TableName:    tableName,
-		Columns:      columns,
-		FieldColumns: fieldColumns,
-		Rows:         make([]*PGSyncRow, 0),
+		TableName: tableName,
+		Columns:   columns,
+		Rows:      make([]*PGSyncRow, 0),
 	}
 }
 
-func NewPGSyncRow(item *Entry, fieldColumns []string, rowFields []*rowField) *PGSyncRow {
+func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]interface{}) *PGSyncRow {
 	row := &PGSyncRow{
 		SysID:            item.Sys.ID,
-		Fields:           make(map[string]interface{}, len(fieldColumns)),
+		FieldColumns:     fieldColumns,
+		FieldValues:      fieldValues,
 		Version:          item.Sys.Version,
 		CreatedAt:        item.Sys.CreatedAt,
 		UpdatedAt:        item.Sys.UpdatedAt,
@@ -153,68 +90,20 @@ func NewPGSyncRow(item *Entry, fieldColumns []string, rowFields []*rowField) *PG
 	if row.PublishedVersion == 0 {
 		row.PublishedVersion = row.Version
 	}
-	for _, fieldCol := range fieldColumns {
-		row.Fields[fieldCol] = nil
-	}
-	for i, rowField := range rowFields {
-		row.Fields[rowField.FieldName] = getFieldValue(fieldColumns[i], rowField.FieldValue)
-	}
 	return row
 }
 
-func getFieldValue(fieldCol string, v interface{}) interface{} {
-	switch f := v.(type) {
-
-	case map[string]interface{}:
-		if f["sys"] != nil {
-			s, ok := f["sys"].(map[string]interface{})
-			if ok {
-				if s["type"] == "Link" {
-					return fmt.Sprintf("%v", s["id"])
-				}
-			}
-		} else if f["fileName"] != nil {
-			return f[fieldCol]
-		} else {
-			data, err := json.Marshal(f)
-			if err != nil {
-				log.Fatal("failed to marshal content field")
-			}
-			return string(data)
-		}
-
-	case []interface{}:
-		arr := make([]string, 0)
-		for i := 0; i < len(f); i++ {
-			fs := getFieldValue("", f[i])
-			arr = append(arr, fmt.Sprintf("%v", fs))
-		}
-		return pq.Array(arr)
-
-	case []string:
-		arr := make([]string, 0)
-		for i := 0; i < len(f); i++ {
-			fs := getFieldValue("", f[i])
-			arr = append(arr, fmt.Sprintf("%v", fs))
-		}
-		return pq.Array(arr)
-
-	}
-
-	return v
-}
-
-func (r *PGSyncRow) Values(fieldColumns []string) []interface{} {
+func (r *PGSyncRow) Fields() []interface{} {
 	values := []interface{}{
 		r.SysID,
 	}
-	for _, fieldName := range fieldColumns {
-		values = append(values, r.Fields[fieldName])
+	for _, fieldColumn := range r.FieldColumns {
+		values = append(values, r.FieldValues[fieldColumn])
 	}
 	return append(values, r.Version, r.CreatedAt, "sync", r.UpdatedAt, "sync")
 }
 
-func (s *PGSyncSchema) Insert(databaseURL string, initSync bool) error {
+func (s *PGSyncSchema) Exec(databaseURL string, initSync bool) error {
 	db, _ := sql.Open("postgres", databaseURL)
 
 	_, err := db.Exec(fmt.Sprintf("set search_path='%s'", s.SchemaName))
@@ -222,11 +111,19 @@ func (s *PGSyncSchema) Insert(databaseURL string, initSync bool) error {
 		return err
 	}
 
+	// init sync
 	if initSync {
 		return s.bulkInsert(db)
 	}
 
-	return s.deltaInsert(db)
+	// insert changes
+	err = s.deltaInsert(db)
+	if err != nil {
+		return err
+	}
+
+	// remove deleted entries/assets
+	return s.removeDeleted(db)
 }
 
 func (s *PGSyncSchema) bulkInsert(db *sql.DB) error {
@@ -244,39 +141,23 @@ func (s *PGSyncSchema) bulkInsert(db *sql.DB) error {
 		if err != nil {
 			return err
 		}
-		// estmt, err := txn.Prepare(pq.CopyIn("_entries", "sysId", "tableName"))
-		// if err != nil {
-		// 	return err
-		// }
 
 		for _, row := range tbl.Rows {
-			_, err = stmt.Exec(row.Values(tbl.FieldColumns)...)
+			_, err = stmt.Exec(row.Fields()...)
 			if err != nil {
 				return err
 			}
-			// _, err = estmt.Exec(row.SysID, tbl.TableName)
-			// if err != nil {
-			// 	return err
-			// }
 		}
 
 		_, err = stmt.Exec()
 		if err != nil {
 			return err
 		}
-		// _, err = estmt.Exec()
-		// if err != nil {
-		// 	return err
-		// }
 
 		err = stmt.Close()
 		if err != nil {
 			return err
 		}
-		// err = estmt.Close()
-		// if err != nil {
-		// 	return err
-		// }
 	}
 
 	return txn.Commit()
@@ -305,4 +186,9 @@ func (s *PGSyncSchema) deltaInsert(db *sql.DB) error {
 	}
 
 	return txn.Commit()
+}
+
+func (s *PGSyncSchema) removeDeleted(db *sql.DB) error {
+	// ...
+	return nil
 }

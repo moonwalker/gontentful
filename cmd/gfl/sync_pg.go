@@ -39,9 +39,9 @@ var pgSyncCmd = &cobra.Command{
 		var syncToken string
 		if !initSync {
 			// retrieve token from db, if exists
-			if len(databaseURL) > 0 {
+			if len(syncDatabaseURL) > 0 {
 				log.Println("retrieving sync token...")
-				db, _ := sql.Open("postgres", databaseURL)
+				db, _ := sql.Open("postgres", syncDatabaseURL)
 				row := db.QueryRow(fmt.Sprintf(selectSyncToken, schemaName))
 				err := row.Scan(&syncToken)
 				if err != nil {
@@ -71,18 +71,18 @@ var pgSyncCmd = &cobra.Command{
 		}
 		log.Println("get types done")
 
-		log.Println("bulk insert...")
+		log.Println("exec sync...")
 		schema := gontentful.NewPGSyncSchema(schemaName, types.Items, res.Items)
-		err = schema.Insert(databaseURL, len(syncToken) == 0)
+		err = schema.Exec(syncDatabaseURL, len(syncToken) == 0)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Println("bulk insert done")
+		log.Println("exec sync done")
 
 		// save token to db, overwrite if exists
-		if len(databaseURL) > 0 {
+		if len(syncDatabaseURL) > 0 {
 			log.Println("saving sync token...")
-			db, _ := sql.Open("postgres", databaseURL)
+			db, _ := sql.Open("postgres", syncDatabaseURL)
 			_, err := db.Exec(fmt.Sprintf(createSyncTable, schemaName))
 			if err != nil {
 				log.Fatal(err)

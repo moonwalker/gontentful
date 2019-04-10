@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"text/template"
 )
 
@@ -56,10 +55,6 @@ type PGSQLSchema struct {
 
 var funcMap = template.FuncMap{
 	"fmtLocale": fmtLocale,
-}
-
-func fmtLocale(code string) string {
-	return strings.ToLower(strings.ReplaceAll(code, "-", "_"))
 }
 
 func NewPGSQLSchema(schemaName string, dropSchema bool, space *Space, items []*ContentType) *PGSQLSchema {

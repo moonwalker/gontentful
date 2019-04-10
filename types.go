@@ -1,9 +1,5 @@
 package gontentful
 
-import (
-	"github.com/mitchellh/mapstructure"
-)
-
 type Sys struct {
 	ID               string       `json:"id,omitempty"`
 	Type             string       `json:"type,omitempty"`
@@ -138,10 +134,4 @@ type AssetFile struct {
 			Height int `json:"height"`
 		} `json:"image"`
 	} `json:"details"`
-}
-
-func (f *Fields) ToAssetFields() *AssetFields {
-	var v *AssetFields
-	mapstructure.Decode(f, &v)
-	return v
 }
