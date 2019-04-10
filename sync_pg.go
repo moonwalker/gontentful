@@ -116,14 +116,8 @@ func (s *PGSyncSchema) Exec(databaseURL string, initSync bool) error {
 		return s.bulkInsert(db)
 	}
 
-	// insert changes
-	err = s.deltaInsert(db)
-	if err != nil {
-		return err
-	}
-
-	// remove deleted entries/assets
-	return s.removeDeleted(db)
+	// insert and/or delete changes
+	return s.deltaSync(db)
 }
 
 func (s *PGSyncSchema) bulkInsert(db *sql.DB) error {
@@ -163,7 +157,7 @@ func (s *PGSyncSchema) bulkInsert(db *sql.DB) error {
 	return txn.Commit()
 }
 
-func (s *PGSyncSchema) deltaInsert(db *sql.DB) error {
+func (s *PGSyncSchema) deltaSync(db *sql.DB) error {
 	tmpl, err := template.New("").Parse(pgSyncTemplate)
 	if err != nil {
 		return err
@@ -186,9 +180,4 @@ func (s *PGSyncSchema) deltaInsert(db *sql.DB) error {
 	}
 
 	return txn.Commit()
-}
-
-func (s *PGSyncSchema) removeDeleted(db *sql.DB) error {
-	// ...
-	return nil
 }
