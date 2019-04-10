@@ -644,7 +644,7 @@ BEGIN
 		sysid,
 		tablename
 	) VALUES (
-		NEW._sysId,
+		NEW.sysid,
 		'{{ $tbl.TableName }}_{{ $locale }}'
 	) ON CONFLICT (sysid) DO NOTHING;
 	RETURN NULL;
