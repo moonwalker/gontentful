@@ -1,5 +1,9 @@
 package gontentful
 
+import (
+	"github.com/mitchellh/mapstructure"
+)
+
 type Sys struct {
 	ID               string       `json:"id,omitempty"`
 	Type             string       `json:"type,omitempty"`
@@ -32,10 +36,12 @@ type Include struct {
 	Asset []*Entry `json:"asset,omitempty"`
 }
 
+type Fields map[string]interface{}
+
 type Entry struct {
-	Sys    *Sys                   `json:"sys"`
-	Locale string                 `json:"locale,omitempty"`
-	Fields map[string]interface{} `json:"fields"` // fields are dynamic
+	Sys    *Sys   `json:"sys"`
+	Locale string `json:"locale,omitempty"`
+	Fields Fields `json:"fields"` // fields are dynamic
 }
 
 type Space struct {
@@ -114,4 +120,28 @@ type SyncResponse struct {
 type SyncResult struct {
 	Items []*Entry
 	Token string
+}
+
+type AssetFields struct {
+	Title map[string]string
+	File  map[string]*AssetFile
+}
+
+type AssetFile struct {
+	URL         string `json:"url"`
+	FileName    string `json:"fileName"`
+	ContentType string `json:"contentType"`
+	Details     struct {
+		Size  int `json:"size"`
+		Image struct {
+			Width  int `json:"width"`
+			Height int `json:"height"`
+		} `json:"image"`
+	} `json:"details"`
+}
+
+func (f *Fields) ToAssetFields() *AssetFields {
+	var v *AssetFields
+	mapstructure.Decode(f, &v)
+	return v
 }
