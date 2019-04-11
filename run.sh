@@ -1,7 +1,5 @@
 #!/bin/sh
 
-git checkout 9401dbeccb7ddaad46caa09f1b9c4131130adc58
-
 cid=$(docker ps -aqf 'name=postgres')
 echo 'DROP SCHEMA IF EXISTS content CASCADE' | docker exec -i $cid psql -U postgres
 
