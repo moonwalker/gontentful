@@ -30,14 +30,14 @@ type PGSyncTable struct {
 
 type PGSyncSchema struct {
 	SchemaName string
-	Tables     []*PGSyncTable
+	Tables     map[string]*PGSyncTable
 	Deleted    []string
 }
 
 func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *PGSyncSchema {
 	schema := &PGSyncSchema{
 		SchemaName: schemaName,
-		Tables:     make([]*PGSyncTable, 0),
+		Tables:     make(map[string]*PGSyncTable, 0),
 		Deleted:    make([]string, 0),
 	}
 
@@ -59,16 +59,14 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 		case ENTRY:
 			contentType := item.Sys.ContentType.Sys.ID
 			fieldColumns := getFieldColumns(types, contentType)
-			entryTables := makeTables(item, contentType, fieldColumns)
-			schema.Tables = append(schema.Tables, entryTables...)
+			appendTables(schema.Tables, item, contentType, fieldColumns)
 			// append to "global" entries table
 			appendToEntries(contentType, item.Sys.ID)
 			break
 		case ASSET:
 			baseName := "_assets"
 			fieldColumns := []string{"title", "url", "filename", "contenttype"}
-			assetTables := makeTables(item, baseName, fieldColumns)
-			schema.Tables = append(schema.Tables, assetTables...)
+			appendTables(schema.Tables, item, baseName, fieldColumns)
 			// append to "global" entries table
 			appendToEntries(baseName, item.Sys.ID)
 			break
@@ -79,7 +77,7 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 	}
 
 	// append the "global" entries table to the tables
-	schema.Tables = append(schema.Tables, entriesTable)
+	schema.Tables["_entries"] = entriesTable
 
 	return schema
 }

@@ -14,8 +14,7 @@ type rowField struct {
 	fieldValue interface{}
 }
 
-func makeTables(item *Entry, baseName string, fieldColumns []string) []*PGSyncTable {
-	tablesByName := make(map[string]*PGSyncTable, 0)
+func appendTables(tablesByName map[string]*PGSyncTable, item *Entry, baseName string, fieldColumns []string) {
 	fieldsByLocale := make(map[string][]*rowField, 0)
 
 	tblMetaColumns := []string{"version", "created_at", "created_by", "updated_at", "updated_by"}
@@ -67,14 +66,6 @@ func makeTables(item *Entry, baseName string, fieldColumns []string) []*PGSyncTa
 			appendRowsToTable(item, pubTable, rowFields, fieldColumns, pubMetaColumns)
 		}
 	}
-
-	// return tables as simple array, no need to keep them grouped any longer
-	tables := make([]*PGSyncTable, 0)
-	for tableName, table := range tablesByName {
-		table.TableName = tableName
-		tables = append(tables, table)
-	}
-	return tables
 }
 
 func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fieldColumns []string, metaColums []string) {
