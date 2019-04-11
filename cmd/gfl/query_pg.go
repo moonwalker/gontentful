@@ -16,7 +16,7 @@ import (
 var (
 	runQuery bool
 	test     = []string{
-		"content_type=game&include=3&limit=200&locale=en&order=-fields.priority&skip=1800",
+		"content_type=game&include=3&limit=200&locale=sv&order=-fields.priority&skip=1800",
 		"content_type=game&include=3&limit=200&locale=en-GB&select=sys%2Csys.id%2Cfields.slug&skip=600",
 		"content_type=game&fields.content.fields.name%5Bmatch%5D=cap&fields.content.sys.contentType.sys.id=gameInfo&include=2&limit=200&locale=fi&order=-fields.priority&select=sys%2Cfields.slug%2Cfields.content%2Cfields.deviceConfigurations&skip=0",
 		"content_type=game&fields.slug=winter-wonders&include=3&limit=1&locale=en&skip=0",
@@ -109,10 +109,12 @@ var pgQueryCmd = &cobra.Command{
 			limit, _ = strconv.Atoi(limitQ)
 		}
 
-		fmt.Println(include, skip, limit)
-
-		fields := strings.Split(q.Get("select"), ", ")
+		var fields []string
+		fieldsQ := q.Get("select")
 		q.Del("select")
+		if fieldsQ != "" {
+			fields = strings.Split(fieldsQ, ",")
+		}
 
 		order := q.Get("order")
 		q.Del("order")
@@ -120,8 +122,8 @@ var pgQueryCmd = &cobra.Command{
 		log.Println("data gathered successfully")
 
 		log.Println("executing query schema...")
-		query := gontentful.NewPGQuery(SpaceId, contentType, locale, defaultLocale, fields, q, order)
-		err = query.Exec(schemaDatabaseURL)
+		query := gontentful.NewPGQuery(schemaName, contentType, locale, defaultLocale, fields, q, order, skip, limit, include)
+		err = query.Exec(queryDatabaseURL)
 		if err != nil {
 			log.Fatal(err)
 		}
