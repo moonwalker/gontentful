@@ -1,19 +1,11 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
 	"log"
 
 	"github.com/spf13/cobra"
 
 	"github.com/moonwalker/gontentful"
-)
-
-const (
-	createSyncTable = "CREATE TABLE IF NOT EXISTS %s._sync ( id int primary key, token text );"
-	insertSyncToken = "INSERT INTO %s._sync (id, token) VALUES (0, '%s') ON CONFLICT (id) DO UPDATE SET token = EXCLUDED.token;"
-	selectSyncToken = "SELECT token FROM %s._sync WHERE id = 0;"
 )
 
 var (
@@ -36,14 +28,13 @@ var pgSyncCmd = &cobra.Command{
 			CdnToken: CdnToken,
 		})
 
+		var err error
 		var syncToken string
 		if !initSync {
 			// retrieve token from db, if exists
 			if len(syncDatabaseURL) > 0 {
 				log.Println("retrieving sync token...")
-				db, _ := sql.Open("postgres", syncDatabaseURL)
-				row := db.QueryRow(fmt.Sprintf(selectSyncToken, schemaName))
-				err := row.Scan(&syncToken)
+				syncToken, err = gontentful.GetSyncToken(syncDatabaseURL, schemaName)
 				if err != nil {
 					log.Println("no sync token found")
 				} else {
@@ -82,12 +73,7 @@ var pgSyncCmd = &cobra.Command{
 		// save token to db, overwrite if exists
 		if len(syncDatabaseURL) > 0 {
 			log.Println("saving sync token...")
-			db, _ := sql.Open("postgres", syncDatabaseURL)
-			_, err := db.Exec(fmt.Sprintf(createSyncTable, schemaName))
-			if err != nil {
-				log.Fatal(err)
-			}
-			_, err = db.Exec(fmt.Sprintf(insertSyncToken, schemaName, res.Token))
+			err = gontentful.SaveSyncToken(syncDatabaseURL, schemaName, res.Token)
 			if err != nil {
 				log.Fatal(err)
 			}
