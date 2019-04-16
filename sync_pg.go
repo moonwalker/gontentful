@@ -152,13 +152,21 @@ func (r *PGSyncRow) Fields() []interface{} {
 func (s *PGSyncSchema) Exec(databaseURL string, initSync bool) error {
 	db, _ := sql.Open("postgres", databaseURL)
 
-	_, err := db.Exec(fmt.Sprintf("set search_path='%s'", s.SchemaName))
+	// set schema name
+	_, err := db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
 	if err != nil {
 		return err
 	}
 
 	// init sync
 	if initSync {
+		// disable triggers for the current session
+		_, err := db.Exec("SET session_replication_role=replica")
+		if err != nil {
+			return err
+		}
+
+		// bulk insert
 		return s.bulkInsert(db)
 	}
 
