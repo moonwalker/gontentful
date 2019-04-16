@@ -5,8 +5,8 @@ const pgSyncTemplate = `
 {{ range $itemidx, $item := .Rows }}
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	sysid,
-	{{- range $k, $v := .Fields }}
-	{{ $k }},
+	{{- range $k, $v := .FieldColumns }}
+	{{ $v }},
 	{{- end }}
 	version,
 	created_at,
@@ -15,7 +15,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	updated_by
 ) VALUES (
 	'{{ .SysID }}',
-	{{- range $k, $v := .Fields }}
+	{{- range $k, $v := .FieldValues }}
 	{{ if $v }}{{ $v }}{{ else }}NULL{{ end }},
 	{{- end }}
 	{{ .Version }},
@@ -26,8 +26,8 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 )
 ON CONFLICT (sysId) DO UPDATE
 SET
-	{{- range $k, $v := .Fields }}
-	{{ $k }} = EXCLUDED.{{ $k }},
+	{{- range $k, $v := .FieldColumns }}
+	{{ $v }} = EXCLUDED.{{ $v }},
 	{{- end }}
 	version = EXCLUDED.version,
 	updated_at = now(),
@@ -35,15 +35,15 @@ SET
 ;
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__publish (
 	sysid,
-	{{- range $k, $v := .Fields }}
-	{{ $k }},
+	{{- range $k, $v := .FieldColumns }}
+	{{ $v }},
 	{{- end }}
 	version,
 	published_at,
 	published_by
 ) VALUES (
 	'{{ .SysID }}',
-	{{- range $k, $v := .Fields }}
+	{{- range $k, $v := .FieldValues }}
 	{{ if $v }}{{ $v }}{{ else }}NULL{{ end }},
 	{{- end }}
 	{{ .PublishedVersion }},
@@ -52,8 +52,8 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__publish (
 )
 ON CONFLICT (sysId) DO UPDATE
 SET
-	{{- range $k, $v := .Fields }}
-	{{ $k }} = EXCLUDED.{{ $k }},
+	{{- range $k, $v := .FieldColumns }}
+	{{ $v }} = EXCLUDED.{{ $v }},
 	{{- end }}
 	version = EXCLUDED.version,
 	published_at = now(),
