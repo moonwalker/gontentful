@@ -50,10 +50,10 @@ var pgSyncCmd = &cobra.Command{
 		}
 
 		res, err := client.Spaces.Sync(syncToken)
-		log.Println("sync done")
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Println("sync done")
 
 		log.Println("get types...")
 		types, err := client.ContentTypes.GetTypes()
