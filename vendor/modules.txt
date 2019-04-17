@@ -2,9 +2,10 @@
 github.com/inconshreveable/mousetrap
 # github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a
 github.com/jinzhu/inflection
-# github.com/lib/pq v1.0.0
+# github.com/lib/pq v1.1.0
 github.com/lib/pq
 github.com/lib/pq/oid
+github.com/lib/pq/scram
 # github.com/mitchellh/mapstructure v1.1.2
 github.com/mitchellh/mapstructure
 # github.com/spf13/cobra v0.0.3
