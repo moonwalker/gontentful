@@ -41,14 +41,14 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 		Deleted:    make([]string, 0),
 	}
 
-	// create a "global" entries table to store all entries with sysid for later delete
-	entriesTable := newPGSyncTable("_entries", []string{"tablename"}, []string{})
+	// create a "global" entries table to store all entries with sys_id for later delete
+	entriesTable := newPGSyncTable("_entries", []string{"table_name"}, []string{})
 	appendToEntries := func(tableName string, sysID string) {
 		enrtiesRow := &PGSyncRow{
 			SysID:        sysID,
-			FieldColumns: []string{"tablename"},
+			FieldColumns: []string{"table_name"},
 			FieldValues: map[string]interface{}{
-				"tablename": strings.ToLower(tableName),
+				"table_name": strings.ToLower(tableName),
 			},
 		}
 		entriesTable.Rows = append(entriesTable.Rows, enrtiesRow)
@@ -59,13 +59,14 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 		case ENTRY:
 			contentType := item.Sys.ContentType.Sys.ID
 			fieldColumns := getFieldColumns(types, contentType)
-			appendTables(schema.Tables, item, contentType, fieldColumns)
+			baseName := toSnakeCase(contentType)
+			appendTables(schema.Tables, item, baseName, fieldColumns)
 			// append to "global" entries table
-			appendToEntries(contentType, item.Sys.ID)
+			appendToEntries(baseName, item.Sys.ID)
 			break
 		case ASSET:
 			baseName := "_assets"
-			fieldColumns := []string{"title", "url", "filename", "contenttype"}
+			fieldColumns := []string{"title", "url", "file_name", "content_type"}
 			appendTables(schema.Tables, item, baseName, fieldColumns)
 			// append to "global" entries table
 			appendToEntries(baseName, item.Sys.ID)
@@ -83,7 +84,7 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 }
 
 func newPGSyncTable(tableName string, fieldColumns []string, metaColumns []string) *PGSyncTable {
-	columns := []string{"sysid"}
+	columns := []string{"sys_id"}
 	columns = append(columns, fieldColumns...)
 	columns = append(columns, metaColumns...)
 

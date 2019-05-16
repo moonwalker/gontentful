@@ -39,11 +39,11 @@ CREATE FUNCTION {{ $.SchemaName }}.assets_{{ $locale }}_upsert(_sysId text, _tit
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }} (
-	sysid,
+	sys_id,
 	title,
 	description,
 	filename,
-	contenttype,
+	content_type,
 	url,
 	version,
 	created_at,
@@ -63,12 +63,12 @@ INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }} (
 	_updatedAt,
 	_updatedBy
 )
-ON CONFLICT (sysid) DO UPDATE
+ON CONFLICT (sys_id) DO UPDATE
 SET
 	title = EXCLUDED.title,
 	description = EXCLUDED.description,
 	filename = EXCLUDED.filename,
-	contenttype = EXCLUDED.contenttype,
+	content_type = EXCLUDED.content_type,
 	url = EXCLUDED.url,
 	version = EXCLUDED.version,
 	updated_at = now(),
@@ -83,12 +83,12 @@ CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}_insert()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._entries (
-		sysid,
-		tablename
+		sys_id,
+		table_name
 	) VALUES (
-		NEW.sysid,
+		NEW.sys_id,
 		'_assets_{{ $locale }}'
-	) ON CONFLICT (sysid) DO NOTHING;
+	) ON CONFLICT (sys_id) DO NOTHING;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -105,7 +105,7 @@ DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets_{{ $locale }}_delete() CAS
 CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sysid = OLD.sysid AND tablename = '_assets_{{ $locale }}';
+	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '_assets_{{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -124,32 +124,32 @@ CREATE FUNCTION {{ $.SchemaName }}.assets_{{ $locale }}_publish(_aid integer)
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }}__publish (
-	sysid,
+	sys_id,
 	title,
 	description,
 	filename,
-	contenttype,
+	content_type,
 	url,
 	version,
 	published_by
 )
 SELECT
-	sysid,
+	sys_id,
 	title,
 	description,
 	filename,
-	contenttype,
+	content_type,
 	url,
 	version,
 	updated_by
 FROM {{ $.SchemaName }}._assets_{{ $locale }}
 WHERE _id = _aid
-ON CONFLICT (sysid) DO UPDATE
+ON CONFLICT (sys_id) DO UPDATE
 SET
 	title = EXCLUDED.title,
 	description = EXCLUDED.description,
 	filename = EXCLUDED.filename,
-	contenttype = EXCLUDED.contenttype,
+	content_type = EXCLUDED.content_type,
 	url = EXCLUDED.url,
 	version = EXCLUDED.version,
 	published_at = now(),
@@ -161,7 +161,7 @@ $$  LANGUAGE plpgsql;
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets_{{ $locale }}__history(
 	_id serial primary key,
 	pub_id integer not null,
-	sysid text not null,
+	sys_id text not null,
 	fields jsonb not null,
 	version integer not null default 0,
 	created_at timestamp without time zone default now(),
@@ -175,13 +175,13 @@ RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }}__history (
 		pub_id,
-		sysid,
+		sys_id,
 		fields,
 		version,
 		created_by
 	) VALUES (
 		OLD._id,
-		OLD.sysid,
+		OLD.sys_id,
 		row_to_json(OLD),
 		OLD.version,
 		NEW.published_by
@@ -237,7 +237,7 @@ CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_upsert(_sy
 RETURNS void AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }} (
-	sysid,
+	sys_id,
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }},
 	{{- end }}
@@ -257,7 +257,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }} (
 	_updated_at,
 	_updated_by
 )
-ON CONFLICT (sysid) DO UPDATE
+ON CONFLICT (sys_id) DO UPDATE
 SET
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }} = EXCLUDED.{{ .ColumnName }},
@@ -275,12 +275,12 @@ CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_insert(
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._entries (
-		sysid,
-		tablename
+		sys_id,
+		table_name
 	) VALUES (
-		NEW.sysid,
+		NEW.sys_id,
 		'{{ $tbl.TableName }}_{{ $locale }}'
-	) ON CONFLICT (sysid) DO NOTHING;
+	) ON CONFLICT (sys_id) DO NOTHING;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -297,7 +297,7 @@ DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}
 CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sysid = OLD.sysid AND tablename = '{{ $tbl.TableName }}_{{ $locale }}';
+	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '{{ $tbl.TableName }}_{{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
@@ -315,7 +315,7 @@ CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_publish(_a
 RETURNS integer AS $$
 BEGIN
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish (
-	sysid,
+	sys_id,
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }},
 	{{- end }}
@@ -323,7 +323,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish (
 	published_by
 )
 SELECT
-	sysid,
+	sys_id,
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }},
 	{{- end }}
@@ -331,7 +331,7 @@ SELECT
 	updated_by
 FROM {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
 WHERE _id = _aid
-ON CONFLICT (sysid) DO UPDATE
+ON CONFLICT (sys_id) DO UPDATE
 SET
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }} = EXCLUDED.{{ .ColumnName }},
@@ -346,7 +346,7 @@ $$  LANGUAGE plpgsql;
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__history(
 	_id serial primary key,
 	pub_id integer not null,
-	sysid text not null,
+	sys_id text not null,
 	fields jsonb not null,
 	version integer not null default 0,
 	created_at timestamp without time zone default now(),
@@ -360,13 +360,13 @@ RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__history (
 		pub_id,
-		sysid,
+		sys_id,
 		fields,
 		version,
 		created_by
 	) VALUES (
 		OLD._id,
-		OLD.sysid,
+		OLD.sys_id,
 		row_to_json(OLD),
 		OLD.version,
 		NEW.published_by
@@ -389,12 +389,12 @@ RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__history (
 		pub_id,
-		sysid,
+		sys_id,
 		version,
 		created_by
 	) VALUES (
 		OLD._id,
-		OLD.sysid,
+		OLD.sys_id,
 		OLD.version,
 		NEW.published_by
 	);

@@ -4,7 +4,7 @@ const pgSyncTemplate = `
 {{ range $tblidx, $tbl := .Tables }};
 {{ range $itemidx, $item := .Rows }}
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
-	sysid,
+	sys_id,
 	{{- range $k, $v := .FieldColumns }}
 	{{ $v }},
 	{{- end }}
@@ -34,7 +34,7 @@ SET
 	updated_by = EXCLUDED.updated_by
 ;
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__publish (
-	sysid,
+	sys_id,
 	{{- range $k, $v := .FieldColumns }}
 	{{ $v }},
 	{{- end }}
@@ -64,8 +64,8 @@ SET
 DO $$
 DECLARE tn TEXT;
 BEGIN
-  SELECT tablename INTO tn FROM content._entries WHERE sysid = '{{ $sys_id }}';
-  EXECUTE 'DELETE FROM content.' || tn || '__publish WHERE sysid = ''{{ $sys_id }}''';
+  SELECT table_name INTO tn FROM content._entries WHERE sys_id = '{{ $sys_id }}';
+  EXECUTE 'DELETE FROM content.' || tn || '__publish WHERE sys_id = ''{{ $sys_id }}''';
 END $$;
 {{ end -}}
 {{ end -}}

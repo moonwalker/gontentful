@@ -27,6 +27,9 @@ func appendTables(tablesByName map[string]*PGSyncTable, item *Entry, baseName st
 			continue // no locale, continue
 		}
 
+		// snace_case column name
+		columnName := toSnakeCase(fieldName)
+
 		// iterate over locale fields
 		for locale, fieldValue := range locFields {
 			// create table
@@ -46,7 +49,7 @@ func appendTables(tablesByName map[string]*PGSyncTable, item *Entry, baseName st
 			}
 
 			// collect row fields by locale
-			fieldsByLocale[locale] = append(fieldsByLocale[locale], &rowField{fieldName, fieldValue})
+			fieldsByLocale[locale] = append(fieldsByLocale[locale], &rowField{columnName, fieldValue})
 		}
 	}
 
@@ -75,8 +78,8 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 		assetFile, ok := fieldValues[rowField.fieldName].(*AssetFile)
 		if ok {
 			fieldValues["url"] = assetFile.URL
-			fieldValues["filename"] = assetFile.FileName
-			fieldValues["contenttype"] = assetFile.ContentType
+			fieldValues["file_name"] = assetFile.FileName
+			fieldValues["content_type"] = assetFile.ContentType
 		}
 	}
 	row := newPGSyncRow(item, fieldColumns, fieldValues, metaColums)

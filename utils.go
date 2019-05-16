@@ -2,6 +2,7 @@ package gontentful
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -22,9 +23,24 @@ func getFieldColumns(types []*ContentType, contentType string) []string {
 	for _, t := range types {
 		if t.Sys.ID == contentType {
 			for _, f := range t.Fields {
-				fieldColumns = append(fieldColumns, strings.ToLower(f.ID))
+				fieldColumns = append(fieldColumns, toSnakeCase(f.ID))
 			}
 		}
 	}
 	return fieldColumns
+}
+
+var camel = regexp.MustCompile("(^[^A-Z]*|[A-Z]*)([A-Z][^A-Z]+|$)")
+
+func toSnakeCase(s string) string {
+	var a []string
+	for _, sub := range camel.FindAllStringSubmatch(s, -1) {
+		if sub[1] != "" {
+			a = append(a, sub[1])
+		}
+		if sub[2] != "" {
+			a = append(a, sub[2])
+		}
+	}
+	return strings.ToLower(strings.Join(a, "_"))
 }

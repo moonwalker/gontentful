@@ -89,9 +89,8 @@ func (s *PGSQLSchema) Render() (string, error) {
 }
 
 func NewPGSQLTable(item *ContentType) *PGSQLTable {
-	tableName := item.Sys.ID
 	table := &PGSQLTable{
-		TableName: tableName,
+		TableName: toSnakeCase(item.Sys.ID),
 		Columns:   make([]*PGSQLColumn, 0),
 		Data:      makeModelData(item),
 	}
@@ -108,7 +107,7 @@ func NewPGSQLTable(item *ContentType) *PGSQLTable {
 
 func NewPGSQLColumn(field *ContentTypeField) *PGSQLColumn {
 	column := &PGSQLColumn{
-		ColumnName: field.ID,
+		ColumnName: toSnakeCase(field.ID),
 	}
 	column.getColumnDesc(field)
 	return column
