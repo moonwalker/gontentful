@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"strings"
+	"io/ioutil"
 	"text/template"
 
 	"github.com/lib/pq"
@@ -32,23 +32,34 @@ type PGSyncSchema struct {
 	SchemaName string
 	Tables     map[string]*PGSyncTable
 	Deleted    []string
+	InitSync   bool
 }
 
-func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *PGSyncSchema {
+type PGSyncField struct {
+	Type  string
+	Value interface{}
+}
+
+func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry, initSync bool) *PGSyncSchema {
 	schema := &PGSyncSchema{
 		SchemaName: schemaName,
 		Tables:     make(map[string]*PGSyncTable, 0),
 		Deleted:    make([]string, 0),
+		InitSync:   initSync,
 	}
 
 	// create a "global" entries table to store all entries with sys_id for later delete
 	entriesTable := newPGSyncTable("_entries", []string{"table_name"}, []string{})
-	appendToEntries := func(tableName string, sysID string) {
+	appendToEntries := func(tableName string, sysID string, templateFormat bool) {
+		fieldValue := tableName
+		if templateFormat {
+			fieldValue = fmt.Sprintf("'%s'", tableName)
+		}
 		enrtiesRow := &PGSyncRow{
 			SysID:        sysID,
 			FieldColumns: []string{"table_name"},
 			FieldValues: map[string]interface{}{
-				"table_name": strings.ToLower(tableName),
+				"table_name": fieldValue,
 			},
 		}
 		entriesTable.Rows = append(entriesTable.Rows, enrtiesRow)
@@ -60,16 +71,16 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry) *P
 			contentType := item.Sys.ContentType.Sys.ID
 			fieldColumns := getFieldColumns(types, contentType)
 			baseName := toSnakeCase(contentType)
-			appendTables(schema.Tables, item, baseName, fieldColumns)
+			appendTables(schema.Tables, item, baseName, fieldColumns, !initSync)
 			// append to "global" entries table
-			appendToEntries(baseName, item.Sys.ID)
+			appendToEntries(baseName, item.Sys.ID, !initSync)
 			break
 		case ASSET:
 			baseName := "_assets"
 			fieldColumns := []string{"title", "url", "file_name", "content_type"}
-			appendTables(schema.Tables, item, baseName, fieldColumns)
+			appendTables(schema.Tables, item, baseName, fieldColumns, !initSync)
 			// append to "global" entries table
-			appendToEntries(baseName, item.Sys.ID)
+			appendToEntries(baseName, item.Sys.ID, !initSync)
 			break
 		case DELETED_ENTRY, DELETED_ASSET:
 			schema.Deleted = append(schema.Deleted, item.Sys.ID)
@@ -150,7 +161,41 @@ func (r *PGSyncRow) Fields() []interface{} {
 	return values
 }
 
-func (s *PGSyncSchema) Exec(databaseURL string, initSync bool) error {
+func (r *PGSyncRow) GetFieldValue(fieldColumn string) string {
+	switch fieldColumn {
+	case "version":
+		return fmt.Sprintf("%d", r.Version)
+	case "created_at":
+		if r.CreatedAt != "" {
+			return fmt.Sprintf("to_timestamp('%s','YYYY-MM-DDThh24:mi:ss.mssZ')", r.CreatedAt)
+		}
+		return "now()"
+	case "created_by":
+		return "'sync'"
+	case "updated_at":
+		if r.UpdatedAt != "" {
+			return fmt.Sprintf("to_timestamp('%s','YYYY-MM-DDThh24:mi:ss.mssZ')", r.UpdatedAt)
+		}
+		return "now()"
+	case "updated_by":
+		return "'sync'"
+	case "published_at":
+		if r.PublishedAt != "" {
+			return fmt.Sprintf("to_timestamp('%s','YYYY-MM-DDThh24:mi:ss.mssZ')", r.PublishedAt)
+		}
+		return "now()"
+	case "published_by":
+		return "'sync'"
+	}
+
+	if r.FieldValues[fieldColumn] != nil {
+		return fmt.Sprintf("%v", r.FieldValues[fieldColumn])
+	}
+
+	return "NULL"
+}
+
+func (s *PGSyncSchema) Exec(databaseURL string) error {
 	db, _ := sql.Open("postgres", databaseURL)
 
 	// set schema name
@@ -160,7 +205,7 @@ func (s *PGSyncSchema) Exec(databaseURL string, initSync bool) error {
 	}
 
 	// init sync
-	if initSync {
+	if s.InitSync {
 		// disable triggers for the current session
 		_, err := db.Exec("SET session_replication_role=replica")
 		if err != nil {
@@ -223,6 +268,11 @@ func (s *PGSyncSchema) deltaSync(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Println(buff.String())
+
+	d1 := []byte(buff.String())
+	ioutil.WriteFile("/tmp/test", d1, 0644)
 
 	txn, err := db.Begin()
 	if err != nil {

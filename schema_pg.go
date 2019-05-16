@@ -53,7 +53,7 @@ type PGSQLSchema struct {
 	Tables     []*PGSQLTable
 }
 
-var funcMap = template.FuncMap{
+var schemaFuncMap = template.FuncMap{
 	"fmtLocale": fmtLocale,
 }
 
@@ -74,7 +74,7 @@ func NewPGSQLSchema(schemaName string, dropSchema bool, space *Space, items []*C
 }
 
 func (s *PGSQLSchema) Render() (string, error) {
-	tmpl, err := template.New("").Funcs(funcMap).Parse(pgTemplate)
+	tmpl, err := template.New("").Funcs(schemaFuncMap).Parse(pgTemplate)
 	if err != nil {
 		return "", err
 	}

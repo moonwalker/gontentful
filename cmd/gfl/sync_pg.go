@@ -63,8 +63,8 @@ var pgSyncCmd = &cobra.Command{
 		log.Println("get types done")
 
 		log.Println("exec...")
-		schema := gontentful.NewPGSyncSchema(schemaName, types.Items, res.Items)
-		err = schema.Exec(syncDatabaseURL, len(syncToken) == 0)
+		schema := gontentful.NewPGSyncSchema(schemaName, types.Items, res.Items, len(syncToken) == 0)
+		err = schema.Exec(syncDatabaseURL)
 		if err != nil {
 			log.Fatal(err)
 		}

@@ -1,63 +1,33 @@
 package gontentful
 
 const pgSyncTemplate = `
-{{ range $tblidx, $tbl := .Tables }};
+{{ range $tblidx, $tbl := .Tables }}
 {{ range $itemidx, $item := .Rows }}
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
-	sys_id,
+	sys_id
 	{{- range $k, $v := .FieldColumns }}
-	{{ $v }},
+	,{{ $v }}
 	{{- end }}
-	version,
-	created_at,
-	created_by,
-	updated_at,
-	updated_by
+	{{- range $k, $v := .MetaColumns }}
+	,{{ $v }}
+	{{- end }}
 ) VALUES (
-	'{{ .SysID }}',
-	{{- range $k, $v := .FieldValues }}
-	{{ if $v }}{{ $v }}{{ else }}NULL{{ end }},
+	'{{ .SysID }}'
+	{{- range $k, $v := .FieldColumns }}
+	,{{ $item.GetFieldValue $v }}
 	{{- end }}
-	{{ .Version }},
-	'{{ .CreatedAt }}',
-	'sync',
-	'{{ .UpdatedAt }}',
-	'sync'
+	{{- range $k, $v := .MetaColumns }}
+	,{{ $item.GetFieldValue $v }}
+	{{- end }}
 )
-ON CONFLICT (sysId) DO UPDATE
+ON CONFLICT (sys_id) DO UPDATE
 SET
 	{{- range $k, $v := .FieldColumns }}
-	{{ $v }} = EXCLUDED.{{ $v }},
+	{{ if $k }},{{- end }}{{ $v }} = EXCLUDED.{{ $v }}
 	{{- end }}
-	version = EXCLUDED.version,
-	updated_at = now(),
-	updated_by = EXCLUDED.updated_by
-;
-INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__publish (
-	sys_id,
-	{{- range $k, $v := .FieldColumns }}
-	{{ $v }},
+	{{- range $k, $v := .MetaColumns }}
+	,{{ $v }} = EXCLUDED.{{ $v }}
 	{{- end }}
-	version,
-	published_at,
-	published_by
-) VALUES (
-	'{{ .SysID }}',
-	{{- range $k, $v := .FieldValues }}
-	{{ if $v }}{{ $v }}{{ else }}NULL{{ end }},
-	{{- end }}
-	{{ .PublishedVersion }},
-	{{ if .PublishedAt }}to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ss.mssZ'){{ else }}now(){{ end }},
-	'sync'
-)
-ON CONFLICT (sysId) DO UPDATE
-SET
-	{{- range $k, $v := .FieldColumns }}
-	{{ $v }} = EXCLUDED.{{ $v }},
-	{{- end }}
-	version = EXCLUDED.version,
-	published_at = now(),
-	published_by = EXCLUDED.published_by
 ;
 {{ end -}}
 {{ range $idx, $sys_id := $.Deleted }}
