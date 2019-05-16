@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"text/template"
 
 	"github.com/lib/pq"
@@ -268,11 +267,6 @@ func (s *PGSyncSchema) deltaSync(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Println(buff.String())
-
-	d1 := []byte(buff.String())
-	ioutil.WriteFile("/tmp/test", d1, 0644)
 
 	txn, err := db.Begin()
 	if err != nil {
