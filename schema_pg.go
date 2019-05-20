@@ -177,7 +177,7 @@ func makeModelData(item *ContentType) *PGSQLData {
 
 func makeMeta(field *ContentTypeField) *PGSQLMeta {
 	meta := &PGSQLMeta{
-		Name:      field.ID,
+		Name:      toSnakeCase(field.ID),
 		Label:     formatText(field.Name),
 		Type:      field.Type,
 		LinkType:  field.LinkType,
