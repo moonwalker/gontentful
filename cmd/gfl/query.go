@@ -6,6 +6,7 @@ import (
 
 const (
 	defaultLocale = "en"
+	usePreview    = false
 )
 
 var (
@@ -14,6 +15,9 @@ var (
 
 func init() {
 	queryCmd.PersistentFlags().StringVarP(&queryDatabaseURL, "url", "u", "", "database url")
+	if queryDatabaseURL == "" {
+		queryDatabaseURL = "postgres://postgres@localhost:5432/?sslmode=disable"
+	}
 	rootCmd.AddCommand(queryCmd)
 }
 

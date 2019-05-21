@@ -15,13 +15,13 @@ import (
 var (
 	runQuery bool
 	test     = []string{
-		"content_type=localizedSiteSetting&sys.id=35UnSWWbR6IuywWEKYKMUw&include=2&limit=1&locale=en&skip=0",
+		//"content_type=localizedSiteSetting&sys.id=35UnSWWbR6IuywWEKYKMUw&include=2&limit=1&locale=en&skip=0",
 		"content_type=game&fields.content.fields.name%5Bmatch%5D=jack&fields.content.sys.contentType.sys.id=gameInfo&include=2&limit=200&locale=fi&order=-fields.priority&select=sys%2Cfields.slug%2Cfields.content%2Cfields.deviceConfigurations&skip=0",
-		"content_type=market&fields.code=ROW&include=2&limit=1&locale=en&skip=0",
-		"content_type=product&fields.name=dreamz&include=3&limit=1&skip=0",
-		"content_type=game&include=3&limit=200&locale=sv&order=-fields.priority&skip=1800",
-		"content_type=game&include=3&limit=200&locale=en-GB&select=sys%2Csys.id%2Cfields.slug&skip=600",
-		"content_type=game&fields.slug=winter-wonders&include=3&limit=1&locale=en&skip=0",
+		// "content_type=market&fields.code=ROW&include=2&limit=1&locale=en&skip=0",
+		// "content_type=product&fields.name=dreamz&include=3&limit=1&skip=0",
+		// "content_type=game&include=3&limit=200&locale=sv&order=-fields.priority&skip=1800",
+		// "content_type=game&include=3&limit=200&locale=en-GB&select=sys%2Csys.id%2Cfields.slug&skip=600",
+		// "content_type=game&fields.slug=winter-wonders&include=3&limit=1&locale=en&skip=0",
 	}
 )
 
@@ -42,7 +42,7 @@ var pgQueryCmd = &cobra.Command{
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			query := gontentful.ParsePGQuery(schemaName, defaultLocale, q)
+			query := gontentful.ParsePGQuery(schemaName, defaultLocale, usePreview, q)
 
 			log.Println("executing query...")
 			items, err := query.Exec(queryDatabaseURL)

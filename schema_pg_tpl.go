@@ -635,13 +635,15 @@ BEGIN
 	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__history (
 		pub_id,
 		sys_id,
+		fields,
 		version,
 		created_by
 	) VALUES (
 		OLD._id,
 		OLD.sys_id,
+		OLD.fields,
 		OLD.version,
-		NEW.published_by
+		'sync'
 	);
 	RETURN NULL;
 END;
