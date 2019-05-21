@@ -641,7 +641,7 @@ BEGIN
 	) VALUES (
 		OLD._id,
 		OLD.sys_id,
-		OLD.fields,
+		row_to_json(OLD),
 		OLD.version,
 		'sync'
 	);
