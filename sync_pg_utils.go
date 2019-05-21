@@ -144,7 +144,7 @@ func convertFieldValue(v interface{}, t bool) interface{} {
 		return pq.Array(arr)
 	case string:
 		if t {
-			return fmt.Sprintf("'%v'", v)
+			return fmt.Sprintf("'%s'", strings.ReplaceAll(v.(string), "'", "''"))
 		}
 	}
 
