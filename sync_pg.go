@@ -9,6 +9,8 @@ import (
 	"github.com/lib/pq"
 )
 
+const localesQueryFormat = `SELECT code FROM %s._locales`
+
 type PGSyncRow struct {
 	SysID            string
 	FieldColumns     []string
@@ -32,6 +34,7 @@ type PGSyncSchema struct {
 	Tables     map[string]*PGSyncTable
 	Deleted    []string
 	InitSync   bool
+	Locales    []string
 }
 
 type PGSyncField struct {
@@ -76,8 +79,7 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry, in
 			break
 		case ASSET:
 			baseName := "_assets"
-			fieldColumns := []string{"title", "url", "file_name", "content_type"}
-			appendTables(schema.Tables, item, baseName, fieldColumns, !initSync)
+			appendTables(schema.Tables, item, baseName, assetColumns, !initSync)
 			// append to "global" entries table
 			appendToEntries(baseName, item.Sys.ID, !initSync)
 			break
@@ -213,6 +215,21 @@ func (s *PGSyncSchema) Exec(databaseURL string) error {
 
 		// bulk insert
 		return s.bulkInsert(db)
+	}
+
+	rows, err := db.Query(fmt.Sprintf(localesQueryFormat, s.SchemaName))
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	s.Locales = make([]string, 0)
+	for rows.Next() {
+		code := ""
+		err := rows.Scan(&code)
+		if err != nil {
+			return err
+		}
+		s.Locales = append(s.Locales, fmtLocale(code))
 	}
 
 	// insert and/or delete changes

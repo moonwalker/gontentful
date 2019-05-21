@@ -23,9 +23,9 @@ COALESCE(_assets_{{ $.Locale }}.{{ .Name }},_assets_{{ $.DefaultLocale }}.{{ .Na
 _assets_{{ $.DefaultLocale }}.{{ .Name }} as {{ .Name }}
 {{- end -}}
 {{- end }}
-FROM {{ $.SchemaName }}._assets_{{ $.DefaultLocale }}__publish _assets_{{ $.DefaultLocale }}
+FROM {{ $.SchemaName }}._assets_{{ $.DefaultLocale }}{{ $.Suffix }} _assets_{{ $.DefaultLocale }}
 {{- if ne $.Locale $.DefaultLocale }}
-LEFT JOIN {{ $.SchemaName }}._assets_{{ $.Locale }}__publish _assets_{{ $.Locale }} ON _assets_{{ $.DefaultLocale }}.sys_id = _assets_{{ $.Locale }}.sys_id
+LEFT JOIN {{ $.SchemaName }}._assets_{{ $.Locale }}{{ $.Suffix }} _assets_{{ $.Locale }} ON _assets_{{ $.DefaultLocale }}.sys_id = _assets_{{ $.Locale }}.sys_id
 {{- end }}
 WHERE _assets_{{ $.DefaultLocale }}.sys_id = ANY(ARRAY[{{ index $.Fields 0 }}])
 LIMIT 1`
@@ -60,11 +60,11 @@ SELECT
 {{- else }}{{ $.TableName }}_{{ $.DefaultLocale }}.{{ .Name }} as {{ .Name }}
 {{- end -}}
 {{- end }}
-FROM {{ $.SchemaName }}.{{ $.TableName }}_{{ $.DefaultLocale }}__publish {{ $.TableName }}_{{ $.DefaultLocale }}
-{{ if ne $.Locale $.DefaultLocale }}LEFT JOIN {{ $.SchemaName }}.{{ $.TableName }}_{{ $.Locale }}__publish {{ $.TableName }}_{{ $.Locale }} ON {{ $.TableName }}_{{ $.DefaultLocale }}.sys_id = {{ $.TableName }}_{{ $.Locale }}.sys_id{{ end }}
+FROM {{ $.SchemaName }}.{{ $.TableName }}_{{ $.DefaultLocale }}{{ $.Suffix }} {{ $.TableName }}_{{ $.DefaultLocale }}
+{{ if ne $.Locale $.DefaultLocale }}LEFT JOIN {{ $.SchemaName }}.{{ $.TableName }}_{{ $.Locale }}{{ $.Suffix }} {{ $.TableName }}_{{ $.Locale }} ON {{ $.TableName }}_{{ $.DefaultLocale }}.sys_id = {{ $.TableName }}_{{ $.Locale }}.sys_id{{ end }}
 {{- range $foreignKey, $join := $.Joins }}
-LEFT JOIN {{ $.SchemaName }}.{{ $join.TableName }}_{{ $.DefaultLocale }} {{ $join.TableName }}_{{ $.DefaultLocale }} ON {{ $.TableName }}_{{ $.DefaultLocale }}.{{ $foreignKey }} = {{ $join.TableName }}_{{ $.DefaultLocale }}.sys_id
-{{ if ne $.Locale $.DefaultLocale }}LEFT JOIN {{ $.SchemaName }}.{{ $join.TableName }}_{{ $.Locale }}__publish {{ $join.TableName }}_{{ $.Locale }} ON {{ $.TableName }}_{{ $.Locale }}.{{ $foreignKey }} = {{ $join.TableName }}_{{ $.Locale }}.sys_id{{ end }}
+LEFT JOIN {{ $.SchemaName }}.{{ $join.TableName }}_{{ $.DefaultLocale }}{{ $.Suffix }} {{ $join.TableName }}_{{ $.DefaultLocale }} ON {{ $.TableName }}_{{ $.DefaultLocale }}.{{ $foreignKey }} = {{ $join.TableName }}_{{ $.DefaultLocale }}.sys_id
+{{ if ne $.Locale $.DefaultLocale }}LEFT JOIN {{ $.SchemaName }}.{{ $join.TableName }}_{{ $.Locale }}{{ $.Suffix }} {{ $join.TableName }}_{{ $.Locale }} ON {{ $.TableName }}_{{ $.Locale }}.{{ $foreignKey }} = {{ $join.TableName }}_{{ $.Locale }}.sys_id{{ end }}
 {{- end }}
 {{ if gt (len $.Filters) 0 }}WHERE
 {{- range $fidx, $filter := $.GetFilters }}
@@ -77,7 +77,7 @@ LEFT JOIN {{ $.SchemaName }}.{{ $join.TableName }}_{{ $.DefaultLocale }} {{ $joi
 
 var (
 	comparerRegex      = regexp.MustCompile(`[^[]+\[([^]]+)+]`)
-	joinedContentRegex = regexp.MustCompile(`(.+)\.sys\.contentType\.sys\.id`)
+	joinedContentRegex = regexp.MustCompile(`(?:fields.)?([^.]+)\.sys\.contentType\.sys\.id`)
 	foreignKeyRegex    = regexp.MustCompile(`([^.]+)\.(?:fields.)?(.+)`)
 	assetColumns       = []string{"title", "description", "file_name", "content_type", "url"}
 )
@@ -92,6 +92,7 @@ const (
 
 type PQQueryJoin struct {
 	TableName string
+	Localized bool
 	Columns   map[string]*PGSQLMeta
 }
 
@@ -109,9 +110,10 @@ type PGQuery struct {
 	Joins          map[string]*PQQueryJoin
 	Columns        map[string]*PGSQLMeta
 	SelectedFields []*PGSQLMeta
+	Suffix         string
 }
 
-func ParsePGQuery(schemaName string, defaultLocale string, q url.Values) *PGQuery {
+func ParsePGQuery(schemaName string, defaultLocale string, usePreview bool, q url.Values) *PGQuery {
 	contentType := q.Get("content_type")
 	q.Del("content_type")
 
@@ -158,9 +160,13 @@ func ParsePGQuery(schemaName string, defaultLocale string, q url.Values) *PGQuer
 	order := q.Get("order")
 	q.Del("order")
 
-	return NewPGQuery(schemaName, contentType, locale, defaultLocale, fields, q, order, skip, limit, include)
+	return NewPGQuery(schemaName, contentType, locale, defaultLocale, fields, q, order, skip, limit, include, usePreview)
 }
-func NewPGQuery(schemaName string, tableName string, locale string, defaultLocale string, fields []string, filters url.Values, order string, skip int, limit int, include int) *PGQuery {
+func NewPGQuery(schemaName string, tableName string, locale string, defaultLocale string, fields []string, filters url.Values, order string, skip int, limit int, include int, usePreview bool) *PGQuery {
+	suffix := ""
+	if !usePreview {
+		suffix = "__publish"
+	}
 	return &PGQuery{
 		SchemaName:    schemaName,
 		TableName:     toSnakeCase(tableName),
@@ -172,6 +178,7 @@ func NewPGQuery(schemaName string, tableName string, locale string, defaultLocal
 		Skip:          skip,
 		Limit:         limit,
 		Include:       include,
+		Suffix:        suffix,
 	}
 }
 
@@ -390,6 +397,7 @@ func formatOrder(order string) string {
 func (s *PGQuery) getJoins(db *sql.DB) error {
 	s.Joins = make(map[string]*PQQueryJoin)
 	for key, values := range s.Filters {
+		// fields.content.fields.name%5Bmatch%5D=jack&fields.content.sys.contentType.sys.id=gameInfo
 		joinedContentMatch := joinedContentRegex.FindStringSubmatch(key)
 		if len(joinedContentMatch) > 0 {
 			s.Filters.Del(key)
@@ -403,7 +411,11 @@ func (s *PGQuery) getJoins(db *sql.DB) error {
 				return err
 			}
 			join.Columns = metas
-			s.Joins[fieldToColumn(joinedContentMatch[1])] = join
+			joinColumnName := fieldToColumn(joinedContentMatch[1])
+			if s.Columns[joinColumnName] != nil {
+				join.Localized = s.Columns[joinColumnName].Localized
+				s.Joins[joinColumnName] = join
+			}
 		}
 	}
 	return nil
@@ -657,7 +669,7 @@ func (s *PGQuery) getBySysIDs(db *sql.DB, sysIds []string, includeLevel int) ([]
 		}
 		filter := url.Values{}
 		filter.Set("sys.id", sysID)
-		q := NewPGQuery(s.SchemaName, tableName, s.Locale, s.DefaultLocale, nil, filter, "", 0, 1, s.Include)
+		q := NewPGQuery(s.SchemaName, tableName, s.Locale, s.DefaultLocale, nil, filter, "", 0, 1, s.Include, s.Suffix == "")
 		r, err := q.execute(db, includeLevel+1)
 		if err != nil {
 			return nil, err

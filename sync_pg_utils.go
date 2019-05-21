@@ -78,9 +78,17 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 		fieldValues[rowField.fieldName] = convertFieldValue(rowField.fieldValue, templateFormat)
 		assetFile, ok := fieldValues[rowField.fieldName].(*AssetFile)
 		if ok {
-			fieldValues["url"] = assetFile.URL
-			fieldValues["file_name"] = assetFile.FileName
-			fieldValues["content_type"] = assetFile.ContentType
+			url := assetFile.URL
+			fileName := assetFile.FileName
+			contentType := assetFile.ContentType
+			if templateFormat {
+				url = fmt.Sprintf("'%s'", url)
+				fileName = fmt.Sprintf("'%s'", fileName)
+				contentType = fmt.Sprintf("'%s'", contentType)
+			}
+			fieldValues["url"] = url
+			fieldValues["file_name"] = fileName
+			fieldValues["content_type"] = contentType
 		}
 	}
 	row := newPGSyncRow(item, fieldColumns, fieldValues, metaColums)
