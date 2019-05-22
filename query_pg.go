@@ -279,7 +279,7 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int) ([]map[string]interface{
 		}
 		items = append(items, entry)
 	}
-	fmt.Println(items)
+
 	return items, nil
 }
 
@@ -643,12 +643,14 @@ func (s *PGQuery) getAssetsByIDs(db *sql.DB, sysIds []string, localized bool) ([
 		if err != nil {
 			return nil, err
 		}
-		asset := make(map[string]interface{})
+		file := make(map[string]interface{})
 		for i, c := range assetColumns {
 			bytes := values[i].(*sql.RawBytes)
 			str := string(*bytes)
-			asset[c] = str
+			file[c] = str
 		}
+		asset := make(map[string]interface{})
+		asset["file"] = file
 		assets = append(assets, asset)
 	}
 
