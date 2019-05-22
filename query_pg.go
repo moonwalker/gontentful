@@ -267,8 +267,10 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int) ([]map[string]interface{
 		index := 0
 		for _, c := range s.SelectedFields {
 			bytes := values[index].(*sql.RawBytes)
-			str := string(*bytes)
-			entry[toCamelCase(c.Name)] = convertToType(str, c)
+			if bytes != nil {
+				str := string(*bytes)
+				entry[toCamelCase(c.Name)] = convertToType(str, c)
+			}
 			index = index + 1
 		}
 		if includeLevel < s.Include {
