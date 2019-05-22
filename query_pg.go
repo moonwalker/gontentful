@@ -269,7 +269,9 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int) ([]map[string]interface{
 			bytes := values[index].(*sql.RawBytes)
 			if bytes != nil {
 				str := string(*bytes)
-				entry[toCamelCase(c.Name)] = convertToType(str, c)
+				if str != "" {
+					entry[toCamelCase(c.Name)] = convertToType(str, c)
+				}
 			}
 			index = index + 1
 		}
@@ -551,11 +553,14 @@ func (s *PGQuery) includeAll(db *sql.DB, fields map[string]interface{}, included
 		if fields[colName] != nil {
 			switch col.Type {
 			case ARRAY:
-				f, err := s.getAssetsByIDs(db, fields[colName].([]string), col.Localized)
-				if err != nil {
-					return err
+				strs := fields[colName].([]string)
+				if len(strs) > 0 {
+					f, err := s.getAssetsByIDs(db, strs, col.Localized)
+					if err != nil {
+						return err
+					}
+					fields[colName] = f
 				}
-				fields[colName] = f
 				break
 			case LINK:
 				str := fields[colName].(string)
