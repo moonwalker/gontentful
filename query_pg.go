@@ -11,6 +11,8 @@ import (
 	"sync"
 	"text/template"
 	"time"
+
+	"golang.org/x/sync/syncmap"
 )
 
 const assetQueryTemplate = `
@@ -324,14 +326,14 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int, withTotal bool) ([]map[s
 				ierr = err
 				return
 			}
-			entry := make(map[string]interface{})
+			entry := syncmap.Map{}
 			index := 0
 			for _, c := range s.SelectedFields {
 				bytes := values[index].(*sql.RawBytes)
 				if bytes != nil {
 					str := string(*bytes)
 					if str != "" {
-						entry[toCamelCase(c.Name)] = convertToType(str, c)
+						entry.Store(toCamelCase(c.Name), convertToType(str, c))
 					}
 				}
 				index = index + 1
@@ -343,7 +345,12 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int, withTotal bool) ([]map[s
 				ierr = err
 				return
 			}
-			items = append(items, entry)
+			item := make(map[string]interface{})
+			entry.Range(func(key, value interface{}) bool {
+				item[key.(string)] = value
+				return true
+			})
+			items = append(items, item)
 		}
 	}()
 
@@ -617,7 +624,7 @@ func fmtValues(values []string, meta *PGSQLMeta, prefix string) string {
 	return res
 }
 
-func (s *PGQuery) includeAll(db *sql.DB, fields map[string]interface{}, includedEntries map[string]struct{}, includedAssets map[string]struct{}, includeLevel int) error {
+func (s *PGQuery) includeAll(db *sql.DB, fields syncmap.Map, includedEntries map[string]struct{}, includedAssets map[string]struct{}, includeLevel int) error {
 	var wg sync.WaitGroup
 	var err error
 	wg.Add(len(includedAssets))
@@ -627,27 +634,28 @@ func (s *PGQuery) includeAll(db *sql.DB, fields map[string]interface{}, included
 		go func(col *PGSQLMeta) {
 			defer wg.Done()
 			colName := toCamelCase(col.Name)
-			if fields[colName] != nil {
+			val, ok := fields.Load(colName)
+			if ok {
 				switch col.Type {
 				case ARRAY:
-					strs := fields[colName].([]string)
-					if len(strs) > 0 {
+					strs, ok := val.([]string)
+					if ok && len(strs) > 0 {
 						f, err := s.getAssetsByIDs(db, strs, col.Localized)
 						if err != nil {
 							return
 						}
-						fields[colName] = f
+						fields.Store(colName, f)
 					}
 					break
 				case LINK:
-					str := fields[colName].(string)
-					if str != "" {
+					str, ok := val.(string)
+					if ok && str != "" {
 						f, err := s.getAssetsByIDs(db, []string{str}, col.Localized)
 						if err != nil {
 							return
 						}
 						if len(f) > 0 {
-							fields[colName] = f[0]
+							fields.Store(colName, f[0])
 						}
 					}
 					break
@@ -660,24 +668,28 @@ func (s *PGQuery) includeAll(db *sql.DB, fields map[string]interface{}, included
 		go func(col *PGSQLMeta) {
 			defer wg.Done()
 			colName := toCamelCase(col.Name)
-			if fields[colName] != nil {
+			val, ok := fields.Load(colName)
+			if ok {
 				switch col.Type {
 				case ARRAY:
-					f, err := s.getBySysIDs(db, fields[colName].([]string), includeLevel)
-					if err != nil {
-						return
+					strs, ok := val.([]string)
+					if ok && len(strs) > 0 {
+						f, err := s.getBySysIDs(db, strs, includeLevel)
+						if err != nil {
+							return
+						}
+						fields.Store(colName, f)
 					}
-					fields[colName] = f
 					break
 				case LINK:
-					str := fields[colName].(string)
-					if str != "" {
+					str, ok := val.(string)
+					if ok && str != "" {
 						f, err := s.getBySysIDs(db, []string{str}, includeLevel)
 						if err != nil {
 							return
 						}
 						if len(f) > 0 {
-							fields[colName] = f[0]
+							fields.Store(colName, f[0])
 						}
 					}
 					break
