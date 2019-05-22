@@ -653,12 +653,18 @@ func (s *PGQuery) getAssetsByIDs(db *sql.DB, sysIds []string, localized bool) ([
 		file := make(map[string]interface{})
 		for i, c := range assetColumns {
 			bytes := values[i].(*sql.RawBytes)
-			str := string(*bytes)
-			file[toCamelCase(c)] = str
+			if bytes != nil {
+				str := string(*bytes)
+				if str != "" {
+					file[toCamelCase(c)] = str
+				}
+			}
 		}
-		asset := make(map[string]interface{})
-		asset["file"] = file
-		assets = append(assets, asset)
+		if len(file) > 0 {
+			asset := make(map[string]interface{})
+			asset["file"] = file
+			assets = append(assets, asset)
+		}
 	}
 
 	return assets, nil
