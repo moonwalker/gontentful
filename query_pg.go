@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 )
@@ -547,61 +548,104 @@ func fmtValues(values []string, meta *PGSQLMeta, prefix string) string {
 }
 
 func (s *PGQuery) includeAll(db *sql.DB, fields map[string]interface{}, includedEntries map[string]struct{}, includedAssets map[string]struct{}, includeLevel int) error {
+	var wg sync.WaitGroup
+	var err error
+	wg.Add(len(includedAssets))
+	wg.Add(len(includedEntries))
+
 	for a := range includedAssets {
-		col := s.Columns[a]
-		colName := toCamelCase(col.Name)
-		if fields[colName] != nil {
-			switch col.Type {
-			case ARRAY:
-				strs := fields[colName].([]string)
-				if len(strs) > 0 {
-					f, err := s.getAssetsByIDs(db, strs, col.Localized)
+		go func(col *PGSQLMeta) {
+			defer wg.Done()
+			colName := toCamelCase(col.Name)
+			if fields[colName] != nil {
+				switch col.Type {
+				case ARRAY:
+					strs := fields[colName].([]string)
+					if len(strs) > 0 {
+						f, err := s.getAssetsByIDs(db, strs, col.Localized)
+						if err != nil {
+							return
+						}
+						fields[colName] = f
+					}
+					break
+				case LINK:
+					str := fields[colName].(string)
+					if str != "" {
+						f, err := s.getAssetsByIDs(db, []string{str}, col.Localized)
+						if err != nil {
+							return
+						}
+						if len(f) > 0 {
+							fields[colName] = f[0]
+						}
+					}
+					break
+				}
+			}
+		}(s.Columns[a])
+	}
+
+	for c := range includedEntries {
+		go func(col *PGSQLMeta) {
+			defer wg.Done()
+			colName := toCamelCase(col.Name)
+			if fields[colName] != nil {
+				switch col.Type {
+				case ARRAY:
+					f, err := s.getBySysIDs(db, fields[colName].([]string), includeLevel)
 					if err != nil {
-						return err
+						return
 					}
 					fields[colName] = f
-				}
-				break
-			case LINK:
-				str := fields[colName].(string)
-				if str != "" {
-					f, err := s.getAssetsByIDs(db, []string{str}, col.Localized)
-					if err != nil {
-						return err
+					break
+				case LINK:
+					str := fields[colName].(string)
+					if str != "" {
+						f, err := s.getBySysIDs(db, []string{str}, includeLevel)
+						if err != nil {
+							return
+						}
+						if len(f) > 0 {
+							fields[colName] = f[0]
+						}
 					}
-					if len(f) > 0 {
-						fields[colName] = f[0]
-					}
+					break
 				}
-				break
 			}
-		}
+		}(s.Columns[c])
 	}
-	for c := range includedEntries {
-		col := s.Columns[c]
-		colName := toCamelCase(col.Name)
-		if fields[colName] != nil {
-			switch col.Type {
-			case ARRAY:
-				f, err := s.getBySysIDs(db, fields[colName].([]string), includeLevel)
+	wg.Wait()
+
+	return err
+}
+
+func (s *PGQuery) includeAssets(col *PGSQLMeta, db *sql.DB, fields map[string]interface{}) error {
+	colName := toCamelCase(col.Name)
+	if fields[colName] != nil {
+		switch col.Type {
+		case ARRAY:
+			strs := fields[colName].([]string)
+			if len(strs) > 0 {
+				f, err := s.getAssetsByIDs(db, strs, col.Localized)
 				if err != nil {
 					return err
 				}
 				fields[colName] = f
-				break
-			case LINK:
-				str := fields[colName].(string)
-				if str != "" {
-					f, err := s.getBySysIDs(db, []string{str}, includeLevel)
-					if err != nil {
-						return err
-					}
-					if len(f) > 0 {
-						fields[colName] = f[0]
-					}
-				}
-				break
 			}
+			break
+		case LINK:
+			str := fields[colName].(string)
+			if str != "" {
+				f, err := s.getAssetsByIDs(db, []string{str}, col.Localized)
+				if err != nil {
+					return err
+				}
+				if len(f) > 0 {
+					fields[colName] = f[0]
+				}
+			}
+			break
 		}
 	}
 	return nil
