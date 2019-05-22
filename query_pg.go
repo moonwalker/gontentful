@@ -76,6 +76,20 @@ LEFT JOIN {{ $.SchemaName }}.{{ $join.TableName }}_{{ $.DefaultLocale }}{{ $.Suf
 {{ if $.Skip }}OFFSET {{ $.Skip }}{{- end }}
 `
 
+const totalQueryTemplate = `
+SELECT COUNT(*)
+FROM {{ $.SchemaName }}.{{ $.TableName }}_{{ $.DefaultLocale }}{{ $.Suffix }} {{ $.TableName }}_{{ $.DefaultLocale }}
+{{ if ne $.Locale $.DefaultLocale }}LEFT JOIN {{ $.SchemaName }}.{{ $.TableName }}_{{ $.Locale }}{{ $.Suffix }} {{ $.TableName }}_{{ $.Locale }} ON {{ $.TableName }}_{{ $.DefaultLocale }}.sys_id = {{ $.TableName }}_{{ $.Locale }}.sys_id{{ end }}
+{{- range $foreignKey, $join := $.Joins }}
+LEFT JOIN {{ $.SchemaName }}.{{ $join.TableName }}_{{ $.DefaultLocale }}{{ $.Suffix }} {{ $join.TableName }}_{{ $.DefaultLocale }} ON {{ $.TableName }}_{{ $.DefaultLocale }}.{{ $foreignKey }} = {{ $join.TableName }}_{{ $.DefaultLocale }}.sys_id
+{{ if ne $.Locale $.DefaultLocale }}LEFT JOIN {{ $.SchemaName }}.{{ $join.TableName }}_{{ $.Locale }}{{ $.Suffix }} {{ $join.TableName }}_{{ $.Locale }} ON {{ $.TableName }}_{{ $.Locale }}.{{ $foreignKey }} = {{ $join.TableName }}_{{ $.Locale }}.sys_id{{ end }}
+{{- end }}
+{{ if gt (len $.Filters) 0 }}WHERE
+{{- range $fidx, $filter := $.GetFilters }}
+{{ if $fidx }} AND {{- end }}{{ $filter }}{{ end -}}
+{{- end }}
+`
+
 var (
 	comparerRegex      = regexp.MustCompile(`[^[]+\[([^]]+)+]`)
 	joinedContentRegex = regexp.MustCompile(`(?:fields.)?([^.]+)\.sys\.contentType\.sys\.id`)
@@ -183,18 +197,18 @@ func NewPGQuery(schemaName string, tableName string, locale string, defaultLocal
 	}
 }
 
-func (s *PGQuery) Exec(databaseURL string) ([]map[string]interface{}, error) {
+func (s *PGQuery) Exec(databaseURL string) ([]map[string]interface{}, int64, error) {
 	db, _ := sql.Open("postgres", databaseURL)
 
-	return s.execute(db, 0)
+	return s.execute(db, 0, true)
 }
 
-func (s *PGQuery) execute(db *sql.DB, includeLevel int) ([]map[string]interface{}, error) {
+func (s *PGQuery) execute(db *sql.DB, includeLevel int, withTotal bool) ([]map[string]interface{}, int64, error) {
 	// fmt.Println("executing meta query for", s.TableName)
 	// fmt.Println(fmt.Sprintf(metaQueryFormat, s.SchemaName, s.TableName))
 	metas, err := db.Query(fmt.Sprintf(metaQueryFormat, s.SchemaName, s.TableName))
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer metas.Close()
 	fields := make(map[string]struct{})
@@ -213,7 +227,7 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int) ([]map[string]interface{
 		meta := PGSQLMeta{}
 		err := metas.Scan(&meta.Name, &meta.Type, &meta.LinkType, &meta.Items, &meta.Localized)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		_, ok := fields[meta.Name]
 		if allFields || ok {
@@ -234,58 +248,114 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int) ([]map[string]interface{
 
 	err = s.getJoins(db)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	tmpl, err := template.New("").Parse(queryTemplate)
-	if err != nil {
-		return nil, err
-	}
+	var wg sync.WaitGroup
+	var items []map[string]interface{}
+	var ierr error
+	var total int64
+	var cerr error
 
-	var buff bytes.Buffer
-	err = tmpl.Execute(&buff, s)
-	if err != nil {
-		return nil, err
-	}
-
-	// fmt.Println(buff.String())
-	res, err := db.Query(buff.String())
-	if err != nil {
-		return nil, err
-	}
-	defer res.Close()
-	items := make([]map[string]interface{}, 0)
-
-	for res.Next() {
-		values := make([]interface{}, len(s.SelectedFields))
-		for i := range values {
-			values[i] = new(sql.RawBytes)
-		}
-		err := res.Scan(values...)
-		if err != nil {
-			return nil, err
-		}
-		entry := make(map[string]interface{})
-		index := 0
-		for _, c := range s.SelectedFields {
-			bytes := values[index].(*sql.RawBytes)
-			if bytes != nil {
-				str := string(*bytes)
-				if str != "" {
-					entry[toCamelCase(c.Name)] = convertToType(str, c)
-				}
+	wg.Add(1)
+	if withTotal {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tmpl, err := template.New("").Parse(totalQueryTemplate)
+			if err != nil {
+				cerr = err
+				return
 			}
-			index = index + 1
-		}
-		if includeLevel < s.Include {
-			err = s.includeAll(db, entry, includedEntries, includedAssets, includeLevel)
-		}
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, entry)
+
+			var buff bytes.Buffer
+			err = tmpl.Execute(&buff, s)
+			if err != nil {
+				cerr = err
+				return
+			}
+
+			// fmt.Println(buff.String())
+			res := db.QueryRow(buff.String())
+			if err != nil {
+				cerr = err
+				return
+			}
+			count := 0
+			err = res.Scan(&count)
+			if err != nil {
+				cerr = err
+				return
+			}
+			total = int64(count)
+		}()
 	}
 
-	return items, nil
+	go func() {
+		defer wg.Done()
+		tmpl, err := template.New("").Parse(queryTemplate)
+		if err != nil {
+			ierr = err
+			return
+		}
+
+		var buff bytes.Buffer
+		err = tmpl.Execute(&buff, s)
+		if err != nil {
+			ierr = err
+			return
+		}
+
+		// fmt.Println(buff.String())
+		res, err := db.Query(buff.String())
+		if err != nil {
+			ierr = err
+			return
+		}
+		defer res.Close()
+		items = make([]map[string]interface{}, 0)
+
+		for res.Next() {
+			values := make([]interface{}, len(s.SelectedFields))
+			for i := range values {
+				values[i] = new(sql.RawBytes)
+			}
+			err := res.Scan(values...)
+			if err != nil {
+				ierr = err
+				return
+			}
+			entry := make(map[string]interface{})
+			index := 0
+			for _, c := range s.SelectedFields {
+				bytes := values[index].(*sql.RawBytes)
+				if bytes != nil {
+					str := string(*bytes)
+					if str != "" {
+						entry[toCamelCase(c.Name)] = convertToType(str, c)
+					}
+				}
+				index = index + 1
+			}
+			if includeLevel < s.Include {
+				err = s.includeAll(db, entry, includedEntries, includedAssets, includeLevel)
+			}
+			if err != nil {
+				ierr = err
+				return
+			}
+			items = append(items, entry)
+		}
+	}()
+
+	wg.Wait()
+
+	if ierr != nil {
+		return nil, 0, ierr
+	}
+	if cerr != nil {
+		return nil, 0, cerr
+	}
+	return items, total, nil
 }
 
 func (s *PGQuery) getMetaColumns(db *sql.DB, tableName string) (map[string]*PGSQLMeta, error) {
@@ -732,7 +802,7 @@ func (s *PGQuery) getBySysIDs(db *sql.DB, sysIds []string, includeLevel int) ([]
 		filter := url.Values{}
 		filter.Set("sys.id", sysID)
 		q := NewPGQuery(s.SchemaName, tableName, s.Locale, s.DefaultLocale, nil, filter, "", 0, 1, s.Include, s.Suffix == "")
-		r, err := q.execute(db, includeLevel+1)
+		r, _, err := q.execute(db, includeLevel+1, false)
 		if err != nil {
 			return nil, err
 		}
