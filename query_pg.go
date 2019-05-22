@@ -649,7 +649,7 @@ func (s *PGQuery) getAssetsByIDs(db *sql.DB, sysIds []string, localized bool) ([
 		for i, c := range assetColumns {
 			bytes := values[i].(*sql.RawBytes)
 			str := string(*bytes)
-			file[c] = str
+			file[toCamelCase(c)] = str
 		}
 		asset := make(map[string]interface{})
 		asset["file"] = file
