@@ -31,6 +31,7 @@ func getFieldColumns(types []*ContentType, contentType string) []string {
 }
 
 var camel = regexp.MustCompile("(^[^A-Z]*|[A-Z]*)([A-Z][^A-Z]+|$)")
+var snake = regexp.MustCompile(`([_ ]\w)`)
 
 func toSnakeCase(s string) string {
 	var a []string
@@ -43,4 +44,10 @@ func toSnakeCase(s string) string {
 		}
 	}
 	return strings.ToLower(strings.Join(a, "_"))
+}
+
+func toCamelCase(s string) string {
+	return snake.ReplaceAllStringFunc(s, func(w string) string {
+		return strings.ToUpper(string(w[1]))
+	})
 }

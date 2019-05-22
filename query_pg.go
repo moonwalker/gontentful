@@ -268,7 +268,7 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int) ([]map[string]interface{
 		for _, c := range s.SelectedFields {
 			bytes := values[index].(*sql.RawBytes)
 			str := string(*bytes)
-			entry[c.Name] = convertToType(str, c)
+			entry[toCamelCase(c.Name)] = convertToType(str, c)
 			index = index + 1
 		}
 		if includeLevel < s.Include {
@@ -279,6 +279,7 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int) ([]map[string]interface{
 		}
 		items = append(items, entry)
 	}
+	fmt.Println(items)
 	return items, nil
 }
 
@@ -544,24 +545,25 @@ func fmtValues(values []string, meta *PGSQLMeta, prefix string) string {
 func (s *PGQuery) includeAll(db *sql.DB, fields map[string]interface{}, includedEntries map[string]struct{}, includedAssets map[string]struct{}, includeLevel int) error {
 	for a := range includedAssets {
 		col := s.Columns[a]
-		if fields[col.Name] != nil {
+		colName := toCamelCase(col.Name)
+		if fields[colName] != nil {
 			switch col.Type {
 			case ARRAY:
-				f, err := s.getAssetsByIDs(db, fields[col.Name].([]string), col.Localized)
+				f, err := s.getAssetsByIDs(db, fields[colName].([]string), col.Localized)
 				if err != nil {
 					return err
 				}
-				fields[col.Name] = f
+				fields[colName] = f
 				break
 			case LINK:
-				str := fields[col.Name].(string)
+				str := fields[colName].(string)
 				if str != "" {
 					f, err := s.getAssetsByIDs(db, []string{str}, col.Localized)
 					if err != nil {
 						return err
 					}
 					if len(f) > 0 {
-						fields[col.Name] = f[0]
+						fields[colName] = f[0]
 					}
 				}
 				break
@@ -570,24 +572,25 @@ func (s *PGQuery) includeAll(db *sql.DB, fields map[string]interface{}, included
 	}
 	for c := range includedEntries {
 		col := s.Columns[c]
-		if fields[col.Name] != nil {
+		colName := toCamelCase(col.Name)
+		if fields[colName] != nil {
 			switch col.Type {
 			case ARRAY:
-				f, err := s.getBySysIDs(db, fields[col.Name].([]string), includeLevel)
+				f, err := s.getBySysIDs(db, fields[colName].([]string), includeLevel)
 				if err != nil {
 					return err
 				}
-				fields[col.Name] = f
+				fields[colName] = f
 				break
 			case LINK:
-				str := fields[col.Name].(string)
+				str := fields[colName].(string)
 				if str != "" {
 					f, err := s.getBySysIDs(db, []string{str}, includeLevel)
 					if err != nil {
 						return err
 					}
 					if len(f) > 0 {
-						fields[col.Name] = f[0]
+						fields[colName] = f[0]
 					}
 				}
 				break
