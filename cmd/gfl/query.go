@@ -4,11 +4,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	defaultLocale = "en"
-	usePreview    = false
-)
-
 var (
 	queryDatabaseURL string
 )

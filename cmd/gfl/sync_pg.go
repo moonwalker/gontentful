@@ -24,7 +24,7 @@ var pgSyncCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client := gontentful.NewClient(&gontentful.ClientOptions{
 			CdnURL:   apiURL,
-			SpaceID:  SpaceId,
+			SpaceID:  SpaceID,
 			CdnToken: CdnToken,
 		})
 

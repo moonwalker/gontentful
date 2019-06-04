@@ -33,12 +33,12 @@ CREATE TRIGGER {{ $.SchemaName }}__models_update
 --
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets_{{ $locale }}_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets__{{ $locale }}_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.assets_{{ $locale }}_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
+CREATE FUNCTION {{ $.SchemaName }}.assets__{{ $locale }}_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
 RETURNS void AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }} (
+INSERT INTO {{ $.SchemaName }}._assets__{{ $locale }} (
 	sys_id,
 	title,
 	description,
@@ -77,9 +77,9 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets_{{ $locale }}_insert() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets__{{ $locale }}_insert() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}_insert()
+CREATE FUNCTION {{ $.SchemaName }}.on__assets__{{ $locale }}_insert()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._entries (
@@ -87,43 +87,43 @@ BEGIN
 		table_name
 	) VALUES (
 		NEW.sys_id,
-		'_assets_{{ $locale }}'
+		'_assets__{{ $locale }}'
 	) ON CONFLICT (sys_id) DO NOTHING;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets_{{ $locale }}_insert ON {{ $.SchemaName }}._assets_{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets__{{ $locale }}_insert ON {{ $.SchemaName }}._assets__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}__assets_{{ $locale }}_insert
-	AFTER INSERT ON {{ $.SchemaName }}._assets_{{ $locale }}
+CREATE TRIGGER {{ $.SchemaName }}__assets__{{ $locale }}_insert
+	AFTER INSERT ON {{ $.SchemaName }}._assets__{{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets_{{ $locale }}_insert();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets__{{ $locale }}_insert();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets_{{ $locale }}_delete() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets__{{ $locale }}_delete() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}_delete()
+CREATE FUNCTION {{ $.SchemaName }}.on__assets__{{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '_assets_{{ $locale }}';
+	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '_assets__{{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets_{{ $locale }}_delete ON {{ $.SchemaName }}._assets_{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets__{{ $locale }}_delete ON {{ $.SchemaName }}._assets__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}__assets_{{ $locale }}_delete
-	AFTER DELETE ON {{ $.SchemaName }}._assets_{{ $locale }}
+CREATE TRIGGER {{ $.SchemaName }}__assets__{{ $locale }}_delete
+	AFTER DELETE ON {{ $.SchemaName }}._assets__{{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets_{{ $locale }}_delete();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets__{{ $locale }}_delete();
 --
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets_{{ $locale }}_publish(integer) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets__{{ $locale }}_publish(integer) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.assets_{{ $locale }}_publish(_aid integer)
+CREATE FUNCTION {{ $.SchemaName }}.assets__{{ $locale }}_publish(_aid integer)
 RETURNS void AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }}__publish (
+INSERT INTO {{ $.SchemaName }}._assets__{{ $locale }}__publish (
 	sys_id,
 	title,
 	description,
@@ -142,7 +142,7 @@ SELECT
 	url,
 	version,
 	updated_by
-FROM {{ $.SchemaName }}._assets_{{ $locale }}
+FROM {{ $.SchemaName }}._assets__{{ $locale }}
 WHERE _id = _aid
 ON CONFLICT (sys_id) DO UPDATE
 SET
@@ -158,7 +158,7 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets_{{ $locale }}__history(
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets__{{ $locale }}__history(
 	_id serial primary key,
 	pub_id integer not null,
 	sys_id text not null,
@@ -168,12 +168,12 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets_{{ $locale }}__history(
 	created_by text not null
 );
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets_{{ $locale }}__publish_update() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets__{{ $locale }}__publish_update() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__assets_{{ $locale }}__publish_update()
+CREATE FUNCTION {{ $.SchemaName }}.on__assets__{{ $locale }}__publish_update()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}._assets_{{ $locale }}__history (
+	INSERT INTO {{ $.SchemaName }}._assets__{{ $locale }}__history (
 		pub_id,
 		sys_id,
 		fields,
@@ -190,24 +190,24 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets_{{ $locale }}_update ON {{ $.SchemaName }}._assets_{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets__{{ $locale }}_update ON {{ $.SchemaName }}._assets__{{ $locale }}__publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}__assets_{{ $locale }}__publish_update
-    AFTER UPDATE ON {{ $.SchemaName }}._assets_{{ $locale }}__publish
+CREATE TRIGGER {{ $.SchemaName }}__assets__{{ $locale }}__publish_update
+    AFTER UPDATE ON {{ $.SchemaName }}._assets__{{ $locale }}__publish
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets_{{ $locale }}__publish_update();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets__{{ $locale }}__publish_update();
 --
 {{ end -}}
 COMMIT;
 --
 {{ range $tblidx, $tbl := $.Tables }}
 BEGIN;
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}__meta_update() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}___meta_update() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__meta_update()
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}___meta_update()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__meta_history (
+	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}___meta_history (
 		meta_id,
 		name,
 		fields,
@@ -222,21 +222,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__meta_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}__meta;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}___meta_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}___meta;
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__meta_update
-    AFTER UPDATE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__meta
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}___meta_update
+    AFTER UPDATE ON {{ $.SchemaName }}.{{ $tbl.TableName }}___meta
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__meta_update();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}___meta_update();
 --
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_upsert(text,{{ range $colidx, $col := $tbl.Columns }} {{ .ColumnType }},{{ end }} integer, timestamp, text, timestamp, text) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}_upsert(text,{{ range $colidx, $col := $tbl.Columns }} {{ .ColumnType }},{{ end }} integer, timestamp, text, timestamp, text) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_upsert(_sysId text,{{ range $colidx, $col := $tbl.Columns }} _{{ .ColumnName }} {{ .ColumnType }},{{ end }} _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
+CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}_upsert(_sysId text,{{ range $colidx, $col := $tbl.Columns }} _{{ .ColumnName }} {{ .ColumnType }},{{ end }} _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
 RETURNS void AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }} (
+INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }} (
 	sys_id,
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }},
@@ -269,9 +269,9 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_insert() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_insert() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_insert()
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_insert()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._entries (
@@ -279,42 +279,42 @@ BEGIN
 		table_name
 	) VALUES (
 		NEW.sys_id,
-		'{{ $tbl.TableName }}_{{ $locale }}'
+		'{{ $tbl.TableName }}__{{ $locale }}'
 	) ON CONFLICT (sys_id) DO NOTHING;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}_insert ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_insert ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}_insert
-    AFTER INSERT ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_insert
+    AFTER INSERT ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_insert();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_insert();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_delete() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_delete() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_delete()
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '{{ $tbl.TableName }}_{{ $locale }}';
+	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '{{ $tbl.TableName }}__{{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}_delete
-	AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_delete
+	AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}_delete();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_delete();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_publish(integer) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}_publish(integer) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}_publish(_aid integer)
+CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}_publish(_aid integer)
 RETURNS integer AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish (
+INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish (
 	sys_id,
 	{{- range $colidx, $col := $tbl.Columns }}
 	{{ .ColumnName }},
@@ -329,7 +329,7 @@ SELECT
 	{{- end }}
 	version,
 	updated_by
-FROM {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
+FROM {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}
 WHERE _id = _aid
 ON CONFLICT (sys_id) DO UPDATE
 SET
@@ -343,7 +343,7 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__history(
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__history(
 	_id serial primary key,
 	pub_id integer not null,
 	sys_id text not null,
@@ -353,12 +353,12 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}
 	created_by text not null
 );
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publish_update() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_update() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publish_update()
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_update()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__history (
+	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__history (
 		pub_id,
 		sys_id,
 		fields,
@@ -375,19 +375,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}__publish_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}__publish_update
-    AFTER UPDATE ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_update
+    AFTER UPDATE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publish_update();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_update();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publish_delete() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_delete() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publish_delete()
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__history (
+	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__history (
 		pub_id,
 		sys_id,
 		fields,
@@ -404,12 +404,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}__publish_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}_{{ $locale }}__publish_delete
-    AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}_{{ $locale }}__publish
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_delete
+    AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}_{{ $locale }}__publish_delete();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_delete();
 --
 {{ end -}}
 COMMIT;

@@ -8,12 +8,17 @@ import (
 )
 
 var (
-	SpaceId  string
+	SpaceID  string
 	CdnToken string
+	CmaToken string
 )
 
 const (
-	apiURL = "cdn.contentful.com"
+	apiURL        = "cdn.contentful.com"
+	cmaURL        = "api.contentful.com"
+	schemaName    = "content"
+	defaultLocale = "en"
+	usePreview    = false
 )
 
 var rootCmd = &cobra.Command{
@@ -22,10 +27,12 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&SpaceId, "space", "s", "", "cf space id (required)")
-	rootCmd.PersistentFlags().StringVarP(&CdnToken, "token", "t", "", "token token (required)")
+	rootCmd.PersistentFlags().StringVarP(&SpaceID, "space", "s", "", "cf space id (required)")
+	rootCmd.PersistentFlags().StringVarP(&CdnToken, "token", "t", "", "cdn token (required)")
+	rootCmd.PersistentFlags().StringVarP(&CmaToken, "cma", "c", "", "cma token (required)")
 	rootCmd.MarkFlagRequired("space")
 	rootCmd.MarkFlagRequired("token")
+	rootCmd.MarkFlagRequired("cma")
 }
 
 func main() {

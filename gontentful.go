@@ -104,6 +104,10 @@ func (c *Client) get(path string, query url.Values) ([]byte, error) {
 	return c.req(http.MethodGet, path, query, nil, host, authToken)
 }
 
+func (c *Client) getCMA(path string, query url.Values) ([]byte, error) {
+	return c.req(http.MethodGet, path, query, nil, c.Options.CmaURL, c.Options.CmaToken)
+}
+
 func (c *Client) post(path string, body io.Reader) ([]byte, error) {
 	return c.req(http.MethodPost, path, nil, body, c.Options.CmaURL, c.Options.CmaToken)
 }

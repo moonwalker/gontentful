@@ -48,3 +48,17 @@ func (s *ContentTypesService) Publish(contentType string, version string) ([]byt
 	s.client.headers[headerContentfulVersion] = version
 	return s.client.put(path, nil)
 }
+
+func (s *ContentTypesService) GetCMATypes() (*ContentTypes, error) {
+	path := fmt.Sprintf(pathContentTypes, s.client.Options.SpaceID)
+	data, err := s.client.getCMA(path, nil)
+	if err != nil {
+		return nil, err
+	}
+	res := &ContentTypes{}
+	err = json.Unmarshal(data, &res)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}

@@ -4,7 +4,6 @@ package gontentful
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"text/template"
 )
@@ -13,6 +12,7 @@ type PGSQLColumn struct {
 	ColumnName string
 	ColumnType string
 	ColumnDesc string
+	Required   bool
 }
 
 type PGSQLData struct {
@@ -28,16 +28,16 @@ type PGSQLData struct {
 }
 
 type PGSQLMeta struct {
-	Name        string
-	Label       string
-	Type        string
-	LinkType    string
-	Items       string
-	Required    bool
-	Localized   bool
-	Disabled    bool
-	Omitted     bool
-	Validations string
+	Name      string
+	Label     string
+	Type      string
+	ItemsType string
+	LinkType  string
+	Required  bool
+	Localized bool
+	Unique    bool
+	Disabled  bool
+	Omitted   bool
 }
 
 type PGSQLTable struct {
@@ -47,22 +47,24 @@ type PGSQLTable struct {
 }
 
 type PGSQLSchema struct {
-	SchemaName string
-	Drop       bool
-	Space      *Space
-	Tables     []*PGSQLTable
+	SchemaName    string
+	Drop          bool
+	Space         *Space
+	Tables        []*PGSQLTable
+	DefaultLocale string
 }
 
 var schemaFuncMap = template.FuncMap{
 	"fmtLocale": fmtLocale,
 }
 
-func NewPGSQLSchema(schemaName string, dropSchema bool, space *Space, items []*ContentType) *PGSQLSchema {
+func NewPGSQLSchema(schemaName string, defaultLocale string, dropSchema bool, space *Space, items []*ContentType) *PGSQLSchema {
 	schema := &PGSQLSchema{
-		SchemaName: schemaName,
-		Drop:       dropSchema,
-		Space:      space,
-		Tables:     make([]*PGSQLTable, 0),
+		SchemaName:    schemaName,
+		Drop:          dropSchema,
+		Space:         space,
+		Tables:        make([]*PGSQLTable, 0),
+		DefaultLocale: defaultLocale,
 	}
 
 	for _, item := range items {
@@ -115,9 +117,10 @@ func NewPGSQLColumn(field *ContentTypeField) *PGSQLColumn {
 
 func (c *PGSQLColumn) getColumnDesc(field *ContentTypeField) {
 	columnDesc := ""
-	if c.isUnique(field.Validations) {
+	if isUnique(field.Validations) {
 		columnDesc += " unique"
 	}
+	c.Required = field.Required && !field.Disabled
 	c.ColumnType = getColumnType(field.Type, field.Items)
 	c.ColumnDesc = columnDesc
 }
@@ -152,13 +155,27 @@ func getColumnType(fieldType string, fieldItems *FieldTypeArrayItem) string {
 	}
 }
 
-func (c *PGSQLColumn) isUnique(validations []*FieldValidation) bool {
+func isUnique(validations []*FieldValidation) bool {
 	for _, v := range validations {
 		if v.Unique {
 			return true
 		}
 	}
 	return false
+}
+
+func getFieldLinkType(linkType string, validations []*FieldValidation) string {
+	if linkType == ASSET {
+		return "asset"
+	}
+	if linkType == ENTRY {
+		for _, v := range validations {
+			if v.LinkContentType != nil {
+				return toSnakeCase(v.LinkContentType[0])
+			}
+		}
+	}
+	return linkType
 }
 
 func makeModelData(item *ContentType) *PGSQLData {
@@ -180,23 +197,23 @@ func makeMeta(field *ContentTypeField) *PGSQLMeta {
 		Name:      toSnakeCase(field.ID),
 		Label:     formatText(field.Name),
 		Type:      field.Type,
-		LinkType:  field.LinkType,
 		Required:  field.Required,
 		Localized: field.Localized,
+		Unique:    isUnique(field.Validations),
 		Disabled:  field.Disabled,
 		Omitted:   field.Omitted,
 	}
-	if field.Items != nil {
-		i, err := json.Marshal(field.Items)
-		if err == nil {
-			meta.Items = formatText(string(i))
+	if field.LinkType != "" {
+		linkType := getFieldLinkType(field.LinkType, field.Validations)
+		if linkType != "" {
+			meta.LinkType = linkType
 		}
 	}
-
-	if field.Validations != nil {
-		v, err := json.Marshal(field.Validations)
-		if err == nil {
-			meta.Validations = formatText(string(v))
+	if field.Items != nil {
+		meta.ItemsType = field.Items.Type
+		linkType := getFieldLinkType(field.Items.LinkType, field.Items.Validations)
+		if linkType != "" {
+			meta.LinkType = linkType
 		}
 	}
 

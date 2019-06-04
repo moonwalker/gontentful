@@ -11,11 +11,11 @@ func fmtLocale(code string) string {
 }
 
 func fmtTableName(contentType string, locale string) string {
-	return fmt.Sprintf("%s_%s", strings.ToLower(contentType), fmtLocale(locale))
+	return fmt.Sprintf("%s__%s", strings.ToLower(contentType), fmtLocale(locale))
 }
 
 func fmtTablePublishName(contentType string, locale string) string {
-	return fmt.Sprintf("%s_%s__publish", strings.ToLower(contentType), fmtLocale(locale))
+	return fmt.Sprintf("%s__%s__publish", strings.ToLower(contentType), fmtLocale(locale))
 }
 
 func getFieldColumns(types []*ContentType, contentType string) []string {

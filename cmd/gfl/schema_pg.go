@@ -30,8 +30,10 @@ var pgSchemaCmd = &cobra.Command{
 
 		client := gontentful.NewClient(&gontentful.ClientOptions{
 			CdnURL:   apiURL,
-			SpaceID:  SpaceId,
+			SpaceID:  SpaceID,
 			CdnToken: CdnToken,
+			CmaURL:   cmaURL,
+			CmaToken: CmaToken,
 		})
 
 		space, err := client.Spaces.GetSpace()
@@ -39,12 +41,12 @@ var pgSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		types, err := client.ContentTypes.GetTypes()
+		types, err := client.ContentTypes.GetCMATypes()
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		schema := gontentful.NewPGSQLSchema(schemaName, dropSchema, space, types.Items)
+		schema := gontentful.NewPGSQLSchema(schemaName, defaultLocale, dropSchema, space, types.Items)
 		str, err := schema.Render()
 		if err != nil {
 			log.Fatal(err)

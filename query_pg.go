@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -52,7 +53,7 @@ SELECT
 --  is_disabled,
 --	is_omitted,
 --	validations
-FROM %s.%s__meta`
+FROM %s.%s___meta`
 
 const queryTemplate = `
 SELECT
@@ -199,15 +200,25 @@ func NewPGQuery(schemaName string, tableName string, locale string, defaultLocal
 	}
 }
 
+var sb strings.Builder
+
+func logQuery(query string) {
+	sb.WriteString(query)
+	sb.WriteString("\n")
+}
+
 func (s *PGQuery) Exec(databaseURL string) ([]map[string]interface{}, int64, error) {
 	db, _ := sql.Open("postgres", databaseURL)
 
-	return s.execute(db, 0, true)
+	items, total, err := s.execute(db, 0, true)
+	d1 := []byte(sb.String())
+	ioutil.WriteFile("/tmp/exec", d1, 0644)
+	return items, total, err
 }
 
 func (s *PGQuery) execute(db *sql.DB, includeLevel int, withTotal bool) ([]map[string]interface{}, int64, error) {
 	// fmt.Println("executing meta query for", s.TableName)
-	// fmt.Println(fmt.Sprintf(metaQueryFormat, s.SchemaName, s.TableName))
+	logQuery(fmt.Sprintf(metaQueryFormat, s.SchemaName, s.TableName))
 	metas, err := db.Query(fmt.Sprintf(metaQueryFormat, s.SchemaName, s.TableName))
 	if err != nil {
 		return nil, 0, err
@@ -227,7 +238,7 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int, withTotal bool) ([]map[s
 	includedEntries := make(map[string]struct{})
 	for metas.Next() {
 		meta := PGSQLMeta{}
-		err := metas.Scan(&meta.Name, &meta.Type, &meta.LinkType, &meta.Items, &meta.Localized)
+		err := metas.Scan(&meta.Name, &meta.Type, &meta.LinkType, &meta.ItemsType, &meta.Localized)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -276,7 +287,7 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int, withTotal bool) ([]map[s
 				return
 			}
 
-			// fmt.Println(buff.String())
+			logQuery(buff.String())
 			res := db.QueryRow(buff.String())
 			if err != nil {
 				cerr = err
@@ -307,7 +318,7 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int, withTotal bool) ([]map[s
 			return
 		}
 
-		// fmt.Println(buff.String())
+		logQuery(buff.String())
 		res, err := db.Query(buff.String())
 		if err != nil {
 			ierr = err
@@ -366,6 +377,7 @@ func (s *PGQuery) execute(db *sql.DB, includeLevel int, withTotal bool) ([]map[s
 }
 
 func (s *PGQuery) getMetaColumns(db *sql.DB, tableName string) (map[string]*PGSQLMeta, error) {
+	logQuery(fmt.Sprintf(metaQueryFormat, s.SchemaName, tableName))
 	metas, err := db.Query(fmt.Sprintf(metaQueryFormat, s.SchemaName, tableName))
 	if err != nil {
 		return nil, err
@@ -374,7 +386,7 @@ func (s *PGQuery) getMetaColumns(db *sql.DB, tableName string) (map[string]*PGSQ
 	columns := make(map[string]*PGSQLMeta)
 	for metas.Next() {
 		meta := PGSQLMeta{}
-		err := metas.Scan(&meta.Name, &meta.Type, &meta.LinkType, &meta.Items, &meta.Localized)
+		err := metas.Scan(&meta.Name, &meta.Type, &meta.LinkType, &meta.ItemsType, &meta.Localized)
 		if err != nil {
 			return nil, err
 		}
@@ -395,7 +407,7 @@ func getMetaLinkType(meta PGSQLMeta) string {
 	case LINK:
 		return meta.LinkType
 	case ARRAY:
-		return meta.Items
+		return meta.ItemsType
 	}
 	return ""
 }
@@ -421,7 +433,7 @@ func convertToType(str string, column *PGSQLMeta) interface{} {
 		str = strings.TrimPrefix(str, "{")
 		str = strings.TrimSuffix(str, "}")
 		vals := strings.Split(str, ",")
-		switch column.Items {
+		switch column.ItemsType {
 		case "Integer":
 			res := make([]int64, 0)
 			for _, v := range vals {
@@ -605,7 +617,7 @@ func fmtValues(values []string, meta *PGSQLMeta, prefix string) string {
 	}
 	colType := meta.Type
 	if colType == "Array" {
-		colType = meta.Items
+		colType = meta.ItemsType
 	}
 	vals := make([]string, 0)
 	for _, v := range values {
@@ -759,7 +771,7 @@ func (s *PGQuery) getAssetsByIDs(db *sql.DB, sysIds []string, localized bool) ([
 		return nil, err
 	}
 
-	// fmt.Println(buff.String())
+	logQuery(buff.String())
 	res, err := db.Query(buff.String())
 	if err != nil {
 		return nil, err
@@ -798,6 +810,7 @@ func (s *PGQuery) getAssetsByIDs(db *sql.DB, sysIds []string, localized bool) ([
 
 func (s *PGQuery) getBySysIDs(db *sql.DB, sysIds []string, includeLevel int) ([]map[string]interface{}, error) {
 	values := sysIdsToString(sysIds)
+	logQuery(fmt.Sprintf(includeQueryFormat, s.SchemaName, values))
 	rows, err := db.Query(fmt.Sprintf(includeQueryFormat, s.SchemaName, values))
 	if err != nil {
 		return nil, err
@@ -834,3 +847,68 @@ func sysIdsToString(sysIds []string) string {
 	}
 	return values
 }
+
+// CREATE OR REPLACE FUNCTION content.__test(tableName text, locale text, defaultLocale text, filters text[], joins text[][])
+// --RETURNS SETOF RECORD AS $$
+// RETURNS SETOF content.market_en__publish AS $$
+// DECLARE
+//     qs text;
+// 	meta record;
+// 	firstFilter boolean := true;
+// 	filter text;
+// 	js text[];
+// BEGIN
+// 	qs := 'SELECT ' || tableName || '_' || defaultLocale || '._id _id, ' || tableName || '_' || defaultLocale || '.sys_id sys_id, ';
+// 	FOR meta IN
+// 		EXECUTE 'SELECT
+// 		name,
+// 		is_localized
+//         FROM content.' || tableName || '___meta' LOOP
+// 		IF meta.is_localized AND locale <> defaultLocale THEN
+// 			qs := 'COALESCE(' || tableName || '_' || locale || '.' || meta.name || ',' || tableName || '_' || defaultLocale || '.' || meta.name || ')';
+// 		ELSE
+// 	    	qs := qs || tableName || '_' || defaultLocale || '.' || meta.name;
+// 		END IF;
+// 	qs := qs || ' as ' || meta.name || ', ';
+//     END LOOP;
+
+// 	qs := qs || tableName || '_' || defaultLocale || '.version, ' ||
+// 		tableName || '_' || defaultLocale || '.published_at, ' ||
+// 		tableName || '_' || defaultLocale || '.published_by ' ||
+// 	 	'FROM content.' || tableName || '_' || defaultLocale || '__publish ' || tableName || '_' || defaultLocale;
+
+// 	IF locale <> defaultLocale THEN
+// 		qs := qs || ' LEFT JOIN content.' || tableName || '_' || locale || '__publish ' || tableName || '_' || locale ||
+// 		' ON ' || tableName || '_' || defaultLocale || '.sys_id = ' || tableName || '_' || locale || '.sys_id';
+// 	END IF;
+
+// 	IF joins IS NOT NULL THEN
+// 		FOREACH js SLICE 1 IN ARRAY joins LOOP
+// 			qs := qs || ' LEFT JOIN content.' || js[2] || '_' || defaultLocale || '__publish ' || js[2] || '_' || defaultLocale  || ' ON ' || tableName || '_' || defaultLocale || '.' || js[1] || ' = ' || js[2] || '_' || defaultLocale || '.sys_id';
+// 			IF locale <> defaultLocale THEN
+// 				qs := qs || ' LEFT JOIN content.' || js[2] || '_' || locale || '__publish ' || js[2] || '_' || locale  || ' ON ' || tableName || '_' || locale || '.' || js[1] || ' = ' || js[2] || '_' || locale || '.sys_id';
+// 			END IF;
+// 		END LOOP;
+// 	END IF;
+
+// 	RAISE NOTICE '%', qs;
+
+// 	IF filters IS NOT NULL THEN
+// 		qs := qs || ' WHERE ';
+// 		FOREACH filter IN ARRAY filters LOOP
+// 			IF firstFilter THEN
+// 				firstFilter:= false;
+// 			ELSE
+// 				qs := qs || ' AND ';
+// 			END IF;
+// 			qs := qs || filter;
+// 		END LOOP;
+// 	END IF;
+
+// 	RAISE NOTICE '%', qs;
+
+// 	RETURN QUERY EXECUTE qs;
+// END;
+// $$ LANGUAGE 'plpgsql';
+
+// SELECT * FROM content.__test('market', 'sv', 'en', ARRAY['market_en.code = ''ROW'''], ARRAY[['locales', 'locale']]);
