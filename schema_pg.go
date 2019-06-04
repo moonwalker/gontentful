@@ -58,7 +58,21 @@ var schemaFuncMap = template.FuncMap{
 	"fmtLocale": fmtLocale,
 }
 
-func NewPGSQLSchema(schemaName string, defaultLocale string, dropSchema bool, space *Space, items []*ContentType) *PGSQLSchema {
+func NewPGSQLSchema(schemaName string, dropSchema bool, space *Space, items []*ContentType) *PGSQLSchema {
+	defaultLocale := ""
+	for _, loc := range space.Locales {
+		if loc.Default {
+			defaultLocale = fmtLocale(loc.Code)
+			break
+		}
+	}
+	if defaultLocale == "" {
+		if len(space.Locales) > 0 {
+			defaultLocale = fmtLocale(space.Locales[0].Code)
+		} else {
+			defaultLocale = "en"
+		}
+	}
 	schema := &PGSQLSchema{
 		SchemaName:    schemaName,
 		Drop:          dropSchema,

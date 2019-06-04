@@ -14,11 +14,10 @@ var (
 )
 
 const (
-	apiURL        = "cdn.contentful.com"
-	cmaURL        = "api.contentful.com"
-	schemaName    = "content"
-	defaultLocale = "en"
-	usePreview    = false
+	apiURL     = "cdn.contentful.com"
+	cmaURL     = "api.contentful.com"
+	schemaName = "content"
+	usePreview = false
 )
 
 var rootCmd = &cobra.Command{
