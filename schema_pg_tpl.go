@@ -6,6 +6,66 @@ DROP SCHEMA IF EXISTS {{ $.SchemaName }} CASCADE;
 {{ end -}}
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
+DROP TYPE IF EXISTS {{ $.SchemaName }}._meta CASCADE;
+CREATE TYPE {{ $.SchemaName }}._meta AS (
+	name TEXT,
+	type TEXT,
+	items_type TEXT,
+	link_type TEXT,
+	is_localized BOOLEAN
+);
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._get_meta(tableName text)
+RETURNS SETOF {{ $.SchemaName }}._meta AS $$
+BEGIN
+	 RETURN QUERY EXECUTE 'SELECT
+		name,
+		type,
+		items_type,
+		link_type,
+		is_localized
+        FROM {{ $.SchemaName }}.' || tableName || '___meta';
+
+END;
+$$ LANGUAGE 'plpgsql';
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_select_query(tableName text, locale text, defaultLocale text, usePreview boolean, count boolean)
+RETURNS text AS $$
+DECLARE
+	qs text;
+	suffix text := '__publish';
+	isFirst boolean := true;
+	meta {{ $.SchemaName }}._meta;
+BEGIN
+	IF usePreview THEN
+		suffix := '';
+	END IF;
+	qs := 'SELECT ';
+	IF count THEN
+		FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
+			IF isFirst THEN
+				isFirst := false;
+			ELSE
+				qs := qs || ', ';
+			END IF;
+			IF meta.is_localized AND locale <> defaultLocale THEN
+				qs := 'COALESCE(' || tableName || '_' || locale || '.' || meta.name || ',' ||
+				tableName || '_' || defaultLocale || '.' || meta.name || ')';
+			ELSE
+				qs := qs || tableName || '_' || defaultLocale || '.' || meta.name;
+			END IF;
+			qs := qs || ' as ' || meta.name;
+		END LOOP;
+	ELSE
+		qs := qs || 'COUNT('|| tableName || '_' || defaultLocale || '.' || 'sys_id) as count';
+	END IF;
+	qs := qs || ' FROM {{ $.SchemaName }}.' || tableName || '_' || defaultLocale || suffix || ' ' || tableName || '_' || defaultLocale;
+	IF locale <> defaultLocale THEN
+		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '_' || locale || '__publish ' || tableName || '_' || locale ||
+		' ON ' || tableName || '_' || defaultLocale || '.sys_id = ' || tableName || '_' || locale || '.sys_id';
+	END IF;
+	RETURN qs;
+END;
+$$ LANGUAGE 'plpgsql';
+--
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._space (
 	_id serial primary key,
 	spaceid text not null unique,
