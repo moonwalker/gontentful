@@ -27,44 +27,138 @@ BEGIN
 
 END;
 $$ LANGUAGE 'plpgsql';
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_select_query(tableName text, locale text, defaultLocale text, usePreview boolean, count boolean)
+--
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._include_join(tableName TEXT, clauses TEXT[], isArray BOOLEAN, locale TEXT, defaultLocale TEXT, suffix TEXT, includeDepth INTEGER)
+RETURNS text AS $$
+DECLARE
+	qs text;
+	isFirst boolean := true;
+	hasLocalized boolean := false;
+	joinedTables {{ $.SchemaName }}._meta[];
+	meta {{ $.SchemaName }}._meta;
+BEGIN
+	qs:= 'json_build_object(';
+
+	FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
+		IF isFirst THEN
+	    	isFirst := false;
+	    ELSE
+	    	qs := qs || ', ';
+	    END IF;
+
+		qs:= qs || '''' || meta.name || '''' || ', ';
+
+		IF meta.link_type <> '' AND includeDepth > 0 THEN
+			qs:= qs || '_included_' || meta.name || '.res';
+			joinedTables:= joinedTables || meta;
+		ELSEIF meta.is_localized AND locale <> defaultLocale THEN
+			hasLocalized:= true;
+			qs:= qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
+				tableName || '__' || defaultLocale || '.' || meta.name || ')';
+		ELSE
+		   	qs:= qs || tableName || '__' || defaultLocale || '.' || meta.name;
+		END IF;
+	END LOOP;
+
+	IF isArray THEN
+		qs:= 'array_agg(' || qs || ')';
+	END IF;
+
+	qs:= qs || ') AS res FROM {{ $.SchemaName }}.' || tableName || '__' || defaultLocale || suffix || ' ' || tableName || '__' || defaultLocale;
+
+	IF hasLocalized THEN
+		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '__' || locale || suffix || ' ' || tableName || '__' || locale ||
+		' ON ' || tableName || '__' || defaultLocale || '.sys_id = ' || tableName || '__' || locale || '.sys_id';
+	END IF;
+
+	IF joinedTables IS NOT NULL THEN
+		FOREACH meta IN ARRAY joinedTables LOOP
+			RAISE NOTICE '%', meta;
+			qs := qs || ' LEFT JOIN LATERAL (' ||
+			{{ $.SchemaName }}._include_join(meta.link_type, NULL, meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1)
+			 || ') AS _included_' || meta.name || ' ON true';
+		END LOOP;
+	END IF;
+
+	RETURN 'SELECT ' || qs;
+END;
+$$ LANGUAGE 'plpgsql';
+--
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters TEXT[], comparers TEXT[], filterValues TEXT[], includeDepth INTEGER, usePreview BOOLEAN, count BOOLEAN)
 RETURNS text AS $$
 DECLARE
 	qs text;
 	suffix text := '__publish';
 	isFirst boolean := true;
+	hasLocalized boolean:= false;
+	joinedTables {{ $.SchemaName }}._meta[];
 	meta {{ $.SchemaName }}._meta;
+	idx integer;
+	clauses text[][];
+	jt text;
+	fkey text;
 BEGIN
 	IF usePreview THEN
 		suffix := '';
 	END IF;
+
 	qs := 'SELECT ';
 	IF count THEN
-		FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
-			IF isFirst THEN
-				isFirst := false;
-			ELSE
-				qs := qs || ', ';
-			END IF;
-			IF meta.is_localized AND locale <> defaultLocale THEN
-				qs := 'COALESCE(' || tableName || '_' || locale || '.' || meta.name || ',' ||
-				tableName || '_' || defaultLocale || '.' || meta.name || ')';
-			ELSE
-				qs := qs || tableName || '_' || defaultLocale || '.' || meta.name;
-			END IF;
-			qs := qs || ' as ' || meta.name;
-		END LOOP;
+		qs := qs || 'COUNT('|| tableName || '__' || defaultLocale || '.' || 'sys_id) as count';
 	ELSE
-		qs := qs || 'COUNT('|| tableName || '_' || defaultLocale || '.' || 'sys_id) as count';
+
+		FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
+		    IF isFirst THEN
+		    	isFirst := false;
+		    ELSE
+		    	qs := qs || ', ';
+		    END IF;
+
+			-- joins
+			IF meta.link_type <> '' AND includeDepth > 0 THEN
+				qs:= qs || '_included_' || meta.name || '.res';
+				joinedTables:= joinedTables || meta;
+			ELSEIF meta.is_localized AND locale <> defaultLocale THEN
+				hasLocalized:= true;
+				qs:= qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
+				tableName || '__' || defaultLocale || '.' || meta.name || ')';
+			ELSE
+		    	qs:= qs || tableName || '__' || defaultLocale || '.' || meta.name;
+			END IF;
+
+			-- filters
+			IF filters IS NOT NULL THEN
+				idx:= array_position(filters, meta.name);
+				IF idx IS NOT NULL THEN
+					clauses:= clauses || ARRAY[meta.name, comparers[idx], filterValues[idx]];
+				END IF;
+			END IF;
+
+			qs := qs || ' as ' || meta.name;
+
+		END LOOP;
+
 	END IF;
-	qs := qs || ' FROM {{ $.SchemaName }}.' || tableName || '_' || defaultLocale || suffix || ' ' || tableName || '_' || defaultLocale;
-	IF locale <> defaultLocale THEN
-		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '_' || locale || '__publish ' || tableName || '_' || locale ||
-		' ON ' || tableName || '_' || defaultLocale || '.sys_id = ' || tableName || '_' || locale || '.sys_id';
+
+	qs := qs || ' FROM {{ $.SchemaName }}.' || tableName || '__' || defaultLocale || suffix || ' ' || tableName || '__' || defaultLocale;
+
+	IF hasLocalized THEN
+		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '__' || locale || suffix || ' ' || tableName || '__' || locale ||
+		' ON ' || tableName || '__' || defaultLocale || '.sys_id = ' || tableName || '__' || locale || '.sys_id';
 	END IF;
+
+	IF joinedTables IS NOT NULL THEN
+		FOREACH meta SLICE 1 IN ARRAY joinedTables LOOP
+			qs := qs || ' LEFT JOIN LATERAL (' ||
+			{{ $.SchemaName }}._include_join(meta.link_type, NULL, meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1)
+			|| ') AS _included_' || meta.name || ' ON true';
+		END LOOP;
+	END IF;
+
 	RETURN qs;
 END;
 $$ LANGUAGE 'plpgsql';
+
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._space (
 	_id serial primary key,
@@ -735,7 +829,7 @@ BEGIN
 		EXECUTE 'SELECT
 		name,
 		is_localized
-        FROM content.' || tableName || '___meta' LOOP
+        FROM {{ $.SchemaName }}.' || tableName || '___meta' LOOP
 
 	    IF isFirst THEN
 	    	isFirst := false;
@@ -753,10 +847,10 @@ BEGIN
 		qs := qs || ' as ' || meta.name;
     END LOOP;
 
-	qs := qs || ' FROM content.' || tableName || '_' || defaultLocale || suffix || ' ' || tableName || '_' || defaultLocale;
+	qs := qs || ' FROM {{ $.SchemaName }}.' || tableName || '_' || defaultLocale || suffix || ' ' || tableName || '_' || defaultLocale;
 
 	IF locale <> defaultLocale THEN
-		qs := qs || ' LEFT JOIN content.' || tableName || '_' || locale || '__publish ' || tableName || '_' || locale ||
+		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '_' || locale || '__publish ' || tableName || '_' || locale ||
 		' ON ' || tableName || '_' || defaultLocale || '.sys_id = ' || tableName || '_' || locale || '.sys_id';
 	END IF;
 
