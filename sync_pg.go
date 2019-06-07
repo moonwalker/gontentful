@@ -78,7 +78,7 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry, in
 			appendToEntries(baseName, item.Sys.ID, !initSync)
 			break
 		case ASSET:
-			baseName := "_assets"
+			baseName := assetTableName
 			appendTables(schema.Tables, item, baseName, assetColumns, !initSync)
 			// append to "global" entries table
 			appendToEntries(baseName, item.Sys.ID, !initSync)

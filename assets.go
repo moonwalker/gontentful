@@ -10,6 +10,11 @@ const (
 	DELETED_ASSET = "DeletedAsset"
 )
 
+var (
+	assetColumns   = []string{"title", "description", "file_name", "content_type", "url"}
+	assetTableName = "_asset"
+)
+
 type AssetsService service
 
 func (s *AssetsService) Create(body []byte) ([]byte, error) {

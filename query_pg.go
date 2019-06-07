@@ -22,16 +22,16 @@ SELECT
 {{- range $colName, $field := $.SelectedFields -}}
 {{- if $first }}{{ $first = false }}{{ else }},{{ end }}
 {{ if and .Localized (ne $.Locale $.DefaultLocale) }}
-COALESCE(_assets_{{ $.Locale }}.{{ .Name }},_assets_{{ $.DefaultLocale }}.{{ .Name }}) as {{ .Name }}
+COALESCE(_asset__{{ $.Locale }}.{{ .Name }},_asset__{{ $.DefaultLocale }}.{{ .Name }}) as {{ .Name }}
 {{- else -}}
-_assets_{{ $.DefaultLocale }}.{{ .Name }} as {{ .Name }}
+_asset__{{ $.DefaultLocale }}.{{ .Name }} as {{ .Name }}
 {{- end -}}
 {{- end }}
-FROM {{ $.SchemaName }}._assets_{{ $.DefaultLocale }}{{ $.Suffix }} _assets_{{ $.DefaultLocale }}
+FROM {{ $.SchemaName }}._asset__{{ $.DefaultLocale }}{{ $.Suffix }} _asset__{{ $.DefaultLocale }}
 {{- if ne $.Locale $.DefaultLocale }}
-LEFT JOIN {{ $.SchemaName }}._assets_{{ $.Locale }}{{ $.Suffix }} _assets_{{ $.Locale }} ON _assets_{{ $.DefaultLocale }}.sys_id = _assets_{{ $.Locale }}.sys_id
+LEFT JOIN {{ $.SchemaName }}._asset__{{ $.Locale }}{{ $.Suffix }} _asset__{{ $.Locale }} ON _asset__{{ $.DefaultLocale }}.sys_id = _asset__{{ $.Locale }}.sys_id
 {{- end }}
-WHERE _assets_{{ $.DefaultLocale }}.sys_id = ANY(ARRAY[{{ index $.Fields 0 }}])
+WHERE _asset__{{ $.DefaultLocale }}.sys_id = ANY(ARRAY[{{ index $.Fields 0 }}])
 LIMIT 1`
 
 const includeQueryFormat = `
@@ -97,7 +97,6 @@ var (
 	comparerRegex      = regexp.MustCompile(`[^[]+\[([^]]+)+]`)
 	joinedContentRegex = regexp.MustCompile(`(?:fields.)?([^.]+)\.sys\.contentType\.sys\.id`)
 	foreignKeyRegex    = regexp.MustCompile(`([^.]+)\.(?:fields.)?(.+)`)
-	assetColumns       = []string{"title", "description", "file_name", "content_type", "url"}
 )
 
 const (

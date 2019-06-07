@@ -14,6 +14,12 @@ CREATE TYPE {{ $.SchemaName }}._meta AS (
 	link_type TEXT,
 	is_localized BOOLEAN
 );
+DROP TYPE IF EXISTS {{ $.SchemaName }}._result CASCADE;
+CREATE TYPE {{ $.SchemaName }}._result AS (
+	count INTEGER,
+	items JSON
+);
+--
 CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._get_meta(tableName text)
 RETURNS SETOF {{ $.SchemaName }}._meta AS $$
 BEGIN
@@ -28,7 +34,115 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._include_join(tableName TEXT, clauses TEXT[], isArray BOOLEAN, locale TEXT, defaultLocale TEXT, suffix TEXT, includeDepth INTEGER)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_value(val text, isText boolean, isWildcard boolean)
+RETURNS text AS $$
+BEGIN
+	IF isText THEN
+		IF isWildcard THEN
+			RETURN '''%' || val || '%''';
+		END IF;
+		RETURN '''' || val || '''';
+	END IF;
+	RETURN val;
+END;
+$$ LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_comparer(comparer text, fmtVal text, isArray boolean, isText boolean)
+RETURNS text AS $$
+DECLARE
+	comp text;
+BEGIN
+	IF comparer = '' THEN
+		comp:= ' = ';
+	ELSEIF  comparer = 'ne' THEN
+		comp:= ' <> ';
+	ELSEIF  comparer = 'exists' THEN
+		comp:= ' <> NULL';
+	ELSEIF  comparer = 'lt' THEN
+		comp:= ' < ';
+	ELSEIF  comparer = 'lte' THEN
+		comp:= ' <= ';
+	ELSEIF  comparer = 'gt' THEN
+		comp:= ' > ';
+	ELSEIF  comparer = 'gte' THEN
+		comp:= ' >= ';
+	ELSEIF isText AND comparer = 'match' THEN
+		comp:= ' LIKE ';
+	ELSEIF isArray THEN
+		IF comparer = 'in' THEN
+			comp:= ' = ';
+		ELSEIF comparer = 'nin' THEN
+			comp:= ' <> ';
+		END IF;
+	ELSE
+		RETURN '';
+	END IF;
+
+	IF isArray THEN
+		RETURN 	comp || 'ANY(' || fmtVal || ')';
+	END IF;
+
+	RETURN comp || fmtVal;
+END;
+$$ LANGUAGE 'plpgsql';
+
+
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }}._meta, comparer text, filterValues text[])
+RETURNS text AS $$
+DECLARE
+	colType text;
+	isArray boolean:= false;
+	fmtVal text:= '';
+	isText boolean:= false;
+	isFirst boolean:= true;
+	isWildcard boolean;
+	val text;
+	fmtComp text;
+BEGIN
+	IF meta IS NULL THEN -- sys_id
+		colType:= 'Link';
+	ELSEIF meta.items_type <> '' THEN
+		colType:= meta.items_type;
+		isArray:= true;
+	ELSE
+		colType:= meta.type;
+	END IF;
+
+	IF colType ='Symbol' OR colType='Text' OR colType ='Date' OR colType ='Link' THEN
+		isText:= true;
+	END IF;
+
+	IF comparer == 'match' THEN
+		isWildcard:= true;
+	END IF;
+
+	IF isArray THEN
+		FOREACH val IN ARRAY vals LOOP
+			IF isFirst THEN
+		    	isFirst := false;
+		    ELSE
+		    	fmtVal := fmtVal || ',';
+		    END IF;
+			fmtVal:= fmtVal || {{ $.SchemaName }}._fmt_value(val, isText, isWildcard);
+		END LOOP;
+		RETURN {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']', isArray, isText);
+	END IF;
+
+	FOREACH val IN ARRAY vals LOOP
+		fmtComp:= {{ $.SchemaName }}._fmt_comparer(comparer, {{ $.SchemaName }}._fmt_value(val, isText, isWildcard), isArray, isText);
+		IF fmtComp <> '' THEN
+			IF fmtVal <> '' THEN
+	    		fmtVal := fmtVal || ' OR ';
+			END IF;
+			fmtVal := fmtVal || fmtComp;
+	    END IF;
+	END LOOP;
+
+	RETURN fmtVal;
+END;
+$$ LANGUAGE 'plpgsql';
+--
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._include_join(tableName TEXT, criteria TEXT, isArray BOOLEAN, locale TEXT, defaultLocale TEXT, suffix TEXT, includeDepth INTEGER)
 RETURNS text AS $$
 DECLARE
 	qs text;
@@ -36,8 +150,10 @@ DECLARE
 	hasLocalized boolean := false;
 	joinedTables {{ $.SchemaName }}._meta[];
 	meta {{ $.SchemaName }}._meta;
+	c text;
+	f text;
 BEGIN
-	qs:= 'json_build_object(';
+	qs := 'json_build_object(';
 
 	FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
 		IF isFirst THEN
@@ -46,25 +162,26 @@ BEGIN
 	    	qs := qs || ', ';
 	    END IF;
 
-		qs:= qs || '''' || meta.name || '''' || ', ';
+		qs := qs || '''' || meta.name || '''' || ', ';
+
 
 		IF meta.link_type <> '' AND includeDepth > 0 THEN
-			qs:= qs || '_included_' || meta.name || '.res';
+			qs := qs || '_included_' || meta.name || '.res';
 			joinedTables:= joinedTables || meta;
 		ELSEIF meta.is_localized AND locale <> defaultLocale THEN
 			hasLocalized:= true;
-			qs:= qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
+			qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
 				tableName || '__' || defaultLocale || '.' || meta.name || ')';
 		ELSE
-		   	qs:= qs || tableName || '__' || defaultLocale || '.' || meta.name;
+		   	qs := qs || tableName || '__' || defaultLocale || '.' || meta.name;
 		END IF;
 	END LOOP;
 
 	IF isArray THEN
-		qs:= 'array_agg(' || qs || ')';
+		qs := 'array_agg(' || qs || ')';
 	END IF;
 
-	qs:= qs || ') AS res FROM {{ $.SchemaName }}.' || tableName || '__' || defaultLocale || suffix || ' ' || tableName || '__' || defaultLocale;
+	qs := qs || ') AS res FROM {{ $.SchemaName }}.' || tableName || '__' || defaultLocale || suffix || ' ' || tableName || '__' || defaultLocale;
 
 	IF hasLocalized THEN
 		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '__' || locale || suffix || ' ' || tableName || '__' || locale ||
@@ -73,18 +190,36 @@ BEGIN
 
 	IF joinedTables IS NOT NULL THEN
 		FOREACH meta IN ARRAY joinedTables LOOP
-			RAISE NOTICE '%', meta;
+			c:= meta.link_type || '__' || defaultLocale || '.sys_id = ';
+			IF meta.is_localized AND locale <> defaultLocale THEN
+				f := 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
+				tableName || '__' || defaultLocale || '.' || meta.name || ')';
+			ELSE
+				f := tableName || '__' || defaultLocale || '.' || meta.name;
+			END IF;
+
+			IF meta.items_type <> '' THEN
+				f := 'ANY(' || f || ')';
+			END IF;
+
+			c := c || f;
+
 			qs := qs || ' LEFT JOIN LATERAL (' ||
-			{{ $.SchemaName }}._include_join(meta.link_type, NULL, meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1)
+			{{ $.SchemaName }}._include_join(meta.link_type, c, meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1)
 			 || ') AS _included_' || meta.name || ' ON true';
 		END LOOP;
+	END IF;
+
+	IF criteria <> '' THEN
+		-- where
+		qs := qs || ' WHERE '|| criteria;
 	END IF;
 
 	RETURN 'SELECT ' || qs;
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters TEXT[], comparers TEXT[], filterValues TEXT[], includeDepth INTEGER, usePreview BOOLEAN, count BOOLEAN)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters TEXT[], comparers TEXT[], filterValues TEXT[][], includeDepth INTEGER, usePreview BOOLEAN, count BOOLEAN)
 RETURNS text AS $$
 DECLARE
 	qs text;
@@ -94,7 +229,9 @@ DECLARE
 	joinedTables {{ $.SchemaName }}._meta[];
 	meta {{ $.SchemaName }}._meta;
 	idx integer;
-	clauses text[][];
+	clauses text[];
+	clause text;
+	crit text;
 	jt text;
 	fkey text;
 BEGIN
@@ -104,8 +241,18 @@ BEGIN
 
 	qs := 'SELECT ';
 	IF count THEN
-		qs := qs || 'COUNT('|| tableName || '__' || defaultLocale || '.' || 'sys_id) as count';
+		qs := qs || 'COUNT('|| tableName || '__' || defaultLocale || '.sys_id) as count';
 	ELSE
+		qs:= qs || tableName || '__' || defaultLocale || '.sys_id  as sys_id';
+		IF filters IS NOT NULL THEN
+			idx:= array_position(filters, 'sys_id');
+			IF idx IS NOT NULL THEN
+				clause:= {{ $.SchemaName }}._fmt_clause(NULL, comparers[idx], filterValues[idx]);
+				IF clause <> '' THEN
+					clauses:= clauses || clause;
+				END IF;
+			END IF;
+		END IF;
 
 		FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
 		    IF isFirst THEN
@@ -130,7 +277,7 @@ BEGIN
 			IF filters IS NOT NULL THEN
 				idx:= array_position(filters, meta.name);
 				IF idx IS NOT NULL THEN
-					clauses:= clauses || ARRAY[meta.name, comparers[idx], filterValues[idx]];
+					clauses:= clauses || {{ $.SchemaName }}._fmt_clause(meta, comparers[idx], filterValues[idx]);
 				END IF;
 			END IF;
 
@@ -155,10 +302,38 @@ BEGIN
 		END LOOP;
 	END IF;
 
+	IF clauses IS NOT NULL THEN
+		-- where
+		qs := qs || ' WHERE (';
+		isFirst:= true;
+		FOREACH crit IN ARRAY clauses LOOP
+			IF isFirst THEN
+		    	isFirst := false;
+		    ELSE
+		    	qs := qs || ') AND (';
+		    END IF;
+			qs := qs || crit;
+		END LOOP;
+		qs := qs || ')';
+	END IF;
+
 	RETURN qs;
 END;
 $$ LANGUAGE 'plpgsql';
+--
 
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._run_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters TEXT[], comparers TEXT[], filterValues TEXT[][], includeDepth INTEGER, usePreview BOOLEAN)
+RETURNS {{ $.SchemaName }}._result AS $$
+DECLARE
+	count integer;
+	items json;
+	res {{ $.SchemaName }}._result;
+BEGIN
+	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, comparers, filterValues, includeDepth, usePreview, true) INTO count;
+	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, comparers, filterValues, includeDepth, usePreview, true) INTO 	items;
+	RETURN ROW(count, items)::{{ $.SchemaName }}._result;
+END;
+$$ LANGUAGE 'plpgsql';
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._space (
 	_id serial primary key,
@@ -270,7 +445,44 @@ SET
 	updated_by = EXCLUDED.updated_by
 ;
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets__{{ $locale }} (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset___meta (
+	_id serial primary key,
+	name text not null unique,
+	label text not null,
+	type text not null,
+	items_type text,
+	link_type text,
+	is_localized boolean default false,
+	is_required boolean default false,
+	is_unique boolean default false,
+	is_disabled boolean default false,
+	is_omitted boolean default false,
+	created_at timestamp without time zone not null default now(),
+	created_by text not null,
+	updated_at timestamp without time zone not null default now(),
+	updated_by text not null
+);
+--
+CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._asset___meta(name);
+--
+{{ range $aidx, $col := $.AssetColumns }}
+INSERT INTO {{ $.SchemaName }}._asset___meta (
+	name,
+	label,
+	type,
+	created_by,
+	updated_by
+) VALUES (
+	'{{ $col }}',
+	'{{ $col }}',
+	'Text',
+	'system',
+	'system'
+)
+ON CONFLICT (name) DO NOTHING;
+{{- end -}}
+--
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset__{{ $locale }} (
 	_id serial primary key,
 	sys_id text not null unique,
 	title text not null,
@@ -285,9 +497,9 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets__{{ $locale }} (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}._assets__{{ $locale }}(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}._asset__{{ $locale }}(sys_id);
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets__{{ $locale }}__publish (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset__{{ $locale }}__publish (
 	_id serial primary key,
 	sys_id text not null unique,
 	title text not null,
@@ -300,14 +512,14 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets__{{ $locale }}__publish (
 	published_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}._assets__{{ $locale }}__publish(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}._asset__{{ $locale }}__publish(sys_id);
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets__{{ $locale }}_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.asset__{{ $locale }}_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.assets__{{ $locale }}_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
+CREATE FUNCTION {{ $.SchemaName }}.asset__{{ $locale }}_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
 RETURNS void AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}._assets__{{ $locale }} (
+INSERT INTO {{ $.SchemaName }}._asset__{{ $locale }} (
 	sys_id,
 	title,
 	description,
@@ -346,9 +558,9 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets__{{ $locale }}_insert() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__asset__{{ $locale }}_insert() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__assets__{{ $locale }}_insert()
+CREATE FUNCTION {{ $.SchemaName }}.on__asset__{{ $locale }}_insert()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._entries (
@@ -356,42 +568,42 @@ BEGIN
 		table_name
 	) VALUES (
 		NEW.sys_id,
-		'_assets__{{ $locale }}'
+		'_asset__{{ $locale }}'
 	) ON CONFLICT (sys_id) DO NOTHING;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets__{{ $locale }}_insert ON {{ $.SchemaName }}._assets__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_insert ON {{ $.SchemaName }}._asset__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}__assets__{{ $locale }}_insert
-	AFTER INSERT ON {{ $.SchemaName }}._assets__{{ $locale }}
+CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}_insert
+	AFTER INSERT ON {{ $.SchemaName }}._asset__{{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets__{{ $locale }}_insert();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}_insert();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets__{{ $locale }}_delete() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__asset__{{ $locale }}_delete() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__assets__{{ $locale }}_delete()
+CREATE FUNCTION {{ $.SchemaName }}.on__asset__{{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '_assets__{{ $locale }}';
+	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '_asset__{{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets__{{ $locale }}_delete ON {{ $.SchemaName }}._assets__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_delete ON {{ $.SchemaName }}._asset__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}__assets__{{ $locale }}_delete
-	AFTER DELETE ON {{ $.SchemaName }}._assets__{{ $locale }}
+CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}_delete
+	AFTER DELETE ON {{ $.SchemaName }}._asset__{{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets__{{ $locale }}_delete();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}_delete();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets__{{ $locale }}_publish(integer) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.asset__{{ $locale }}_publish(integer) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.assets__{{ $locale }}_publish(_aid integer)
+CREATE FUNCTION {{ $.SchemaName }}.asset__{{ $locale }}_publish(_aid integer)
 RETURNS void AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}._assets__{{ $locale }}__publish (
+INSERT INTO {{ $.SchemaName }}._asset__{{ $locale }}__publish (
 	sys_id,
 	title,
 	description,
@@ -410,7 +622,7 @@ SELECT
 	url,
 	version,
 	updated_by
-FROM {{ $.SchemaName }}._assets__{{ $locale }}
+FROM {{ $.SchemaName }}._asset__{{ $locale }}
 WHERE _id = _aid
 ON CONFLICT (sys_id) DO UPDATE
 SET
@@ -426,7 +638,7 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets__{{ $locale }}__history(
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset__{{ $locale }}__history(
 	_id serial primary key,
 	pub_id integer not null,
 	sys_id text not null,
@@ -436,12 +648,12 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets__{{ $locale }}__history(
 	created_by text not null
 );
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets__{{ $locale }}__publish_update() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__asset__{{ $locale }}__publish_update() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__assets__{{ $locale }}__publish_update()
+CREATE FUNCTION {{ $.SchemaName }}.on__asset__{{ $locale }}__publish_update()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}._assets__{{ $locale }}__history (
+	INSERT INTO {{ $.SchemaName }}._asset__{{ $locale }}__history (
 		pub_id,
 		sys_id,
 		fields,
@@ -458,12 +670,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets__{{ $locale }}_update ON {{ $.SchemaName }}._assets__{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_update ON {{ $.SchemaName }}._asset__{{ $locale }}__publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}__assets__{{ $locale }}__publish_update
-    AFTER UPDATE ON {{ $.SchemaName }}._assets__{{ $locale }}__publish
+CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}__publish_update
+    AFTER UPDATE ON {{ $.SchemaName }}._asset__{{ $locale }}__publish
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets__{{ $locale }}__publish_update();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}__publish_update();
 --
 {{ end -}}
 COMMIT;

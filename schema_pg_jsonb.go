@@ -202,7 +202,7 @@ type PGJSONBSchema struct {
 func NewPGJSONBSchema(schemaName string, items []*ContentType) *PGJSONBSchema {
 	schema := &PGJSONBSchema{
 		SchemaName:      schemaName,
-		AssetTableName:  "_assets",
+		AssetTableName:  assetTableName,
 		ModelsTableName: "_models",
 		Tables:          make([]*PGJSONBModelTable, 0),
 	}

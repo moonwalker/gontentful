@@ -52,6 +52,7 @@ type PGSQLSchema struct {
 	Space         *Space
 	Tables        []*PGSQLTable
 	DefaultLocale string
+	AssetColumns  []string
 }
 
 var schemaFuncMap = template.FuncMap{
@@ -79,6 +80,7 @@ func NewPGSQLSchema(schemaName string, dropSchema bool, space *Space, items []*C
 		Space:         space,
 		Tables:        make([]*PGSQLTable, 0),
 		DefaultLocale: defaultLocale,
+		AssetColumns:  assetColumns,
 	}
 
 	for _, item := range items {
@@ -180,7 +182,7 @@ func isUnique(validations []*FieldValidation) bool {
 
 func getFieldLinkType(linkType string, validations []*FieldValidation) string {
 	if linkType == ASSET {
-		return "asset"
+		return assetTableName
 	}
 	if linkType == ENTRY {
 		for _, v := range validations {

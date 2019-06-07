@@ -33,12 +33,12 @@ CREATE TRIGGER {{ $.SchemaName }}__models_update
 --
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets__{{ $locale }}_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.asset__{{ $locale }}_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.assets__{{ $locale }}_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
+CREATE FUNCTION {{ $.SchemaName }}.asset__{{ $locale }}_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
 RETURNS void AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}._assets__{{ $locale }} (
+INSERT INTO {{ $.SchemaName }}._asset__{{ $locale }} (
 	sys_id,
 	title,
 	description,
@@ -77,9 +77,9 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets__{{ $locale }}_insert() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__asset__{{ $locale }}_insert() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__assets__{{ $locale }}_insert()
+CREATE FUNCTION {{ $.SchemaName }}.on__asset__{{ $locale }}_insert()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._entries (
@@ -87,43 +87,43 @@ BEGIN
 		table_name
 	) VALUES (
 		NEW.sys_id,
-		'_assets__{{ $locale }}'
+		'_asset__{{ $locale }}'
 	) ON CONFLICT (sys_id) DO NOTHING;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets__{{ $locale }}_insert ON {{ $.SchemaName }}._assets__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_insert ON {{ $.SchemaName }}._asset__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}__assets__{{ $locale }}_insert
-	AFTER INSERT ON {{ $.SchemaName }}._assets__{{ $locale }}
+CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}_insert
+	AFTER INSERT ON {{ $.SchemaName }}._asset__{{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets__{{ $locale }}_insert();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}_insert();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets__{{ $locale }}_delete() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__asset__{{ $locale }}_delete() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__assets__{{ $locale }}_delete()
+CREATE FUNCTION {{ $.SchemaName }}.on__asset__{{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '_assets__{{ $locale }}';
+	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '_asset__{{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets__{{ $locale }}_delete ON {{ $.SchemaName }}._assets__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_delete ON {{ $.SchemaName }}._asset__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}__assets__{{ $locale }}_delete
-	AFTER DELETE ON {{ $.SchemaName }}._assets__{{ $locale }}
+CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}_delete
+	AFTER DELETE ON {{ $.SchemaName }}._asset__{{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets__{{ $locale }}_delete();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}_delete();
 --
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.assets__{{ $locale }}_publish(integer) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.asset__{{ $locale }}_publish(integer) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.assets__{{ $locale }}_publish(_aid integer)
+CREATE FUNCTION {{ $.SchemaName }}.asset__{{ $locale }}_publish(_aid integer)
 RETURNS void AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}._assets__{{ $locale }}__publish (
+INSERT INTO {{ $.SchemaName }}._asset__{{ $locale }}__publish (
 	sys_id,
 	title,
 	description,
@@ -142,7 +142,7 @@ SELECT
 	url,
 	version,
 	updated_by
-FROM {{ $.SchemaName }}._assets__{{ $locale }}
+FROM {{ $.SchemaName }}._asset__{{ $locale }}
 WHERE _id = _aid
 ON CONFLICT (sys_id) DO UPDATE
 SET
@@ -158,7 +158,7 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets__{{ $locale }}__history(
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset__{{ $locale }}__history(
 	_id serial primary key,
 	pub_id integer not null,
 	sys_id text not null,
@@ -168,12 +168,12 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._assets__{{ $locale }}__history(
 	created_by text not null
 );
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__assets__{{ $locale }}__publish_update() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__asset__{{ $locale }}__publish_update() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__assets__{{ $locale }}__publish_update()
+CREATE FUNCTION {{ $.SchemaName }}.on__asset__{{ $locale }}__publish_update()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}._assets__{{ $locale }}__history (
+	INSERT INTO {{ $.SchemaName }}._asset__{{ $locale }}__history (
 		pub_id,
 		sys_id,
 		fields,
@@ -190,12 +190,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__assets__{{ $locale }}_update ON {{ $.SchemaName }}._assets__{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_update ON {{ $.SchemaName }}._asset__{{ $locale }}__publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}__assets__{{ $locale }}__publish_update
-    AFTER UPDATE ON {{ $.SchemaName }}._assets__{{ $locale }}__publish
+CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}__publish_update
+    AFTER UPDATE ON {{ $.SchemaName }}._asset__{{ $locale }}__publish
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__assets__{{ $locale }}__publish_update();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}__publish_update();
 --
 {{ end -}}
 COMMIT;
