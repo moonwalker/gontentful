@@ -57,7 +57,7 @@ BEGIN
 	ELSEIF  comparer = 'ne' THEN
 		comp:= ' <> ';
 	ELSEIF  comparer = 'exists' THEN
-		comp:= ' <> NULL';
+		RETURN ' <> NULL';
 	ELSEIF  comparer = 'lt' THEN
 		comp:= ' < ';
 	ELSEIF  comparer = 'lte' THEN
@@ -85,9 +85,8 @@ BEGIN
 	RETURN comp || fmtVal;
 END;
 $$ LANGUAGE 'plpgsql';
-
-
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }}._meta, comparer text, filterValues text[])
+--
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }}._meta, comparer text, filterValues text)
 RETURNS text AS $$
 DECLARE
 	colType text;
@@ -112,12 +111,12 @@ BEGIN
 		isText:= true;
 	END IF;
 
-	IF comparer == 'match' THEN
+	IF comparer = 'match' THEN
 		isWildcard:= true;
 	END IF;
 
 	IF isArray THEN
-		FOREACH val IN ARRAY vals LOOP
+		FOREACH val IN ARRAY string_to_array(filterValues, ',') LOOP
 			IF isFirst THEN
 		    	isFirst := false;
 		    ELSE
@@ -125,20 +124,41 @@ BEGIN
 		    END IF;
 			fmtVal:= fmtVal || {{ $.SchemaName }}._fmt_value(val, isText, isWildcard);
 		END LOOP;
-		RETURN {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']', isArray, isText);
+		RETURN meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']', isArray, isText);
 	END IF;
 
-	FOREACH val IN ARRAY vals LOOP
+	FOREACH val IN ARRAY string_to_array(filterValues, ',') LOOP
 		fmtComp:= {{ $.SchemaName }}._fmt_comparer(comparer, {{ $.SchemaName }}._fmt_value(val, isText, isWildcard), isArray, isText);
 		IF fmtComp <> '' THEN
 			IF fmtVal <> '' THEN
 	    		fmtVal := fmtVal || ' OR ';
 			END IF;
-			fmtVal := fmtVal || fmtComp;
+			fmtVal := fmtVal || meta.name || fmtComp;
 	    END IF;
 	END LOOP;
-
 	RETURN fmtVal;
+END;
+$$ LANGUAGE 'plpgsql';
+--
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._build_critertia(tableName text, meta {{ $.SchemaName }}._meta, defaultLocale text, locale text)
+RETURNS text AS $$
+DECLARE
+	c text;
+	f text;
+BEGIN
+	c:= meta.link_type || '__' || defaultLocale || '.sys_id = ';
+	IF meta.is_localized AND locale <> defaultLocale THEN
+		f := 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
+		tableName || '__' || defaultLocale || '.' || meta.name || ')';
+	ELSE
+		f := tableName || '__' || defaultLocale || '.' || meta.name;
+	END IF;
+
+	IF meta.items_type <> '' THEN
+		f := 'ANY(' || f || ')';
+	END IF;
+
+	RETURN c || f;
 END;
 $$ LANGUAGE 'plpgsql';
 --
@@ -150,8 +170,7 @@ DECLARE
 	hasLocalized boolean := false;
 	joinedTables {{ $.SchemaName }}._meta[];
 	meta {{ $.SchemaName }}._meta;
-	c text;
-	f text;
+	crit text;
 BEGIN
 	qs := 'json_build_object(';
 
@@ -163,7 +182,6 @@ BEGIN
 	    END IF;
 
 		qs := qs || '''' || meta.name || '''' || ', ';
-
 
 		IF meta.link_type <> '' AND includeDepth > 0 THEN
 			qs := qs || '_included_' || meta.name || '.res';
@@ -190,22 +208,9 @@ BEGIN
 
 	IF joinedTables IS NOT NULL THEN
 		FOREACH meta IN ARRAY joinedTables LOOP
-			c:= meta.link_type || '__' || defaultLocale || '.sys_id = ';
-			IF meta.is_localized AND locale <> defaultLocale THEN
-				f := 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-				tableName || '__' || defaultLocale || '.' || meta.name || ')';
-			ELSE
-				f := tableName || '__' || defaultLocale || '.' || meta.name;
-			END IF;
-
-			IF meta.items_type <> '' THEN
-				f := 'ANY(' || f || ')';
-			END IF;
-
-			c := c || f;
-
+			crit:= {{ $.SchemaName }}._build_critertia(tableName, meta, defaultLocale, locale);
 			qs := qs || ' LEFT JOIN LATERAL (' ||
-			{{ $.SchemaName }}._include_join(meta.link_type, c, meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1)
+			{{ $.SchemaName }}._include_join(meta.link_type, crit, meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1)
 			 || ') AS _included_' || meta.name || ' ON true';
 		END LOOP;
 	END IF;
@@ -219,7 +224,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters TEXT[], comparers TEXT[], filterValues TEXT[][], includeDepth INTEGER, usePreview BOOLEAN, count BOOLEAN)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters TEXT[], comparers TEXT[], filterValues TEXT[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, usePreview BOOLEAN, count BOOLEAN)
 RETURNS text AS $$
 DECLARE
 	qs text;
@@ -232,60 +237,51 @@ DECLARE
 	clauses text[];
 	clause text;
 	crit text;
-	jt text;
-	fkey text;
 BEGIN
 	IF usePreview THEN
 		suffix := '';
 	END IF;
 
 	qs := 'SELECT ';
-	IF count THEN
-		qs := qs || 'COUNT('|| tableName || '__' || defaultLocale || '.sys_id) as count';
-	ELSE
-		qs:= qs || tableName || '__' || defaultLocale || '.sys_id  as sys_id';
+
+	qs:= qs || tableName || '__' || defaultLocale || '.sys_id  as sys_id';
+
+	IF filters IS NOT NULL THEN
+		idx:= array_position(filters, 'sys_id');
+		IF idx IS NOT NULL THEN
+			clause:= {{ $.SchemaName }}._fmt_clause(NULL, comparers[idx], filterValues[idx]);
+			IF clause <> '' THEN
+				clauses:= clauses || clause;
+			END IF;
+		END IF;
+	END IF;
+
+	FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
+	    qs := qs || ', ';
+
+		-- joins
+		IF meta.link_type <> '' AND includeDepth > 0 THEN
+			qs:= qs || '_included_' || meta.name || '.res';
+			joinedTables:= joinedTables || meta;
+		ELSEIF meta.is_localized AND locale <> defaultLocale THEN
+			hasLocalized:= true;
+			qs:= qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
+			tableName || '__' || defaultLocale || '.' || meta.name || ')';
+		ELSE
+	    	qs:= qs || tableName || '__' || defaultLocale || '.' || meta.name;
+		END IF;
+
+		-- filters
 		IF filters IS NOT NULL THEN
-			idx:= array_position(filters, 'sys_id');
+			idx:= array_position(filters, meta.name);
 			IF idx IS NOT NULL THEN
-				clause:= {{ $.SchemaName }}._fmt_clause(NULL, comparers[idx], filterValues[idx]);
-				IF clause <> '' THEN
-					clauses:= clauses || clause;
-				END IF;
+				clauses:= clauses || {{ $.SchemaName }}._fmt_clause(meta, comparers[idx], filterValues[idx]);
 			END IF;
 		END IF;
 
-		FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
-		    IF isFirst THEN
-		    	isFirst := false;
-		    ELSE
-		    	qs := qs || ', ';
-		    END IF;
+		qs := qs || ' as ' || meta.name;
 
-			-- joins
-			IF meta.link_type <> '' AND includeDepth > 0 THEN
-				qs:= qs || '_included_' || meta.name || '.res';
-				joinedTables:= joinedTables || meta;
-			ELSEIF meta.is_localized AND locale <> defaultLocale THEN
-				hasLocalized:= true;
-				qs:= qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-				tableName || '__' || defaultLocale || '.' || meta.name || ')';
-			ELSE
-		    	qs:= qs || tableName || '__' || defaultLocale || '.' || meta.name;
-			END IF;
-
-			-- filters
-			IF filters IS NOT NULL THEN
-				idx:= array_position(filters, meta.name);
-				IF idx IS NOT NULL THEN
-					clauses:= clauses || {{ $.SchemaName }}._fmt_clause(meta, comparers[idx], filterValues[idx]);
-				END IF;
-			END IF;
-
-			qs := qs || ' as ' || meta.name;
-
-		END LOOP;
-
-	END IF;
+	END LOOP;
 
 	qs := qs || ' FROM {{ $.SchemaName }}.' || tableName || '__' || defaultLocale || suffix || ' ' || tableName || '__' || defaultLocale;
 
@@ -295,9 +291,9 @@ BEGIN
 	END IF;
 
 	IF joinedTables IS NOT NULL THEN
-		FOREACH meta SLICE 1 IN ARRAY joinedTables LOOP
+		FOREACH meta IN ARRAY joinedTables LOOP
 			qs := qs || ' LEFT JOIN LATERAL (' ||
-			{{ $.SchemaName }}._include_join(meta.link_type, NULL, meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1)
+			{{ $.SchemaName }}._include_join(meta.link_type, {{ $.SchemaName }}._build_critertia(tableName, meta, defaultLocale, locale), meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1)
 			|| ') AS _included_' || meta.name || ' ON true';
 		END LOOP;
 	END IF;
@@ -305,7 +301,6 @@ BEGIN
 	IF clauses IS NOT NULL THEN
 		-- where
 		qs := qs || ' WHERE (';
-		isFirst:= true;
 		FOREACH crit IN ARRAY clauses LOOP
 			IF isFirst THEN
 		    	isFirst := false;
@@ -317,20 +312,36 @@ BEGIN
 		qs := qs || ')';
 	END IF;
 
+	IF count THEN
+		qs := 'SELECT COUNT(t.sys_id) as count FROM (' || qs || ') t';
+	ELSE
+		IF orderBy <> '' THEN
+			qs:= qs || ' ORDER BY ' || orderBy;
+		END IF;
+
+		IF skip <> 0 THEN
+			qs:= qs || ' OFFSET ' || skip;
+		END IF;
+
+		IF take <> 0 THEN
+			qs:= qs || ' LIMIT ' || take;
+		END IF;
+		qs:= 'SELECT array_to_json(array_agg(row_to_json(t))) FROM (' || qs || ') t';
+	END IF;
+
 	RETURN qs;
 END;
 $$ LANGUAGE 'plpgsql';
 --
-
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._run_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters TEXT[], comparers TEXT[], filterValues TEXT[][], includeDepth INTEGER, usePreview BOOLEAN)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._run_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters TEXT[], comparers TEXT[], filterValues TEXT[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, usePreview BOOLEAN)
 RETURNS {{ $.SchemaName }}._result AS $$
 DECLARE
 	count integer;
 	items json;
 	res {{ $.SchemaName }}._result;
 BEGIN
-	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, comparers, filterValues, includeDepth, usePreview, true) INTO count;
-	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, comparers, filterValues, includeDepth, usePreview, true) INTO 	items;
+	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, comparers, filterValues, orderBy, skip, take, includeDepth, usePreview, true) INTO count;
+	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, comparers, filterValues, orderBy, skip, take, includeDepth, usePreview, false) INTO items;
 	RETURN ROW(count, items)::{{ $.SchemaName }}._result;
 END;
 $$ LANGUAGE 'plpgsql';
