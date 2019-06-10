@@ -183,11 +183,14 @@ BEGIN
 
 		qs := qs || '''' || meta.name || '''' || ', ';
 
+		IF meta.is_localized AND locale <> defaultLocale THEN
+			hasLocalized:= true;
+		END IF;
+
 		IF meta.link_type <> '' AND includeDepth > 0 THEN
 			qs := qs || '_included_' || meta.name || '.res';
 			joinedTables:= joinedTables || meta;
-		ELSEIF meta.is_localized AND locale <> defaultLocale THEN
-			hasLocalized:= true;
+		ELSEIF hasLocalized THEN
 			qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
 				tableName || '__' || defaultLocale || '.' || meta.name || ')';
 		ELSE
@@ -244,7 +247,7 @@ BEGIN
 
 	qs := 'SELECT ';
 
-	qs:= qs || tableName || '__' || defaultLocale || '.sys_id  as sys_id';
+	qs:= qs || tableName || '__' || defaultLocale || '.sys_id as sys_id';
 
 	IF filters IS NOT NULL THEN
 		idx:= array_position(filters, 'sys_id');
