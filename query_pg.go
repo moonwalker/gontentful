@@ -130,15 +130,15 @@ func NewPGQuery(schemaName string, tableName string, locale string, defaultLocal
 		TableName:     toSnakeCase(tableName),
 		Locale:        fmtLocale(locale),
 		DefaultLocale: fmtLocale(defaultLocale),
-		Fields:        fields,
-		Filters:       filterFields,
-		Comparers:     comparers,
-		FilterValues:  filterValues,
-		Order:         formatOrder(order),
-		Skip:          skip,
-		Limit:         limit,
-		Include:       incl,
-		UsePreview:    usePreview,
+		//Fields:        formatFields(fields), // query ignores the fields for now and returns eveything
+		Filters:      filterFields,
+		Comparers:    comparers,
+		FilterValues: filterValues,
+		Order:        formatOrder(order),
+		Skip:         skip,
+		Limit:        limit,
+		Include:      incl,
+		UsePreview:   usePreview,
 	}
 }
 
@@ -168,11 +168,7 @@ func getFilter(key string) (string, string) {
 		f = strings.Replace(f, fmt.Sprintf("[%s]", c), "", 1)
 	}
 
-	if strings.HasPrefix(f, "sys.") {
-		f = strings.Replace(f, "sys.", "sys_", 1)
-	} else {
-		f = strings.TrimPrefix(f, "fields.")
-	}
+	f = formatField(f)
 
 	colName := toSnakeCase(f)
 	if strings.Contains(colName, ".") {
@@ -184,6 +180,27 @@ func getFilter(key string) (string, string) {
 	}
 
 	return colName, c
+}
+
+func formatFields(fields *[]string) *[]string {
+	if fields != nil {
+		fmtFields := make([]string, 0)
+		for _, f := range *fields {
+			fmt := formatField(f)
+			if fmt != "" {
+				fmtFields = append(fmtFields, fmt)
+			}
+		}
+		return &fmtFields
+	}
+	return fields
+}
+
+func formatField(f string) string {
+	if strings.HasPrefix(f, "sys.") {
+		return strings.Replace(f, "sys.", "sys_", 1)
+	}
+	return strings.TrimPrefix(f, "fields.")
 }
 
 func formatOrder(order string) string {
@@ -216,7 +233,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 	// d1 := []byte(sb.String())
 	// ioutil.WriteFile("/tmp/exec", d1, 0644)
 
-	//fmt.Println(buff.String())
+	fmt.Println(buff.String())
 
 	var count int64
 	var items string
