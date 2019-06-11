@@ -86,7 +86,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }}._meta, comparer text, filterValues text)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }}._meta, comparer text, filterValues text, subField text)
 RETURNS text AS $$
 DECLARE
 	colType text;
@@ -124,6 +124,9 @@ BEGIN
 		    END IF;
 			fmtVal:= fmtVal || {{ $.SchemaName }}._fmt_value(val, isText, isWildcard);
 		END LOOP;
+		IF subField IS NOT NULL THEN
+			RETURN '_included_' || meta.name || '.res ->> ''' || subField || ''')::text' || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']', isArray, isText);
+		END IF;
 		RETURN meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']', isArray, isText);
 	END IF;
 
@@ -133,9 +136,14 @@ BEGIN
 			IF fmtVal <> '' THEN
 	    		fmtVal := fmtVal || ' OR ';
 			END IF;
-			fmtVal := fmtVal || meta.name || fmtComp;
+			IF subField IS NOT NULL THEN
+				fmtVal := fmtVal || '(_included_' || meta.name || '.res ->> ''' || subField || ''')::text' || fmtComp;
+			ELSE
+				fmtVal := fmtVal || meta.name || fmtComp;
+			END IF;
 	    END IF;
 	END LOOP;
+
 	RETURN fmtVal;
 END;
 $$ LANGUAGE 'plpgsql';
@@ -234,12 +242,17 @@ DECLARE
 	suffix text := '__publish';
 	isFirst boolean := true;
 	hasLocalized boolean:= false;
+	metas {{ $.SchemaName }}._meta[];
+	metaNames text[];
 	joinedTables {{ $.SchemaName }}._meta[];
 	meta {{ $.SchemaName }}._meta;
 	idx integer;
 	clauses text[];
 	clause text;
 	crit text;
+	filter text;
+	i integer;
+	fFields text[];
 BEGIN
 	IF usePreview THEN
 		suffix := '';
@@ -247,19 +260,11 @@ BEGIN
 
 	qs := 'SELECT ';
 
-	qs:= qs || tableName || '__' || defaultLocale || '.sys_id as sys_id';
-
-	IF filters IS NOT NULL THEN
-		idx:= array_position(filters, 'sys_id');
-		IF idx IS NOT NULL THEN
-			clause:= {{ $.SchemaName }}._fmt_clause(NULL, comparers[idx], filterValues[idx]);
-			IF clause <> '' THEN
-				clauses:= clauses || clause;
-			END IF;
-		END IF;
-	END IF;
+	qs:= qs || tableName || '__' || defaultLocale || '.sys_id  as sys_id';
 
 	FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
+		metas:= metas|| meta;
+		metaNames:= metaNames || meta.name;
 	    qs := qs || ', ';
 
 		-- joins
@@ -272,14 +277,6 @@ BEGIN
 			tableName || '__' || defaultLocale || '.' || meta.name || ')';
 		ELSE
 	    	qs:= qs || tableName || '__' || defaultLocale || '.' || meta.name;
-		END IF;
-
-		-- filters
-		IF filters IS NOT NULL THEN
-			idx:= array_position(filters, meta.name);
-			IF idx IS NOT NULL THEN
-				clauses:= clauses || {{ $.SchemaName }}._fmt_clause(meta, comparers[idx], filterValues[idx]);
-			END IF;
 		END IF;
 
 		qs := qs || ' as ' || meta.name;
@@ -298,6 +295,25 @@ BEGIN
 			qs := qs || ' LEFT JOIN LATERAL (' ||
 			{{ $.SchemaName }}._include_join(meta.link_type, {{ $.SchemaName }}._build_critertia(tableName, meta, defaultLocale, locale), meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1)
 			|| ') AS _included_' || meta.name || ' ON true';
+		END LOOP;
+	END IF;
+
+	IF filters IS NOT NULL THEN
+		FOR i IN 1 .. array_upper(filters, 1) LOOP
+			filter:= filters[i];
+			clause:= '';
+			fFields:= string_to_array(filter, '.');
+			IF fFields[1] = 'sys_id' THEN
+				clause:= {{ $.SchemaName }}._fmt_clause(NULL, comparers[i], filterValues[i], NULL);
+			ELSE
+				idx:= array_position(metaNames, fFields[1]);
+				IF idx IS NOT NULL THEN
+					clause:= {{ $.SchemaName }}._fmt_clause(metas[idx], comparers[i], filterValues[i], fFields[2]);
+				END IF;
+			END IF;
+			IF clause <> '' THEN
+				clauses:= clauses || clause;
+			END IF;
 		END LOOP;
 	END IF;
 

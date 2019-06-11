@@ -20,8 +20,8 @@ var (
 		// "content_type=localizedSiteSetting&sys.id=35UnSWWbR6IuywWEKYKMUw&include=2&limit=1&locale=en&skip=0",
 		// "content_type=game&fields.slug=winter-wonders&include=3&limit=1&locale=en&skip=0",
 		// "content_type=game&include=3&limit=200&locale=sv&order=-fields.priority&skip=200",
-		"content_type=game&include=3&limit=200&locale=en-GB&select=sys%2Csys.id%2Cfields.slug&skip=600",
-		// "content_type=game&fields.content.fields.name%5Bmatch%5D=jack&fields.content.sys.contentType.sys.id=gameInfo&include=2&limit=200&locale=fi&order=-fields.priority&select=sys%2Cfields.slug%2Cfields.content%2Cfields.deviceConfigurations&skip=0",
+		// "content_type=game&include=3&limit=200&locale=en-GB&select=sys%2Csys.id%2Cfields.slug&skip=600",
+		"content_type=game&fields.content.fields.name%5Bmatch%5D=jack&fields.content.sys.contentType.sys.id=gameInfo&include=2&limit=200&locale=fi&order=-fields.priority&select=sys%2Cfields.slug%2Cfields.content%2Cfields.deviceConfigurations&skip=0",
 	}
 )
 

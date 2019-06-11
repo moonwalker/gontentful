@@ -149,9 +149,11 @@ func createFilters(filters url.Values) (*[]string, *[]string, *[]string) {
 		filterValues := make([]string, 0)
 		for key, values := range filters {
 			f, c := getFilter(key)
-			filterFields = append(filterFields, f)
-			comparers = append(comparers, c)
-			filterValues = append(filterValues, strings.Join(values, ","))
+			if f != "" {
+				filterFields = append(filterFields, f)
+				comparers = append(comparers, c)
+				filterValues = append(filterValues, strings.Join(values, ","))
+			}
 		}
 		return &filterFields, &comparers, &filterValues
 	}
@@ -172,9 +174,13 @@ func getFilter(key string) (string, string) {
 
 	colName := toSnakeCase(f)
 	if strings.Contains(colName, ".") {
-		// content.fields.name%5Bmatch%5D=cap
+		// content.fields.name%5Bmatch%5D=jack&content.sys.contentType.sys.id=gameInfo
 		fkeysMatch := foreignKeyRegex.FindStringSubmatch(f)
 		if len(fkeysMatch) > 0 {
+			if strings.HasPrefix(fkeysMatch[2], "sys.") {
+				// ignore sys fields
+				return "", ""
+			}
 			colName = fmt.Sprintf("%s.%s", fkeysMatch[1], fkeysMatch[2])
 		}
 	}
