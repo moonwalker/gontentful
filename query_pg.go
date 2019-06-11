@@ -239,7 +239,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 	// d1 := []byte(sb.String())
 	// ioutil.WriteFile("/tmp/exec", d1, 0644)
 
-	fmt.Println(buff.String())
+	// fmt.Println(buff.String())
 
 	var count int64
 	var items string
