@@ -213,13 +213,18 @@ func formatOrder(order string) string {
 	if order == "" {
 		return order
 	}
-	value := order
-	desc := ""
-	if order[:1] == "-" {
-		desc = " DESC"
-		value = order[1:len(order)]
+	orders := make([]string, 0)
+	for _, o := range strings.Split(order, ",") {
+		value := o
+		desc := ""
+		if o[:1] == "-" {
+			desc = " DESC"
+			value = o[1:len(o)]
+		}
+		orders = append(orders, fmt.Sprintf("%s%s", toSnakeCase(strings.TrimPrefix("sys.", strings.TrimPrefix(value, "fields."))), desc))
 	}
-	return fmt.Sprintf("%s%s", strings.TrimPrefix(value, "fields."), desc)
+
+	return strings.Join(orders, ",")
 }
 
 func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
