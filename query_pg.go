@@ -221,7 +221,7 @@ func formatOrder(order string) string {
 			desc = " DESC"
 			value = o[1:len(o)]
 		}
-		orders = append(orders, fmt.Sprintf("%s%s", toSnakeCase(strings.TrimPrefix("sys.", strings.TrimPrefix(value, "fields."))), desc))
+		orders = append(orders, fmt.Sprintf("%s%s", toSnakeCase(formatField(value)), desc))
 	}
 
 	return strings.Join(orders, ",")
