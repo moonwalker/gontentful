@@ -257,5 +257,6 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 		}
 		return 0, "", err
 	}
+
 	return count, items, nil
 }
