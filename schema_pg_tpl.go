@@ -365,6 +365,9 @@ DECLARE
 BEGIN
 	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, comparers, filterValues, orderBy, skip, take, includeDepth, usePreview, true) INTO count;
 	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, comparers, filterValues, orderBy, skip, take, includeDepth, usePreview, false) INTO items;
+	IF items IS NULL THEN
+		items:= '[]'::JSON;
+	END IF;
 	RETURN ROW(count, items)::{{ $.SchemaName }}._result;
 END;
 $$ LANGUAGE 'plpgsql';
