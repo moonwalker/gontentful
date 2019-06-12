@@ -252,6 +252,9 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 	err = res.Scan(&count, &items)
 	// fmt.Println(count, items)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, "[]", nil
+		}
 		return 0, "", err
 	}
 	return count, items, nil

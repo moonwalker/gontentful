@@ -136,10 +136,14 @@ BEGIN
 			IF fmtVal <> '' THEN
 	    		fmtVal := fmtVal || ' OR ';
 			END IF;
-			IF subField IS NOT NULL THEN
-				fmtVal := fmtVal || '(_included_' || meta.name || '.res ->> ''' || subField || ''')::text' || fmtComp;
+			IF meta IS NOT NULL THEN
+				IF subField IS NOT NULL THEN
+					fmtVal := fmtVal || '(_included_' || meta.name || '.res ->> ''' || subField || ''')::text' || fmtComp;
+				ELSE
+					fmtVal := fmtVal || meta.name || fmtComp;
+				END IF;
 			ELSE
-				fmtVal := fmtVal || meta.name || fmtComp;
+				fmtVal := fmtVal || 'sys_id' || fmtComp;
 			END IF;
 	    END IF;
 	END LOOP;
