@@ -178,7 +178,6 @@ CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._include_join(tableName TEXT, crit
 RETURNS text AS $$
 DECLARE
 	qs text;
-	isFirst boolean := true;
 	hasLocalized boolean := false;
 	joinedTables {{ $.SchemaName }}._meta[];
 	meta {{ $.SchemaName }}._meta;
@@ -186,12 +185,11 @@ DECLARE
 BEGIN
 	qs := 'json_build_object(';
 
+	-- qs:= qs || tableName || '__' || defaultLocale || '.sys_id as sys_id, ';
+	qs:= qs || '''sys'',json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id)';
+
 	FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
-		IF isFirst THEN
-	    	isFirst := false;
-	    ELSE
-	    	qs := qs || ', ';
-	    END IF;
+		qs := qs || ', ';
 
 		qs := qs || '''' || meta.name || '''' || ', ';
 
@@ -264,7 +262,8 @@ BEGIN
 
 	qs := 'SELECT ';
 
-	qs:= qs || tableName || '__' || defaultLocale || '.sys_id  as sys_id';
+	-- qs:= qs || tableName || '__' || defaultLocale || '.sys_id as sys_id, ';
+	qs:= qs || 'json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id) as sys';
 
 	FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
 		metas:= metas|| meta;
@@ -308,7 +307,7 @@ BEGIN
 			clause:= '';
 			fFields:= string_to_array(filter, '.');
 			IF fFields[1] = 'sys_id' THEN
-				clause:= {{ $.SchemaName }}._fmt_clause(NULL, comparers[i], filterValues[i], NULL);
+				clause:= tableName || '__' || defaultLocale || '.' || {{ $.SchemaName }}._fmt_clause(NULL, comparers[i], filterValues[i], NULL);
 			ELSE
 				idx:= array_position(metaNames, fFields[1]);
 				IF idx IS NOT NULL THEN
@@ -336,7 +335,7 @@ BEGIN
 	END IF;
 
 	IF count THEN
-		qs := 'SELECT COUNT(t.sys_id) as count FROM (' || qs || ') t';
+		qs := 'SELECT COUNT(t.sys) as count FROM (' || qs || ') t';
 	ELSE
 		IF orderBy <> '' THEN
 			qs:= qs || ' ORDER BY ' || orderBy;
