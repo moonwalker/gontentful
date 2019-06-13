@@ -252,7 +252,7 @@ BEGIN
 
 	qs := 'SELECT ';
 
-	-- qs:= qs || tableName || '__' || defaultLocale || '.sys_id as sys_id, ';
+	qs:= qs || tableName || '__' || defaultLocale || '.sys_id as sys_id, ';
 	qs:= qs || 'json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id) as sys';
 
 	FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
