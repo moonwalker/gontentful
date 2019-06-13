@@ -230,6 +230,8 @@ func formatOrder(order string) string {
 func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 	db, _ := sql.Open("postgres", databaseURL)
 
+	defer db.Close()
+
 	tmpl, err := template.New("").Parse(queryTemplate)
 	if err != nil {
 		return 0, "", err
