@@ -47,46 +47,36 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_comparer(comparer text, fmtVal text, isArray boolean, isText boolean)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_comparer(comparer text, fmtVal text)
 RETURNS text AS $$
-DECLARE
-	comp text;
 BEGIN
 	IF comparer = '' THEN
-		comp:= ' = ';
+		RETURN ' = ' || fmtVal;
 	ELSEIF  comparer = 'ne' THEN
-		comp:= ' <> ';
+		RETURN ' <> ' || fmtVal;
 	ELSEIF  comparer = 'exists' THEN
 		RETURN ' <> NULL';
 	ELSEIF  comparer = 'lt' THEN
-		comp:= ' < ';
+		RETURN ' < ' || fmtVal;
 	ELSEIF  comparer = 'lte' THEN
-		comp:= ' <= ';
+		RETURN ' <= ' || fmtVal;
 	ELSEIF  comparer = 'gt' THEN
-		comp:= ' > ';
+		RETURN ' > ' || fmtVal;
 	ELSEIF  comparer = 'gte' THEN
-		comp:= ' >= ';
-	ELSEIF isText AND comparer = 'match' THEN
-		comp:= ' LIKE ';
-	ELSEIF isArray THEN
-		IF comparer = 'in' THEN
-			comp:= ' = ';
-		ELSEIF comparer = 'nin' THEN
-			comp:= ' <> ';
-		END IF;
-	ELSE
-		RETURN '';
+		RETURN ' >= ' || fmtVal;
+	ELSEIF comparer = 'match' THEN
+		RETURN ' LIKE ' || fmtVal;
+	ELSEIF comparer = 'in' THEN
+		RETURN 	' = ANY(ARRAY[' || fmtVal || '])';
+	ELSEIF comparer = 'nin' THEN
+		RETURN 	' <> ANY(ARRAY[' || fmtVal || '])';
 	END IF;
 
-	IF isArray THEN
-		RETURN 	comp || 'ANY(' || fmtVal || ')';
-	END IF;
-
-	RETURN comp || fmtVal;
+	RETURN '';
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }}._meta, comparer text, filterValues text, subField text)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}_fmt_clause(meta {{ $.SchemaName }}_meta, comparer text, filterValues text, subField text)
 RETURNS text AS $$
 DECLARE
 	colType text;
@@ -111,7 +101,7 @@ BEGIN
 		isText:= true;
 	END IF;
 
-	IF comparer = 'match' THEN
+	IF isText AND comparer = 'match' THEN
 		isWildcard:= true;
 	END IF;
 
@@ -122,16 +112,17 @@ BEGIN
 		    ELSE
 		    	fmtVal := fmtVal || ',';
 		    END IF;
-			fmtVal:= fmtVal || {{ $.SchemaName }}._fmt_value(val, isText, isWildcard);
+			fmtVal:= fmtVal || {{ $.SchemaName }}_fmt_value(val, isText, isWildcard);
 		END LOOP;
 		IF subField IS NOT NULL THEN
-			RETURN '_included_' || meta.name || '.res ->> ''' || subField || ''')::text' || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']', isArray, isText);
+			RETURN '_included_' || meta.name || '.res ->> ''' || subField || ''')::text' || {{ $.SchemaName }}_fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
 		END IF;
-		RETURN meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']', isArray, isText);
+		RETURN meta.name || {{ $.SchemaName }}_fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
 	END IF;
 
 	FOREACH val IN ARRAY string_to_array(filterValues, ',') LOOP
-		fmtComp:= {{ $.SchemaName }}._fmt_comparer(comparer, {{ $.SchemaName }}._fmt_value(val, isText, isWildcard), isArray, isText);
+		fmtComp:= {{ $.SchemaName }}_fmt_comparer(comparer, {{ $.SchemaName }}_fmt_value(val, isText, isWildcard));
+		RAISE NOTICE 'fmtComp %', fmtComp;
 		IF fmtComp <> '' THEN
 			IF fmtVal <> '' THEN
 	    		fmtVal := fmtVal || ' OR ';
@@ -147,7 +138,6 @@ BEGIN
 			END IF;
 	    END IF;
 	END LOOP;
-
 	RETURN fmtVal;
 END;
 $$ LANGUAGE 'plpgsql';
