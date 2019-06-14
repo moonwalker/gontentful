@@ -134,7 +134,7 @@ func NewPGQuery(schemaName string, tableName string, locale string, defaultLocal
 		Filters:      filterFields,
 		Comparers:    comparers,
 		FilterValues: filterValues,
-		Order:        formatOrder(order, usePreview),
+		Order:        formatOrder(order, tableName, defaultLocale, usePreview),
 		Skip:         skip,
 		Limit:        limit,
 		Include:      incl,
@@ -209,7 +209,7 @@ func formatField(f string) string {
 	return strings.TrimPrefix(strings.TrimPrefix(f, "fields."), "sys.")
 }
 
-func formatOrder(order string, usePreview bool) string {
+func formatOrder(order string, tableName string, defaultLocale string, usePreview bool) string {
 	if order == "" {
 		return order
 	}
@@ -221,14 +221,22 @@ func formatOrder(order string, usePreview bool) string {
 			desc = " DESC"
 			value = o[1:len(o)]
 		}
-		field := formatField(value)
-		if usePreview && field == "publishedAt" {
-			field = "updatedAt"
-		} else if !usePreview && (field == "updatedAt" || field == "createdAt") {
-			field = "publishedAt"
+		var field string
+		if value == "sys.id" {
+			field = fmt.Sprintf("%s__%s.sys_id", tableName, defaultLocale)
+		} else if strings.HasPrefix(value, "sys.") {
+			field = strings.TrimPrefix(value, "sys.")
+			if usePreview && field == "publishedAt" {
+				field = "updatedAt"
+			} else if !usePreview && (field == "updatedAt" || field == "createdAt") {
+				field = "publishedAt"
+			}
+			field = fmt.Sprintf("%s__%s.%s", tableName, defaultLocale, toSnakeCase(field))
+		} else {
+			field = strings.TrimPrefix(value, "fields.")
 		}
 
-		orders = append(orders, fmt.Sprintf("%s%s", toSnakeCase(field), desc))
+		orders = append(orders, fmt.Sprintf("%s%s", field, desc))
 	}
 
 	return strings.Join(orders, ",")
