@@ -203,10 +203,10 @@ func formatFields(fields *[]string) *[]string {
 }
 
 func formatField(f string) string {
-	if strings.HasPrefix(f, "sys.") {
-		return strings.Replace(f, "sys.", "sys_", 1)
+	if f == "sys.id" {
+		return "sys_id"
 	}
-	return strings.TrimPrefix(f, "fields.")
+	return strings.TrimPrefix(strings.TrimPrefix(f, "fields."), "sys.")
 }
 
 func formatOrder(order string, usePreview bool) string {
