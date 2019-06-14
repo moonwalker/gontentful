@@ -134,7 +134,7 @@ func NewPGQuery(schemaName string, tableName string, locale string, defaultLocal
 		Filters:      filterFields,
 		Comparers:    comparers,
 		FilterValues: filterValues,
-		Order:        formatOrder(order),
+		Order:        formatOrder(order, usePreview),
 		Skip:         skip,
 		Limit:        limit,
 		Include:      incl,
@@ -209,7 +209,7 @@ func formatField(f string) string {
 	return strings.TrimPrefix(f, "fields.")
 }
 
-func formatOrder(order string) string {
+func formatOrder(order string, usePreview bool) string {
 	if order == "" {
 		return order
 	}
@@ -221,7 +221,14 @@ func formatOrder(order string) string {
 			desc = " DESC"
 			value = o[1:len(o)]
 		}
-		orders = append(orders, fmt.Sprintf("%s%s", toSnakeCase(formatField(value)), desc))
+		field := formatField(value)
+		if usePreview && field == "publishedAt" {
+			field = "updatedAt"
+		} else if !usePreview && (field == "updatedAt" || field == "createdAt") {
+			field = "publishedAt"
+		}
+
+		orders = append(orders, fmt.Sprintf("%s%s", toSnakeCase(field), desc))
 	}
 
 	return strings.Join(orders, ",")

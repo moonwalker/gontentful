@@ -34,6 +34,16 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_column_name(colum text)
+RETURNS text AS $$
+DECLARE
+	splits text[];
+BEGIN
+	splits:= string_to_array(colum, '_');
+	RETURN splits[1] || replace(INITCAP(array_to_string(splits[2:], ' ')), ' ', '');
+END;
+$$ LANGUAGE 'plpgsql';
+
 CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_value(val text, isText boolean, isWildcard boolean)
 RETURNS text AS $$
 BEGIN
@@ -76,7 +86,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}_fmt_clause(meta {{ $.SchemaName }}_meta, comparer text, filterValues text, subField text)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }}._meta, comparer text, filterValues text, field text, subField text)
 RETURNS text AS $$
 DECLARE
 	colType text;
@@ -112,16 +122,16 @@ BEGIN
 		    ELSE
 		    	fmtVal := fmtVal || ',';
 		    END IF;
-			fmtVal:= fmtVal || {{ $.SchemaName }}_fmt_value(val, isText, isWildcard);
+			fmtVal:= fmtVal || {{ $.SchemaName }}._fmt_value(val, isText, isWildcard);
 		END LOOP;
 		IF subField IS NOT NULL THEN
-			RETURN '_included_' || meta.name || '.res ->> ''' || subField || ''')::text' || {{ $.SchemaName }}_fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
+			RETURN '_included_' || meta.name || '.res ->> ''' || subField || ''')::text' || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
 		END IF;
-		RETURN meta.name || {{ $.SchemaName }}_fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
+		RETURN meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
 	END IF;
 
 	FOREACH val IN ARRAY string_to_array(filterValues, ',') LOOP
-		fmtComp:= {{ $.SchemaName }}_fmt_comparer(comparer, {{ $.SchemaName }}_fmt_value(val, isText, isWildcard));
+		fmtComp:= {{ $.SchemaName }}._fmt_comparer(comparer, {{ $.SchemaName }}._fmt_value(val, isText, isWildcard));
 		RAISE NOTICE 'fmtComp %', fmtComp;
 		IF fmtComp <> '' THEN
 			IF fmtVal <> '' THEN
@@ -134,7 +144,7 @@ BEGIN
 					fmtVal := fmtVal || meta.name || fmtComp;
 				END IF;
 			ELSE
-				fmtVal := fmtVal || 'sys_id' || fmtComp;
+				fmtVal := fmtVal || field || fmtComp;
 			END IF;
 	    END IF;
 	END LOOP;
@@ -252,7 +262,7 @@ BEGIN
 
 	qs := 'SELECT ';
 
-	qs:= qs || tableName || '__' || defaultLocale || '.sys_id as sys_id, ';
+	-- qs:= qs || tableName || '__' || defaultLocale || '.sys_id  as sys_id,';
 	qs:= qs || 'json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id) as sys';
 
 	FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
@@ -272,7 +282,7 @@ BEGIN
 	    	qs:= qs || tableName || '__' || defaultLocale || '.' || meta.name;
 		END IF;
 
-		qs := qs || ' as ' || meta.name;
+		qs := qs || ' as "' || {{ $.SchemaName }}._fmt_column_name(meta.name) || '"';
 
 	END LOOP;
 
@@ -296,13 +306,11 @@ BEGIN
 			filter:= filters[i];
 			clause:= '';
 			fFields:= string_to_array(filter, '.');
-			IF fFields[1] = 'sys_id' THEN
-				clause:= tableName || '__' || defaultLocale || '.' || {{ $.SchemaName }}._fmt_clause(NULL, comparers[i], filterValues[i], NULL);
+			idx:= array_position(metaNames, fFields[1]);
+			IF idx IS NOT NULL THEN
+				clause:= {{ $.SchemaName }}._fmt_clause(metas[idx], comparers[i], filterValues[i], fFields[1], fFields[2]);
 			ELSE
-				idx:= array_position(metaNames, fFields[1]);
-				IF idx IS NOT NULL THEN
-					clause:= {{ $.SchemaName }}._fmt_clause(metas[idx], comparers[i], filterValues[i], fFields[2]);
-				END IF;
+				clause:= {{ $.SchemaName }}._fmt_clause(NULL, comparers[i], filterValues[i], tableName || '__' || defaultLocale || '.' || fFields[1], fFields[2]);
 			END IF;
 			IF clause <> '' THEN
 				clauses:= clauses || clause;
@@ -314,6 +322,7 @@ BEGIN
 		-- where
 		qs := qs || ' WHERE (';
 		FOREACH crit IN ARRAY clauses LOOP
+			RAISE NOTICE 'crit %', crit;
 			IF isFirst THEN
 		    	isFirst := false;
 		    ELSE
@@ -431,9 +440,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__models_update ON {{ $.SchemaName }}._models;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}.__models_update ON {{ $.SchemaName }}._models;
 --
-CREATE TRIGGER {{ $.SchemaName }}__models_update
+CREATE TRIGGER {{ $.SchemaName }}.__models_update
     AFTER UPDATE ON {{ $.SchemaName }}._models
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on__models_update();
@@ -600,9 +609,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_insert ON {{ $.SchemaName }}._asset__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}.__asset__{{ $locale }}_insert ON {{ $.SchemaName }}._asset__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}_insert
+CREATE TRIGGER {{ $.SchemaName }}.__asset__{{ $locale }}_insert
 	AFTER INSERT ON {{ $.SchemaName }}._asset__{{ $locale }}
 	FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}_insert();
@@ -617,9 +626,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_delete ON {{ $.SchemaName }}._asset__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}.__asset__{{ $locale }}_delete ON {{ $.SchemaName }}._asset__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}_delete
+CREATE TRIGGER {{ $.SchemaName }}.__asset__{{ $locale }}_delete
 	AFTER DELETE ON {{ $.SchemaName }}._asset__{{ $locale }}
 	FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}_delete();
@@ -696,9 +705,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_update ON {{ $.SchemaName }}._asset__{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}.__asset__{{ $locale }}_update ON {{ $.SchemaName }}._asset__{{ $locale }}__publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}__publish_update
+CREATE TRIGGER {{ $.SchemaName }}.__asset__{{ $locale }}__publish_update
     AFTER UPDATE ON {{ $.SchemaName }}._asset__{{ $locale }}__publish
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}__publish_update();
@@ -787,9 +796,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}___meta_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}___meta;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}._{{ $tbl.TableName }}___meta_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}___meta;
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}___meta_update
+CREATE TRIGGER {{ $.SchemaName }}._{{ $tbl.TableName }}___meta_update
     AFTER UPDATE ON {{ $.SchemaName }}.{{ $tbl.TableName }}___meta
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}___meta_update();
@@ -922,9 +931,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_insert ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}_insert ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_insert
+CREATE TRIGGER {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}_insert
     AFTER INSERT ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_insert();
@@ -939,9 +948,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_delete
+CREATE TRIGGER {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}_delete
 	AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}
 	FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_delete();
@@ -1012,9 +1021,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}__publish_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_update
+CREATE TRIGGER {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}__publish_update
     AFTER UPDATE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_update();
@@ -1041,9 +1050,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}__publish_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_delete
+CREATE TRIGGER {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}__publish_delete
     AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_delete();
