@@ -188,25 +188,53 @@ BEGIN
 	-- qs:= qs || tableName || '__' || defaultLocale || '.sys_id as sys_id, ';
 	qs:= qs || '''sys'',json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id)';
 
-	FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
-		qs := qs || ', ';
+	IF tableName = '_asset' THEN
+		qs := qs || ',';
 
-		qs := qs || '''' || meta.name || '''' || ', ';
-
-		IF meta.is_localized AND locale <> defaultLocale THEN
+		IF locale <> defaultLocale THEN
 			hasLocalized:= true;
 		END IF;
 
-		IF meta.link_type <> '' AND includeDepth > 0 THEN
-			qs := qs || '_included_' || meta.name || '.res';
-			joinedTables:= joinedTables || meta;
-		ELSEIF hasLocalized THEN
-			qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-				tableName || '__' || defaultLocale || '.' || meta.name || ')';
+		IF hasLocalized THEN
+			qs := qs ||
+			'''title'',' || 'COALESCE(' || tableName || '__' || locale || '.title,' || tableName || '__' || defaultLocale || '.title),' ||
+			'''description'',' || 'COALESCE(' || tableName || '__' || locale || '.description,' || tableName || '__' || defaultLocale || '.description),' ||
+			'''file'',json_build_object(' ||
+				'''contentType'',COALESCE(' || tableName || '__' || locale || '.content_type,' || tableName || '__' || defaultLocale || '.content_type),' ||
+				'''fileName'',COALESCE(' || tableName || '__' || locale || '.file_name,' || tableName || '__' || defaultLocale || '.file_name),' ||
+				'''url'',COALESCE(' || tableName || '__' || locale || '.url,' || tableName || '__' || defaultLocale || '.url))';
 		ELSE
-		   	qs := qs || tableName || '__' || defaultLocale || '.' || meta.name;
+			qs := qs ||
+			'''title'',' || tableName || '__' || defaultLocale || '.title,' ||
+			'''description'',' || tableName || '__' || defaultLocale || '.description,' ||
+			'''file'',json_build_object(' ||
+				'''contentType'',' || tableName || '__' || defaultLocale || '.content_type,' ||
+				'''fileName'',' || tableName || '__' || defaultLocale || '.file_name,' ||
+				'''url'',' || tableName || '__' || defaultLocale || '.url)';
 		END IF;
-	END LOOP;
+	ELSE
+
+		FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
+			qs := qs || ', ';
+
+			qs := qs || '''' || {{ $.SchemaName }}._fmt_column_name(meta.name) || ''',';
+
+			IF meta.is_localized AND locale <> defaultLocale THEN
+				hasLocalized:= true;
+			END IF;
+
+			IF meta.link_type <> '' AND includeDepth > 0 THEN
+				qs := qs || '_included_' || meta.name || '.res';
+				joinedTables:= joinedTables || meta;
+			ELSEIF hasLocalized THEN
+				qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
+					tableName || '__' || defaultLocale || '.' || meta.name || ')';
+			ELSE
+			   	qs := qs || tableName || '__' || defaultLocale || '.' || meta.name;
+			END IF;
+		END LOOP;
+
+	END IF;
 
 	IF isArray THEN
 		qs := 'array_agg(' || qs || ')';
@@ -1059,50 +1087,5 @@ CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_d
 --
 {{ end -}}
 {{ end -}}
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._get_columns(tableName text, locale text, defaultLocale text, usePreview boolean)
-RETURNS text AS $$
-DECLARE
-	qs text;
-	suffix text := '__publish';
-	isFirst boolean := true;
-	meta record;
-BEGIN
-	IF usePreview THEN
-		suffix := '';
-	END IF;
-
-	qs := 'SELECT ';
-	FOR meta IN
-		EXECUTE 'SELECT
-		name,
-		is_localized
-        FROM {{ $.SchemaName }}.' || tableName || '___meta' LOOP
-
-	    IF isFirst THEN
-	    	isFirst := false;
-	    ELSE
-	    	qs := qs || ', ';
-	    END IF;
-
-		IF meta.is_localized AND locale <> defaultLocale THEN
-			qs := 'COALESCE(' || tableName || '_' || locale || '.' || meta.name || ',' ||
-			tableName || '_' || defaultLocale || '.' || meta.name || ')';
-		ELSE
-	    	qs := qs || tableName || '_' || defaultLocale || '.' || meta.name;
-		END IF;
-
-		qs := qs || ' as ' || meta.name;
-    END LOOP;
-
-	qs := qs || ' FROM {{ $.SchemaName }}.' || tableName || '_' || defaultLocale || suffix || ' ' || tableName || '_' || defaultLocale;
-
-	IF locale <> defaultLocale THEN
-		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '_' || locale || '__publish ' || tableName || '_' || locale ||
-		' ON ' || tableName || '_' || defaultLocale || '.sys_id = ' || tableName || '_' || locale || '.sys_id';
-	END IF;
-
-	RETURN qs;
-END;
-$$ LANGUAGE 'plpgsql';
 COMMIT;
 `

@@ -52,6 +52,8 @@ var pgSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		// ioutil.WriteFile("/tmp/schema", []byte(str), 0644)
+
 		if len(schemaDatabaseURL) == 0 {
 			fmt.Println(str)
 			return
