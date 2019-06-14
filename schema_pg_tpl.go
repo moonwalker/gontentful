@@ -440,9 +440,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}.__models_update ON {{ $.SchemaName }}._models;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__models_update ON {{ $.SchemaName }}._models;
 --
-CREATE TRIGGER {{ $.SchemaName }}.__models_update
+CREATE TRIGGER {{ $.SchemaName }}__models_update
     AFTER UPDATE ON {{ $.SchemaName }}._models
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on__models_update();
@@ -609,9 +609,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}.__asset__{{ $locale }}_insert ON {{ $.SchemaName }}._asset__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_insert ON {{ $.SchemaName }}._asset__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}.__asset__{{ $locale }}_insert
+CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}_insert
 	AFTER INSERT ON {{ $.SchemaName }}._asset__{{ $locale }}
 	FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}_insert();
@@ -626,9 +626,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}.__asset__{{ $locale }}_delete ON {{ $.SchemaName }}._asset__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_delete ON {{ $.SchemaName }}._asset__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}.__asset__{{ $locale }}_delete
+CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}_delete
 	AFTER DELETE ON {{ $.SchemaName }}._asset__{{ $locale }}
 	FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}_delete();
@@ -705,9 +705,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}.__asset__{{ $locale }}_update ON {{ $.SchemaName }}._asset__{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_update ON {{ $.SchemaName }}._asset__{{ $locale }}__publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}.__asset__{{ $locale }}__publish_update
+CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}__publish_update
     AFTER UPDATE ON {{ $.SchemaName }}._asset__{{ $locale }}__publish
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}__publish_update();
@@ -796,9 +796,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}._{{ $tbl.TableName }}___meta_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}___meta;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}___meta_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}___meta;
 --
-CREATE TRIGGER {{ $.SchemaName }}._{{ $tbl.TableName }}___meta_update
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}___meta_update
     AFTER UPDATE ON {{ $.SchemaName }}.{{ $tbl.TableName }}___meta
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}___meta_update();
@@ -931,9 +931,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}_insert ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_insert ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}_insert
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_insert
     AFTER INSERT ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_insert();
@@ -948,9 +948,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}_delete
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_delete
 	AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}
 	FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_delete();
@@ -1021,9 +1021,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}__publish_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}__publish_update
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_update
     AFTER UPDATE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_update();
@@ -1050,9 +1050,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}__publish_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}._{{ $tbl.TableName }}__{{ $locale }}__publish_delete
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_delete
     AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish
     FOR EACH ROW
 	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_delete();

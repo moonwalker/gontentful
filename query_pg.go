@@ -250,16 +250,13 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 		return 0, "", err
 	}
 
-	// d1 := []byte(sb.String())
-	// ioutil.WriteFile("/tmp/exec", d1, 0644)
-
 	// fmt.Println(buff.String())
 
 	var count int64
 	var items string
 	res := db.QueryRow(buff.String())
 	err = res.Scan(&count, &items)
-	// fmt.Println(count, items)
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, "[]", nil
