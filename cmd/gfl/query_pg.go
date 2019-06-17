@@ -23,7 +23,8 @@ var (
 		// "content_type=game&include=3&limit=200&locale=en-GB&select=sys%2Csys.id%2Cfields.slug&skip=600",
 		// "content_type=game&fields.content.fields.name%5Bmatch%5D=jack&fields.content.sys.contentType.sys.id=gameInfo&include=2&limit=200&locale=fi&order=-fields.priority&select=sys%2Cfields.slug%2Cfields.content%2Cfields.deviceConfigurations&skip=0",
 		// "content_type=localizedSiteSetting&include=2&limit=200&skip=0&sys.id=35UnSWWbR6IuywWEKYKMU",
-		"content_type=game&include=2&limit=200&skip=0&sys.id=35UnSWWbR6IuywWEKYKMU",
+		// "content_type=game&include=2&limit=200&skip=0&sys.id=35UnSWWbR6IuywWEKYKMU",
+		"content_type=gameWildFeature&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
 	}
 )
 

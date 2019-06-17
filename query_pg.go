@@ -223,7 +223,7 @@ func formatOrder(order string, tableName string, defaultLocale string, usePrevie
 		}
 		var field string
 		if value == "sys.id" {
-			field = fmt.Sprintf("%s__%s.sys_id", tableName, defaultLocale)
+			field = fmt.Sprintf("%s__%s.sys_id", toSnakeCase(tableName), defaultLocale)
 		} else if strings.HasPrefix(value, "sys.") {
 			field = strings.TrimPrefix(value, "sys.")
 			if usePreview && field == "publishedAt" {
@@ -231,7 +231,7 @@ func formatOrder(order string, tableName string, defaultLocale string, usePrevie
 			} else if !usePreview && (field == "updatedAt" || field == "createdAt") {
 				field = "publishedAt"
 			}
-			field = fmt.Sprintf("%s__%s.%s", tableName, defaultLocale, toSnakeCase(field))
+			field = fmt.Sprintf("%s__%s.%s", toSnakeCase(tableName), defaultLocale, toSnakeCase(field))
 		} else {
 			field = strings.TrimPrefix(value, "fields.")
 		}
@@ -258,7 +258,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 		return 0, "", err
 	}
 
-	// fmt.Println(buff.String())
+	fmt.Println(buff.String())
 
 	var count int64
 	var items string
