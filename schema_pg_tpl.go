@@ -79,7 +79,7 @@ BEGIN
 	ELSEIF comparer = 'in' THEN
 		RETURN 	' = ANY(ARRAY[' || fmtVal || '])';
 	ELSEIF comparer = 'nin' THEN
-		RETURN 	' <> ANY(ARRAY[' || fmtVal || '])';
+		RETURN 	' <> ALL(ARRAY[' || fmtVal || '])';
 	END IF;
 
 	RETURN '';
