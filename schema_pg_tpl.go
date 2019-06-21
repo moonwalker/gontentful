@@ -14,6 +14,12 @@ CREATE TYPE {{ $.SchemaName }}._meta AS (
 	link_type TEXT,
 	is_localized BOOLEAN
 );
+DROP TYPE IF EXISTS {{ $.SchemaName }}._filter CASCADE;
+CREATE TYPE {{ $.SchemaName }}._filter AS (
+	field TEXT,
+	comparer TEXT,
+	values TEXT[]
+);
 DROP TYPE IF EXISTS {{ $.SchemaName }}._result CASCADE;
 CREATE TYPE {{ $.SchemaName }}._result AS (
 	count INTEGER,
@@ -86,7 +92,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }}._meta, comparer text, filterValues text, field text, subField text)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }}._meta, comparer text, filterValues text[], field text, subField text)
 RETURNS text AS $$
 DECLARE
 	colType text;
@@ -116,7 +122,7 @@ BEGIN
 	END IF;
 
 	IF isArray THEN
-		FOREACH val IN ARRAY string_to_array(filterValues, ',') LOOP
+		FOREACH val IN ARRAY filterValues LOOP
 			IF isFirst THEN
 		    	isFirst := false;
 		    ELSE
@@ -130,18 +136,17 @@ BEGIN
 		RETURN meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
 	END IF;
 
-	FOREACH val IN ARRAY string_to_array(filterValues, ',') LOOP
+	FOREACH val IN ARRAY filterValues LOOP
 		fmtComp:= {{ $.SchemaName }}._fmt_comparer(comparer, {{ $.SchemaName }}._fmt_value(val, isText, isWildcard));
-		RAISE NOTICE 'fmtComp %', fmtComp;
 		IF fmtComp <> '' THEN
 			IF fmtVal <> '' THEN
 	    		fmtVal := fmtVal || ' OR ';
 			END IF;
 			IF meta IS NOT NULL THEN
 				IF subField IS NOT NULL THEN
-					fmtVal := fmtVal || '(_included_' || meta.name || '.res ->> ''' || subField || ''')::text' || fmtComp;
+					fmtVal := fmtVal || '(_included_' || field || '.res ->> ''' || subField || ''')::text' || fmtComp;
 				ELSE
-					fmtVal := fmtVal || meta.name || fmtComp;
+					fmtVal := fmtVal || field || fmtComp;
 				END IF;
 			ELSE
 				fmtVal := fmtVal || field || fmtComp;
@@ -265,53 +270,35 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters TEXT[], comparers TEXT[], filterValues TEXT[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, usePreview BOOLEAN, count BOOLEAN)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._select_fields(metas {{ $.SchemaName }}._meta[], tableName TEXT, locale TEXT, defaultLocale TEXT, includeDepth INTEGER, suffix TEXT)
 RETURNS text AS $$
 DECLARE
-	qs text;
-	suffix text := '__publish';
-	isFirst boolean := true;
-	hasLocalized boolean:= false;
-	metas {{ $.SchemaName }}._meta[];
-	metaNames text[];
-	joinedTables {{ $.SchemaName }}._meta[];
+	qs text:= 'SELECT ';
+	hasLocalized boolean := false;
+	joinedLaterals text:= '';
 	meta {{ $.SchemaName }}._meta;
-	idx integer;
-	clauses text[];
-	clause text;
-	crit text;
-	filter text;
-	i integer;
-	fFields text[];
 BEGIN
-	IF usePreview THEN
-		suffix := '';
-	END IF;
-
-	qs := 'SELECT ';
 
 	-- qs:= qs || tableName || '__' || defaultLocale || '.sys_id  as sys_id,';
-	qs:= qs || 'json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id) as sys';
+	qs := qs || 'json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id) as sys';
 
-	FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
-		metas:= metas|| meta;
-		metaNames:= metaNames || meta.name;
+	FOREACH meta IN ARRAY metas LOOP
 	    qs := qs || ', ';
 
 		-- joins
 		IF meta.link_type <> '' AND includeDepth > 0 THEN
-			qs:= qs || '_included_' || meta.name || '.res';
-			joinedTables:= joinedTables || meta;
+			qs := qs || '_included_' || meta.name || '.res';
+			joinedLaterals := joinedLaterals || ' LEFT JOIN LATERAL (' ||
+			{{ $.SchemaName }}._include_join(meta.link_type, {{ $.SchemaName }}._build_critertia(tableName, meta, defaultLocale, locale), meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1) || ') AS _included_' || meta.name || ' ON true';
 		ELSEIF meta.is_localized AND locale <> defaultLocale THEN
-			hasLocalized:= true;
-			qs:= qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
+			hasLocalized := true;
+			qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
 			tableName || '__' || defaultLocale || '.' || meta.name || ')';
 		ELSE
-	    	qs:= qs || tableName || '__' || defaultLocale || '.' || meta.name;
+	    	qs := qs || tableName || '__' || defaultLocale || '.' || meta.name;
 		END IF;
 
 		qs := qs || ' as "' || {{ $.SchemaName }}._fmt_column_name(meta.name) || '"';
-
 	END LOOP;
 
 	qs := qs || ' FROM {{ $.SchemaName }}.' || tableName || '__' || defaultLocale || suffix || ' ' || tableName || '__' || defaultLocale;
@@ -321,27 +308,33 @@ BEGIN
 		' ON ' || tableName || '__' || defaultLocale || '.sys_id = ' || tableName || '__' || locale || '.sys_id';
 	END IF;
 
-	IF joinedTables IS NOT NULL THEN
-		FOREACH meta IN ARRAY joinedTables LOOP
-			qs := qs || ' LEFT JOIN LATERAL (' ||
-			{{ $.SchemaName }}._include_join(meta.link_type, {{ $.SchemaName }}._build_critertia(tableName, meta, defaultLocale, locale), meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1)
-			|| ') AS _included_' || meta.name || ' ON true';
-		END LOOP;
+	IF joinedLaterals IS NOT NULL THEN
+		qs := qs || joinedLaterals;
 	END IF;
 
+	RETURN qs;
+END;
+$$ LANGUAGE 'plpgsql';
+--
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._filter_clauses(metas {{ $.SchemaName }}._meta[], tableName TEXT, defaultLocale TEXT, filters {{ $.SchemaName }}._filter[])
+RETURNS text AS $$
+DECLARE
+	qs text := '';
+	filter {{ $.SchemaName }}._filter;
+	fFields text[];
+	meta {{ $.SchemaName }}._meta;
+	clauses text[];
+	crit text;
+	isFirst boolean := true;
+BEGIN
 	IF filters IS NOT NULL THEN
-		FOR i IN 1 .. array_upper(filters, 1) LOOP
-			filter:= filters[i];
-			clause:= '';
-			fFields:= string_to_array(filter, '.');
-			idx:= array_position(metaNames, fFields[1]);
-			IF idx IS NOT NULL THEN
-				clause:= {{ $.SchemaName }}._fmt_clause(metas[idx], comparers[i], filterValues[i], fFields[1], fFields[2]);
+		FOREACH filter IN ARRAY filters LOOP
+			fFields:= string_to_array(filter.field, '.');
+			SELECT * FROM unnest(metas) WHERE name = fFields[1] INTO meta;
+			IF meta IS NOT NULL THEN
+				clauses:= clauses || {{ $.SchemaName }}._fmt_clause(meta, filter.comparer, filter.values, fFields[1], fFields[2]);
 			ELSE
-				clause:= {{ $.SchemaName }}._fmt_clause(NULL, comparers[i], filterValues[i], tableName || '__' || defaultLocale || '.' || fFields[1], fFields[2]);
-			END IF;
-			IF clause <> '' THEN
-				clauses:= clauses || clause;
+				clauses:= clauses || {{ $.SchemaName }}._fmt_clause(NULL, filter.comparer, filter.values, tableName || '__' || defaultLocale || '.' || fFields[1], fFields[2]);
 			END IF;
 		END LOOP;
 	END IF;
@@ -350,7 +343,6 @@ BEGIN
 		-- where
 		qs := qs || ' WHERE (';
 		FOREACH crit IN ARRAY clauses LOOP
-			RAISE NOTICE 'crit %', crit;
 			IF isFirst THEN
 		    	isFirst := false;
 		    ELSE
@@ -361,8 +353,15 @@ BEGIN
 		qs := qs || ')';
 	END IF;
 
+	RETURN qs;
+END;
+$$ LANGUAGE 'plpgsql';
+--
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._finalize_query(INOUT qs TEXT, orderBy TEXT, skip INTEGER, take INTEGER, count BOOLEAN)
+AS $$
+BEGIN
 	IF count THEN
-		qs := 'SELECT COUNT(t.sys) as count FROM (' || qs || ') t';
+		qs:= 'SELECT COUNT(t.sys) as count FROM (' || qs || ') t';
 	ELSE
 		IF orderBy <> '' THEN
 			qs:= qs || ' ORDER BY ' || orderBy;
@@ -375,22 +374,90 @@ BEGIN
 		IF take <> 0 THEN
 			qs:= qs || ' LIMIT ' || take;
 		END IF;
+
 		qs:= 'SELECT array_to_json(array_agg(row_to_json(t))) FROM (' || qs || ') t';
 	END IF;
+END;
+$$ LANGUAGE 'plpgsql';
+--
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters {{ $.SchemaName }}._filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, usePreview BOOLEAN, count BOOLEAN)
+RETURNS text AS $$
+DECLARE
+	qs text;
+	suffix text := '__publish';
+	metas {{ $.SchemaName }}._meta[];
+BEGIN
+	IF usePreview THEN
+		suffix := '';
+	END IF;
+
+	SELECT ARRAY(SELECT {{ $.SchemaName }}._get_meta(tableName)) INTO metas;
+
+	qs := {{ $.SchemaName }}._select_fields(metas, tableName, locale, defaultLocale, includeDepth, suffix);
+
+	qs:= qs || {{ $.SchemaName }}._filter_clauses(metas, tableName, defaultLocale, filters);
+
+	qs := {{ $.SchemaName }}._finalize_query(qs, orderBy, skip, take, count);
 
 	RETURN qs;
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._run_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters TEXT[], comparers TEXT[], filterValues TEXT[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, usePreview BOOLEAN)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._join_exclude_games(market TEXT, device TEXT, defaultLocale TEXT, suffix TEXT)
+RETURNS TEXT AS $$
+BEGIN
+	RETURN ' LEFT JOIN LATERAL(SELECT array_agg(game_device_configuration.sys_id) AS games_exclude_from_market FROM {{ $.SchemaName }}.games_exclude_from_market__' || defaultLocale || ' games_exclude_from_market LEFT JOIN {{ $.SchemaName }}.game_id__' || defaultLocale ||
+	' game_device_configuration ON game_device_configuration.sys_id = ANY(games_exclude_from_market.games) LEFT JOIN {{ $.SchemaName }}.game_device__' || 	defaultLocale || ' AS game_device ON lower(game_device.type) = ''' || device || ''' WHERE games_exclude_from_market.market = ''' ||
+	market || ''' AND game_device.sys_id = ANY(game_device_configuration.devices)) AS games_exclude_from_market ON true LEFT JOIN LATERAL(
+SELECT studios AS game_studio_exclude_from_market FROM {{ $.SchemaName }}.game_studio_exclude_from_market__' || defaultLocale || ' WHERE market = ''' ||
+	market || ''') AS game_studio_exclude_from_market ON true';
+END;
+$$ LANGUAGE 'plpgsql';
+--
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_gamebrowser(market TEXT, device TEXT, tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters content._filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, usePreview BOOLEAN, count BOOLEAN)
+RETURNS text AS $$
+DECLARE
+	qs text;
+	suffix text := '__publish';
+	metas {{ $.SchemaName }}._meta[];
+	fc text;
+BEGIN
+	IF usePreview THEN
+		suffix := '';
+	END IF;
+
+	SELECT ARRAY(SELECT {{ $.SchemaName }}._get_meta(tableName)) INTO metas;
+
+	qs := {{ $.SchemaName }}._select_fields(metas, tableName, locale, defaultLocale, includeDepth, suffix);
+
+	qs := qs || {{ $.SchemaName }}._join_exclude_games(market, device, defaultLocale, suffix);
+
+	fc := {{ $.SchemaName }}._filter_clauses(metas, tableName, defaultLocale, filters);
+
+	IF fc IS NOT NULL THEN
+		qs :=  qs || fc || ' AND ';
+	ELSE
+		qs :=  qs || ' WHERE ';
+	END IF;
+
+	qs := qs || '(' || tableName || '__' || defaultLocale || '.studio <> ALL(game_studio_exclude_from_market) AND NOT ('
+	|| tableName || '__' || defaultLocale || '.device_configurations && games_exclude_from_market))';
+
+	qs := {{ $.SchemaName }}._finalize_query(qs, orderBy, skip, take, count);
+
+	RETURN qs;
+END;
+$$ LANGUAGE 'plpgsql';
+--
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._run_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters {{ $.SchemaName }}._filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, usePreview BOOLEAN)
 RETURNS {{ $.SchemaName }}._result AS $$
 DECLARE
 	count integer;
 	items json;
 	res {{ $.SchemaName }}._result;
 BEGIN
-	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, comparers, filterValues, orderBy, skip, take, includeDepth, usePreview, true) INTO count;
-	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, comparers, filterValues, orderBy, skip, take, includeDepth, usePreview, false) INTO items;
+	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, usePreview, true) INTO count;
+	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, usePreview, false) INTO items;
 	IF items IS NULL THEN
 		items:= '[]'::JSON;
 	END IF;

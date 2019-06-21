@@ -24,7 +24,15 @@ var (
 		// "content_type=game&fields.content.fields.name%5Bmatch%5D=jack&fields.content.sys.contentType.sys.id=gameInfo&include=2&limit=200&locale=fi&order=-fields.priority&select=sys%2Cfields.slug%2Cfields.content%2Cfields.deviceConfigurations&skip=0",
 		// "content_type=localizedSiteSetting&include=2&limit=200&skip=0&sys.id=35UnSWWbR6IuywWEKYKMU",
 		// "content_type=game&include=2&limit=200&skip=0&sys.id=35UnSWWbR6IuywWEKYKMU",
-		"content_type=gameWildFeature&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		// "content_type=gameWildFeature&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		"content_type=routeAlias&fields.alias=%2Fcomplete-account%2F&include=3&limit=1&locale=en-SE&skip=0",
+		"content_type=userPreferences&fields.isConsent=true&include=3&limit=200&locale=en-SE&order=-fields.isConsent%2C-sys.updatedAt%2Csys.id&skip=0",
+		"content_type=menu&fields.slug=top-navigation-site-desktop&include=2&limit=1&locale=en-SE&skip=0",
+		"content_type=menu&fields.slug=side-navigation-user&include=2&limit=1&locale=en-SE&skip=0",
+		"content_type=menu&fields.slug=footer-menu&include=2&limit=1&locale=en-SE&skip=0",
+		"content_type=rgSetting&fields.slug=deposit-limit&include=3&limit=1&locale=en-SE&skip=0",
+		"content_type=providerIdMap&fields.slug=limitDurations&include=3&limit=1&locale=en-SE&skip=0",
+		"content_type=menu&fields.slug=footer-social-links&include=2&limit=1&locale=en-SE&skip=0",
 	}
 )
 

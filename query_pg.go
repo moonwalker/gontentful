@@ -20,15 +20,9 @@ SELECT * FROM {{ $.SchemaName }}._run_query('{{ $.TableName }}','{{ $.Locale }}'
 ]{{- else }}NULL{{ end -}},
 {{- if $.Filters }}ARRAY[
 {{- range $idx, $filter := $.Filters -}}
-{{- if $idx -}},{{- end -}}'{{ $filter }}'
-{{- end -}}],ARRAY[
-{{- range $idx, $comparer := $.Comparers -}}
-{{- if $idx -}},{{- end -}}'{{ $comparer }}'
-{{- end -}}],ARRAY[
-{{- range $idx, $value := $.FilterValues -}}
-{{- if $idx -}},{{- end -}}'{{ $value }}'
+{{- if $idx -}},{{- end -}}({{ $filter }})::{{ $.SchemaName }}._filter
 {{- end -}}]
-{{- else -}}NULL,NULL,NULL{{- end -}},
+{{- else -}}NULL{{- end -}},
 '{{- $.Order -}}',
 {{- $.Skip -}},
 {{- $.Limit -}},
@@ -64,8 +58,6 @@ type PGQuery struct {
 	DefaultLocale string
 	Fields        *[]string
 	Filters       *[]string
-	Comparers     *[]string
-	FilterValues  *[]string
 	Order         string
 	Limit         int
 	Skip          int
@@ -120,7 +112,6 @@ func ParsePGQuery(schemaName string, defaultLocale string, usePreview bool, q ur
 	return NewPGQuery(schemaName, contentType, locale, defaultLocale, fields, q, order, skip, limit, include, usePreview)
 }
 func NewPGQuery(schemaName string, tableName string, locale string, defaultLocale string, fields *[]string, filters url.Values, order string, skip int, limit int, include int, usePreview bool) *PGQuery {
-	filterFields, comparers, filterValues := createFilters(filters)
 	incl := include
 	if incl > MAX_INCLUDE {
 		incl = MAX_INCLUDE
@@ -131,33 +122,27 @@ func NewPGQuery(schemaName string, tableName string, locale string, defaultLocal
 		Locale:        fmtLocale(locale),
 		DefaultLocale: fmtLocale(defaultLocale),
 		//Fields:        formatFields(fields), // query ignores the fields for now and returns eveything
-		Filters:      filterFields,
-		Comparers:    comparers,
-		FilterValues: filterValues,
-		Order:        formatOrder(order, tableName, defaultLocale, usePreview),
-		Skip:         skip,
-		Limit:        limit,
-		Include:      incl,
-		UsePreview:   usePreview,
+		Filters:    createFilters(filters),
+		Order:      formatOrder(order, tableName, defaultLocale, usePreview),
+		Skip:       skip,
+		Limit:      limit,
+		Include:    incl,
+		UsePreview: usePreview,
 	}
 }
 
-func createFilters(filters url.Values) (*[]string, *[]string, *[]string) {
+func createFilters(filters url.Values) *[]string {
 	if len(filters) > 0 {
 		filterFields := make([]string, 0)
-		comparers := make([]string, 0)
-		filterValues := make([]string, 0)
 		for key, values := range filters {
 			f, c := getFilter(key)
 			if f != "" {
-				filterFields = append(filterFields, f)
-				comparers = append(comparers, c)
-				filterValues = append(filterValues, strings.Join(values, ","))
+				filterFields = append(filterFields, fmt.Sprintf("'%s','%s','{%s}'", f, c, strings.Join(values, ",")))
 			}
 		}
-		return &filterFields, &comparers, &filterValues
+		return &filterFields
 	}
-	return nil, nil, nil
+	return nil
 }
 
 func getFilter(key string) (string, string) {
