@@ -12,7 +12,9 @@ import (
 )
 
 const queryTemplate = `
-SELECT * FROM {{ $.SchemaName }}._run_query('{{ $.TableName }}','{{ $.Locale }}','{{ $.DefaultLocale }}',
+SELECT * FROM {{ $.SchemaName }}._run_query(
+{{- range $idx, $arg := $.Args -}}{{ $arg }},{{- end -}}
+'{{ $.TableName }}','{{ $.Locale }}','{{ $.DefaultLocale }}',
 {{- if $.Fields }}ARRAY[
 {{- range $idx, $field := $.Fields -}}
 {{- if $idx -}},{{- end -}}'{{ $field }}'
@@ -57,7 +59,8 @@ type PGQuery struct {
 	Locale        string
 	DefaultLocale string
 	Fields        *[]string
-	Filters       *[]string
+	Filters       url.Values
+	Args          *[]string
 	Order         string
 	Limit         int
 	Skip          int
@@ -112,29 +115,46 @@ func ParsePGQuery(schemaName string, defaultLocale string, usePreview bool, q ur
 	return NewPGQuery(schemaName, contentType, locale, defaultLocale, fields, q, order, skip, limit, include, usePreview)
 }
 func NewPGQuery(schemaName string, tableName string, locale string, defaultLocale string, fields *[]string, filters url.Values, order string, skip int, limit int, include int, usePreview bool) *PGQuery {
+
 	incl := include
 	if incl > MAX_INCLUDE {
 		incl = MAX_INCLUDE
 	}
-	return &PGQuery{
+
+	q := PGQuery{
 		SchemaName:    schemaName,
 		TableName:     toSnakeCase(tableName),
 		Locale:        fmtLocale(locale),
 		DefaultLocale: fmtLocale(defaultLocale),
 		//Fields:        formatFields(fields), // query ignores the fields for now and returns eveything
-		Filters:    createFilters(filters),
+
 		Order:      formatOrder(order, tableName, defaultLocale, usePreview),
 		Skip:       skip,
 		Limit:      limit,
 		Include:    incl,
 		UsePreview: usePreview,
 	}
+
+	if tableName == "game" {
+		marketCode := filters.Get("marketCode")
+		filters.Del("marketCode")
+		device := filters.Get("device")
+		filters.Del("device")
+		q.Args = &[]string{
+			fmt.Sprintf("'%s'", marketCode),
+			fmt.Sprintf("'%s'", device),
+		}
+	}
+
+	q.Filters = filters
+
+	return &q
 }
 
-func createFilters(filters url.Values) *[]string {
-	if len(filters) > 0 {
+func (s *PGQuery) GetFilters() *[]string {
+	if s.Filters != nil && len(s.Filters) > 0 {
 		filterFields := make([]string, 0)
-		for key, values := range filters {
+		for key, values := range s.Filters {
 			f, c := getFilter(key)
 			if f != "" {
 				vals := ""
@@ -240,6 +260,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 	defer db.Close()
 
 	tmpl, err := template.New("").Parse(queryTemplate)
+
 	if err != nil {
 		return 0, "", err
 	}
@@ -250,7 +271,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 		return 0, "", err
 	}
 
-	// fmt.Println(buff.String())
+	fmt.Println(buff.String())
 
 	var count int64
 	var items string

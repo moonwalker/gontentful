@@ -440,7 +440,7 @@ BEGIN
 
 	fc := {{ $.SchemaName }}._filter_clauses(metas, tableName, defaultLocale, locale, filters);
 
-	IF fc IS NOT NULL THEN
+	IF fc <> '' THEN
 		qs :=  qs || fc || ' AND ';
 	ELSE
 		qs :=  qs || ' WHERE ';
@@ -465,6 +465,22 @@ DECLARE
 BEGIN
 	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, usePreview, true) INTO count;
 	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, usePreview, false) INTO items;
+	IF items IS NULL THEN
+		items:= '[]'::JSON;
+	END IF;
+	RETURN ROW(count, items)::{{ $.SchemaName }}._result;
+END;
+$$ LANGUAGE 'plpgsql';
+--
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._run_query(market TEXT, device TEXT, tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters {{ $.SchemaName }}._filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, usePreview BOOLEAN)
+RETURNS {{ $.SchemaName }}._result AS $$
+DECLARE
+	count integer;
+	items json;
+	res {{ $.SchemaName }}._result;
+BEGIN
+	EXECUTE {{ $.SchemaName }}._generate_gamebrowser(market, device, tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, usePreview, true) INTO count;
+	EXECUTE {{ $.SchemaName }}._generate_gamebrowser(market, device, tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, usePreview, false) INTO items;
 	IF items IS NULL THEN
 		items:= '[]'::JSON;
 	END IF;
