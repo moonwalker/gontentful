@@ -348,16 +348,15 @@ BEGIN
 
 	IF clauses IS NOT NULL THEN
 		-- where
-		qs := qs || ' WHERE (';
 		FOREACH crit IN ARRAY clauses LOOP
 			IF isFirst THEN
 		    	isFirst := false;
+				qs := qs || ' WHERE ';
 		    ELSE
-		    	qs := qs || ') AND (';
+		    	qs := qs || ' AND ';
 		    END IF;
-			qs := qs || crit;
+			qs := qs || '(' || crit || ')';
 		END LOOP;
-		qs := qs || ')';
 	END IF;
 
 	RETURN qs;

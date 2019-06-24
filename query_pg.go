@@ -137,7 +137,14 @@ func createFilters(filters url.Values) *[]string {
 		for key, values := range filters {
 			f, c := getFilter(key)
 			if f != "" {
-				filterFields = append(filterFields, fmt.Sprintf("'%s','%s','{%s}'", f, c, strings.Join(values, ",")))
+				vals := ""
+				for i, v := range values {
+					if i > 0 {
+						vals = vals + ","
+					}
+					vals = vals + fmt.Sprintf("'%s'", v)
+				}
+				filterFields = append(filterFields, fmt.Sprintf("'%s','%s',ARRAY[%s]", f, c, vals))
 			}
 		}
 		return &filterFields
@@ -243,7 +250,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 		return 0, "", err
 	}
 
-	fmt.Println(buff.String())
+	// fmt.Println(buff.String())
 
 	var count int64
 	var items string
