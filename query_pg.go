@@ -218,7 +218,7 @@ func formatOrder(order string, tableName string, defaultLocale string, usePrevie
 			}
 			field = fmt.Sprintf("%s__%s.%s", toSnakeCase(tableName), defaultLocale, toSnakeCase(field))
 		} else {
-			field = strings.TrimPrefix(value, "fields.")
+			field = fmt.Sprintf("\"%s\"", strings.TrimPrefix(value, "fields."))
 		}
 
 		orders = append(orders, fmt.Sprintf("%s%s", field, desc))

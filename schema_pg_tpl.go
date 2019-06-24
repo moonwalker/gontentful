@@ -92,7 +92,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }}._meta, comparer text, filterValues text[], field text, subField text)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }}._meta, tableName text, defaultLocale text, locale text, comparer text, filterValues text[], field text, subField text)
 RETURNS text AS $$
 DECLARE
 	colType text;
@@ -133,7 +133,12 @@ BEGIN
 		IF subField IS NOT NULL THEN
 			RETURN '_included_' || meta.name || '.res ->> ''' || subField || ''')::text' || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
 		END IF;
-		RETURN meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
+		IF meta.is_localized AND locale <> defaultLocale THEN
+			RETURN 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
+			tableName || '__' || defaultLocale || '.' || meta.name || ')' || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
+		ELSE
+			RETURN tableName || '__' || defaultLocale || '.' || meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
+		END IF;
 	END IF;
 
 	FOREACH val IN ARRAY filterValues LOOP
@@ -145,11 +150,14 @@ BEGIN
 			IF meta IS NOT NULL THEN
 				IF subField IS NOT NULL THEN
 					fmtVal := fmtVal || '(_included_' || field || '.res ->> ''' || subField || ''')::text' || fmtComp;
+				ELSEIF meta.is_localized AND locale <> defaultLocale THEN
+					fmtVal := fmtVal || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
+					tableName || '__' || defaultLocale || '.' || meta.name || ')' || fmtComp;
 				ELSE
-					fmtVal := fmtVal || field || fmtComp;
+					fmtVal := fmtVal || tableName || '__' || defaultLocale || '.' || meta.name || fmtComp;
 				END IF;
 			ELSE
-				fmtVal := fmtVal || field || fmtComp;
+				fmtVal := fmtVal || tableName || '__' || defaultLocale || '.' || field || fmtComp;
 			END IF;
 	    END IF;
 	END LOOP;
@@ -291,11 +299,14 @@ BEGIN
 			joinedLaterals := joinedLaterals || ' LEFT JOIN LATERAL (' ||
 			{{ $.SchemaName }}._include_join(meta.link_type, {{ $.SchemaName }}._build_critertia(tableName, meta, defaultLocale, locale), meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1) || ') AS _included_' || meta.name || ' ON true';
 		ELSEIF meta.is_localized AND locale <> defaultLocale THEN
-			hasLocalized := true;
 			qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
 			tableName || '__' || defaultLocale || '.' || meta.name || ')';
 		ELSE
 	    	qs := qs || tableName || '__' || defaultLocale || '.' || meta.name;
+		END IF;
+
+		IF meta.is_localized AND locale <> defaultLocale THEN
+			hasLocalized := true;
 		END IF;
 
 		qs := qs || ' as "' || {{ $.SchemaName }}._fmt_column_name(meta.name) || '"';
@@ -316,7 +327,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._filter_clauses(metas {{ $.SchemaName }}._meta[], tableName TEXT, defaultLocale TEXT, filters {{ $.SchemaName }}._filter[])
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._filter_clauses(metas {{ $.SchemaName }}._meta[], tableName TEXT, defaultLocale TEXT, locale TEXT, filters {{ $.SchemaName }}._filter[])
 RETURNS text AS $$
 DECLARE
 	qs text := '';
@@ -331,11 +342,7 @@ BEGIN
 		FOREACH filter IN ARRAY filters LOOP
 			fFields:= string_to_array(filter.field, '.');
 			SELECT * FROM unnest(metas) WHERE name = fFields[1] INTO meta;
-			IF meta IS NOT NULL THEN
-				clauses:= clauses || {{ $.SchemaName }}._fmt_clause(meta, filter.comparer, filter.values, fFields[1], fFields[2]);
-			ELSE
-				clauses:= clauses || {{ $.SchemaName }}._fmt_clause(NULL, filter.comparer, filter.values, tableName || '__' || defaultLocale || '.' || fFields[1], fFields[2]);
-			END IF;
+			clauses:= clauses || {{ $.SchemaName }}._fmt_clause(meta, tableName, defaultLocale, locale, filter.comparer, filter.values, fFields[1], fFields[2]);
 		END LOOP;
 	END IF;
 
@@ -395,7 +402,7 @@ BEGIN
 
 	qs := {{ $.SchemaName }}._select_fields(metas, tableName, locale, defaultLocale, includeDepth, suffix);
 
-	qs:= qs || {{ $.SchemaName }}._filter_clauses(metas, tableName, defaultLocale, filters);
+	qs:= qs || {{ $.SchemaName }}._filter_clauses(metas, tableName, defaultLocale, locale, filters);
 
 	qs := {{ $.SchemaName }}._finalize_query(qs, orderBy, skip, take, count);
 
@@ -414,7 +421,7 @@ SELECT studios AS game_studio_exclude_from_market FROM {{ $.SchemaName }}.game_s
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_gamebrowser(market TEXT, device TEXT, tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters content._filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, usePreview BOOLEAN, count BOOLEAN)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_gamebrowser(market TEXT, device TEXT, tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters {{ $.SchemaName }}._filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, usePreview BOOLEAN, count BOOLEAN)
 RETURNS text AS $$
 DECLARE
 	qs text;
@@ -432,7 +439,7 @@ BEGIN
 
 	qs := qs || {{ $.SchemaName }}._join_exclude_games(market, device, defaultLocale, suffix);
 
-	fc := {{ $.SchemaName }}._filter_clauses(metas, tableName, defaultLocale, filters);
+	fc := {{ $.SchemaName }}._filter_clauses(metas, tableName, defaultLocale, locale, filters);
 
 	IF fc IS NOT NULL THEN
 		qs :=  qs || fc || ' AND ';
@@ -448,6 +455,7 @@ BEGIN
 	RETURN qs;
 END;
 $$ LANGUAGE 'plpgsql';
+
 --
 CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._run_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters {{ $.SchemaName }}._filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, usePreview BOOLEAN)
 RETURNS {{ $.SchemaName }}._result AS $$
