@@ -135,15 +135,15 @@ func NewPGQuery(schemaName string, tableName string, locale string, defaultLocal
 	}
 
 	if tableName == "game" {
-		marketCode := filters.Get("marketCode")
-		device := filters.Get("device")
+		marketCode := filters.Get("fields.marketCode")
+		device := filters.Get("fields.device")
 		if marketCode != "" && device != "" {
 			q.Args = &[]string{
 				fmt.Sprintf("'%s'", marketCode),
 				fmt.Sprintf("'%s'", device),
 			}
-			filters.Del("marketCode")
-			filters.Del("device")
+			filters.Del("fields.marketCode")
+			filters.Del("fields.device")
 		}
 	}
 
