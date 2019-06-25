@@ -53,7 +53,7 @@ $$ LANGUAGE 'plpgsql';
 CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_value(val text, isText boolean, isWildcard boolean, isList boolean)
 RETURNS text AS $$
 DECLARE
-	res text;
+	res text:= '';
 	v text;
 	isFirst boolean:= true;
 BEGIN
