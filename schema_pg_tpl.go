@@ -53,7 +53,7 @@ $$ LANGUAGE 'plpgsql';
 CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_value(val text, isText boolean, isWildcard boolean, isList boolean)
 RETURNS text AS $$
 DECLARE
-	res text:= '';
+	res text;
 	v text;
 	isFirst boolean:= true;
 BEGIN
@@ -81,26 +81,28 @@ $$ LANGUAGE 'plpgsql';
 CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_comparer(comparer text, fmtVal text)
 RETURNS text AS $$
 BEGIN
-	IF comparer = '' THEN
-		RETURN ' = ' || fmtVal;
-	ELSEIF  comparer = 'ne' THEN
-		RETURN ' <> ' || fmtVal;
-	ELSEIF  comparer = 'exists' THEN
-		RETURN ' <> NULL';
-	ELSEIF  comparer = 'lt' THEN
-		RETURN ' < ' || fmtVal;
-	ELSEIF  comparer = 'lte' THEN
-		RETURN ' <= ' || fmtVal;
-	ELSEIF  comparer = 'gt' THEN
-		RETURN ' > ' || fmtVal;
-	ELSEIF  comparer = 'gte' THEN
-		RETURN ' >= ' || fmtVal;
-	ELSEIF comparer = 'match' THEN
-		RETURN ' LIKE ' || fmtVal;
-	ELSEIF comparer = 'in' THEN
-		RETURN 	' = ANY(ARRAY[' || fmtVal || '])';
-	ELSEIF comparer = 'nin' THEN
-		RETURN 	' <> ALL(ARRAY[' || fmtVal || '])';
+	IF fmtVal IS NOT NULL THEN
+		IF comparer = '' THEN
+			RETURN ' = ' || fmtVal;
+		ELSEIF  comparer = 'ne' THEN
+			RETURN ' <> ' || fmtVal;
+		ELSEIF  comparer = 'exists' THEN
+			RETURN ' <> NULL';
+		ELSEIF  comparer = 'lt' THEN
+			RETURN ' < ' || fmtVal;
+		ELSEIF  comparer = 'lte' THEN
+			RETURN ' <= ' || fmtVal;
+		ELSEIF  comparer = 'gt' THEN
+			RETURN ' > ' || fmtVal;
+		ELSEIF  comparer = 'gte' THEN
+			RETURN ' >= ' || fmtVal;
+		ELSEIF comparer = 'match' THEN
+			RETURN ' LIKE ' || fmtVal;
+		ELSEIF comparer = 'in' THEN
+			RETURN 	' = ANY(ARRAY[' || fmtVal || '])';
+		ELSEIF comparer = 'nin' THEN
+			RETURN 	' <> ALL(ARRAY[' || fmtVal || '])';
+		END IF;
 	END IF;
 
 	RETURN '';
@@ -369,13 +371,15 @@ BEGIN
 	IF clauses IS NOT NULL THEN
 		-- where
 		FOREACH crit IN ARRAY clauses LOOP
-			IF isFirst THEN
-		    	isFirst := false;
-				qs := qs || ' WHERE ';
-		    ELSE
-		    	qs := qs || ' AND ';
-		    END IF;
-			qs := qs || '(' || crit || ')';
+			IF crit <> '' THEN
+				IF isFirst THEN
+			    	isFirst := false;
+					qs := qs || ' WHERE ';
+			    ELSE
+			    	qs := qs || ' AND ';
+			    END IF;
+				qs := qs || '(' || crit || ')';
+			END IF;
 		END LOOP;
 	END IF;
 

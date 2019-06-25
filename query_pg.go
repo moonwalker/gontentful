@@ -184,11 +184,11 @@ func getFilter(key string) (string, string) {
 	}
 
 	f = formatField(f)
-
 	colName := toSnakeCase(f)
+
 	if strings.Contains(colName, ".") {
 		// content.fields.name%5Bmatch%5D=jack&content.sys.contentType.sys.id=gameInfo
-		fkeysMatch := foreignKeyRegex.FindStringSubmatch(f)
+		fkeysMatch := foreignKeyRegex.FindStringSubmatch(colName)
 		if len(fkeysMatch) > 0 {
 			if strings.HasPrefix(fkeysMatch[2], "sys.") {
 				// ignore sys fields
@@ -272,7 +272,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 		return 0, "", err
 	}
 
-	//fmt.Println(buff.String())
+	// fmt.Println(buff.String())
 
 	var count int64
 	var items string
