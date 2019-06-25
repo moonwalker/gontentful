@@ -50,12 +50,27 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_value(val text, isText boolean, isWildcard boolean)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_value(val text, isText boolean, isWildcard boolean, isList boolean)
 RETURNS text AS $$
+DECLARE
+	res text;
+	v text;
+	isFirst boolean:= true;
 BEGIN
 	IF isText THEN
 		IF isWildcard THEN
 			RETURN '''%' || val || '%''';
+		ELSEIF isList THEN
+			FOREACH v IN ARRAY string_to_array(val, ',') LOOP
+				IF isFirst THEN
+					isFirst:= false;
+					res:= '';
+				ELSE
+					res:= res || ',';
+				END IF;
+				res:= res || '''' || v || '''';
+			END LOOP;
+			RETURN res;
 		END IF;
 		RETURN '''' || val || '''';
 	END IF;
@@ -101,6 +116,7 @@ DECLARE
 	isText boolean:= false;
 	isFirst boolean:= true;
 	isWildcard boolean;
+	isList boolean;
 	val text;
 	fmtComp text;
 BEGIN
@@ -121,6 +137,10 @@ BEGIN
 		isWildcard:= true;
 	END IF;
 
+	IF isText AND (comparer = 'in' OR comparer = 'nin') THEN
+		isList:= true;
+	END IF;
+
 	IF isArray THEN
 		FOREACH val IN ARRAY filterValues LOOP
 			IF isFirst THEN
@@ -128,7 +148,7 @@ BEGIN
 		    ELSE
 		    	fmtVal := fmtVal || ',';
 		    END IF;
-			fmtVal:= fmtVal || {{ $.SchemaName }}._fmt_value(val, isText, isWildcard);
+			fmtVal:= fmtVal || {{ $.SchemaName }}._fmt_value(val, isText, isWildcard, isList);
 		END LOOP;
 		IF subField IS NOT NULL THEN
 			RETURN '_included_' || meta.name || '.res ->> ''' || subField || ''')::text' || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
@@ -142,7 +162,7 @@ BEGIN
 	END IF;
 
 	FOREACH val IN ARRAY filterValues LOOP
-		fmtComp:= {{ $.SchemaName }}._fmt_comparer(comparer, {{ $.SchemaName }}._fmt_value(val, isText, isWildcard));
+		fmtComp:= {{ $.SchemaName }}._fmt_comparer(comparer, {{ $.SchemaName }}._fmt_value(val, isText, isWildcard, isList));
 		IF fmtComp <> '' THEN
 			IF fmtVal <> '' THEN
 	    		fmtVal := fmtVal || ' OR ';

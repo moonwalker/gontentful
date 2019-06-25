@@ -36,7 +36,8 @@ var (
 		// "content_type=gameStudioExcludeFromMarket&fields.market=&include=3&limit=1&skip=0",
 		// "content_type=routeAlias&fields.alias=%2F&include=3&limit=1&locale=en-SE&skip=0",
 		// "content_type=game&marketCode=SE&device=desktop&locale=sv&include=3&limit=0&skip=0",
-		"content_type=game&fields.device=desktop&fields.marketCode=ROW&include=3&limit=200&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		// "content_type=game&fields.device=desktop&fields.marketCode=ROW&include=3&limit=200&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		"content_type=game&fields.slug%5Bin%5D=durian-dynamite%2Cstarburst%2Chot-nudge%2Cdeco-diamonds%2Cextra-chilli%2Cfat-rabbit%2Cbook-of-dead%2Chouse-of-doom%2Cimmortal-romance%2Csindbad&include=3&limit=200&locale=en&skip=0",
 	}
 )
 
