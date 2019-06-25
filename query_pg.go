@@ -13,7 +13,7 @@ import (
 
 const queryTemplate = `
 SELECT * FROM {{ $.SchemaName }}._run_query(
-{{- range $idx, $arg := $.Args -}}{{ $arg }},{{- end -}}
+{{- if $.Args }}{{- range $idx, $arg := $.Args -}}{{ $arg }},{{- end -}}{{- end -}}
 '{{ $.TableName }}','{{ $.Locale }}','{{ $.DefaultLocale }}',
 {{- if $.Fields }}ARRAY[
 {{- range $idx, $field := $.Fields -}}
@@ -59,7 +59,7 @@ type PGQuery struct {
 	Locale        string
 	DefaultLocale string
 	Fields        *[]string
-	Filters       url.Values
+	Filters       *[]string
 	Args          *[]string
 	Order         string
 	Limit         int
@@ -127,7 +127,6 @@ func NewPGQuery(schemaName string, tableName string, locale string, defaultLocal
 		Locale:        fmtLocale(locale),
 		DefaultLocale: fmtLocale(defaultLocale),
 		//Fields:        formatFields(fields), // query ignores the fields for now and returns eveything
-
 		Order:      formatOrder(order, tableName, defaultLocale, usePreview),
 		Skip:       skip,
 		Limit:      limit,
@@ -137,24 +136,26 @@ func NewPGQuery(schemaName string, tableName string, locale string, defaultLocal
 
 	if tableName == "game" {
 		marketCode := filters.Get("marketCode")
-		filters.Del("marketCode")
 		device := filters.Get("device")
-		filters.Del("device")
-		q.Args = &[]string{
-			fmt.Sprintf("'%s'", marketCode),
-			fmt.Sprintf("'%s'", device),
+		if marketCode != "" && device != "" {
+			q.Args = &[]string{
+				fmt.Sprintf("'%s'", marketCode),
+				fmt.Sprintf("'%s'", device),
+			}
+			filters.Del("marketCode")
+			filters.Del("device")
 		}
 	}
 
-	q.Filters = filters
+	q.Filters = createFilters(filters)
 
 	return &q
 }
 
-func (s *PGQuery) GetFilters() *[]string {
-	if s.Filters != nil && len(s.Filters) > 0 {
+func createFilters(filters url.Values) *[]string {
+	if len(filters) > 0 {
 		filterFields := make([]string, 0)
-		for key, values := range s.Filters {
+		for key, values := range filters {
 			f, c := getFilter(key)
 			if f != "" {
 				vals := ""
