@@ -113,12 +113,12 @@ CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }
 RETURNS text AS $$
 DECLARE
 	colType text;
-	isArray boolean:= false;
-	fmtVal text:= '';
-	isText boolean:= false;
-	isFirst boolean:= true;
+	isArray boolean;
+	isText boolean;
 	isWildcard boolean;
 	isList boolean;
+	fmtVal text:= '';
+	isFirst boolean:= true;
 	val text;
 	fmtComp text;
 BEGIN
@@ -153,13 +153,13 @@ BEGIN
 			fmtVal:= fmtVal || {{ $.SchemaName }}._fmt_value(val, isText, isWildcard, isList);
 		END LOOP;
 		IF subField IS NOT NULL THEN
-			RETURN '_included_' || meta.name || '.res ->> ''' || subField || ''')::text' || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
+			RETURN 'EXISTS (SELECT FROM json_array_elements(_included_' || meta.name || '.res) js WHERE js ->> ''' || subField || '''' || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal) || ')';
 		END IF;
 		IF meta.is_localized AND locale <> defaultLocale THEN
 			RETURN 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-			tableName || '__' || defaultLocale || '.' || meta.name || ')' || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
+			tableName || '__' || defaultLocale || '.' || meta.name || ')' || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal);
 		ELSE
-			RETURN tableName || '__' || defaultLocale || '.' || meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, 'ARRAY[' || fmtVal || ']');
+			RETURN tableName || '__' || defaultLocale || '.' || meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal);
 		END IF;
 	END IF;
 
@@ -272,7 +272,7 @@ BEGIN
 	END IF;
 
 	IF isArray THEN
-		qs := 'array_agg(' || qs || ')';
+		qs := 'json_agg(' || qs || ')';
 	END IF;
 
 	qs := qs || ') AS res FROM {{ $.SchemaName }}.' || tableName || '__' || defaultLocale || suffix || ' ' || tableName || '__' || defaultLocale;
