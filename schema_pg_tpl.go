@@ -78,7 +78,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_comparer(comparer text, fmtVal text)
+CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_comparer(comparer text, fmtVal text, isArray boolean)
 RETURNS text AS $$
 BEGIN
 	IF fmtVal IS NOT NULL THEN
@@ -99,12 +99,17 @@ BEGIN
 		ELSEIF comparer = 'match' THEN
 			RETURN ' LIKE ' || fmtVal;
 		ELSEIF comparer = 'in' THEN
+			IF isArray THEN
+				RETURN 	' && ARRAY[' || fmtVal || ']';
+			END IF;
 			RETURN 	' = ANY(ARRAY[' || fmtVal || '])';
 		ELSEIF comparer = 'nin' THEN
-			RETURN 	' <> ALL(ARRAY[' || fmtVal || '])';
+			IF isArray THEN
+				RETURN 	' && ARRAY[' || fmtVal || '] = false';
+			END IF;
+			RETURN 	' <> ANY(ARRAY[' || fmtVal || '])';
 		END IF;
 	END IF;
-
 	RETURN '';
 END;
 $$ LANGUAGE 'plpgsql';
@@ -153,18 +158,17 @@ BEGIN
 			fmtVal:= fmtVal || {{ $.SchemaName }}._fmt_value(val, isText, isWildcard, isList);
 		END LOOP;
 		IF subField IS NOT NULL THEN
-			RETURN 'EXISTS (SELECT FROM json_array_elements(_included_' || meta.name || '.res) js WHERE js ->> ''' || subField || '''' || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal) || ')';
+			RETURN 'EXISTS (SELECT FROM json_array_elements(_included_' || meta.name || '.res) js WHERE js ->> ''' || subField || '''' || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal, false) || ')';
 		END IF;
 		IF meta.is_localized AND locale <> defaultLocale THEN
 			RETURN 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-			tableName || '__' || defaultLocale || '.' || meta.name || ')' || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal);
-		ELSE
-			RETURN tableName || '__' || defaultLocale || '.' || meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal);
+			tableName || '__' || defaultLocale || '.' || meta.name || ')' || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal, isArray);
 		END IF;
+		RETURN tableName || '__' || defaultLocale || '.' || meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal, isArray);
 	END IF;
 
 	FOREACH val IN ARRAY filterValues LOOP
-		fmtComp:= {{ $.SchemaName }}._fmt_comparer(comparer, {{ $.SchemaName }}._fmt_value(val, isText, isWildcard, isList));
+		fmtComp:= {{ $.SchemaName }}._fmt_comparer(comparer, {{ $.SchemaName }}._fmt_value(val, isText, isWildcard, isList), false);
 		IF fmtComp <> '' THEN
 			IF fmtVal <> '' THEN
 	    		fmtVal := fmtVal || ' OR ';

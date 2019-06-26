@@ -39,7 +39,8 @@ var (
 		// "content_type=game&fields.device=desktop&fields.marketCode=ROW&include=3&limit=200&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
 		// "content_type=game&fields.marketCode=ROW&fields.device=desktop&fields.slug%5Bin%5D=durian-dynamite%2Cstarburst%2Chot-nudge%2Cdeco-diamonds%2Cextra-chilli%2Cfat-rabbit%2Cbook-of-dead%2Chouse-of-doom%2Cimmortal-romance%2Csindbad&include=3&limit=200&locale=en&skip=0",
 		// "content_type=gameStudio&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0&sys.id%5Bnin%5D=",
-		"content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.studio.slug%5Bne%5D=netent&fields.wildFeatures.slug%5Bin%5D=walking-wilds&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		// "content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.studio.slug%5Bne%5D=netent&fields.wildFeatures.slug%5Bin%5D=walking-wilds&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		"content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.tags%5Bin%5D=top&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
 	}
 )
 
