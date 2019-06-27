@@ -159,11 +159,13 @@ func createFilters(filters url.Values) *[]string {
 			f, c := getFilter(key)
 			if f != "" {
 				vals := ""
-				for i, v := range values {
-					if i > 0 {
-						vals = vals + ","
+				for _, val := range values {
+					for i, v := range strings.Split(val, ",") {
+						if i > 0 {
+							vals = vals + ","
+						}
+						vals = vals + fmt.Sprintf("'%s'", v)
 					}
-					vals = vals + fmt.Sprintf("'%s'", v)
 				}
 				filterFields = append(filterFields, fmt.Sprintf("'%s','%s',ARRAY[%s]", f, c, vals))
 			}
