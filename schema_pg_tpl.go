@@ -148,7 +148,7 @@ BEGIN
 		isList:= true;
 	END IF;
 
-	IF isArray THEN
+	IF isArray OR isList THEN
 		FOREACH val IN ARRAY filterValues LOOP
 			IF isFirst THEN
 		    	isFirst := false;
