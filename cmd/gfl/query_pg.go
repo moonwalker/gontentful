@@ -43,7 +43,11 @@ var (
 		// "content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.tags%5Bin%5D=top&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
 		// "content_type=game&fields.device=desktop&fields.format%5Bin%5D=live%2Cvirtual&fields.marketCode=ROW&fields.type.slug=blackjack&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
 		// "content_type=game&fields.device=desktop&fields.format%5Bin%5D=live%2Cvirtual&fields.marketCode=ROW&fields.tags%5Bin%5D=low%2Ceasy&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
-		"content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.slug%5Bin%5D=durian-dynamite%2Cstarburst%2Chot-nudge%2Cdeco-diamonds%2Cextra-chilli%2Cfat-rabbit%2Cbook-of-dead%2Chouse-of-doom%2Cimmortal-romance%2Csindbad&include=3&limit=30&locale=en&select=sys%2Cfields.slug%2Cfields.content%2Cfields.tags%2Cfields.studio%2Cfields.deviceConfigurations&skip=0",
+		// "content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.slug%5Bin%5D=durian-dynamite%2Cstarburst%2Chot-nudge%2Cdeco-diamonds%2Cextra-chilli%2Cfat-rabbit%2Cbook-of-dead%2Chouse-of-doom%2Cimmortal-romance%2Csindbad&include=3&limit=30&locale=en&select=sys%2Cfields.slug%2Cfields.content%2Cfields.tags%2Cfields.studio%2Cfields.deviceConfigurations&skip=0",
+		// "content_type=sowQuestion&include=3&limit=200&locale=en&order=fields.id%2C-sys.updatedAt%2Csys.id&skip=0",
+		// "content_type=routeAlias&include=3&limit=200&locale=en-GB&skip=0",
+		// "content_type=route&include=3&limit=200&locale=en-GB&skip=0",
+		"content_type=game&fields.device=desktop&fields.marketCode=GB&fields.tags%5Bin%5D=top&include=3&limit=12&locale=en-GB&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
 	}
 )
 

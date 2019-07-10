@@ -474,8 +474,10 @@ BEGIN
 		qs :=  qs || ' WHERE ';
 	END IF;
 
-	qs := qs || '(' || tableName || '__' || defaultLocale || '.studio <> ALL(game_studio_exclude_from_market) AND NOT ('
-	|| tableName || '__' || defaultLocale || '.device_configurations && games_exclude_from_market))';
+	qs := qs || '(game_studio_exclude_from_market IS NULL OR ' ||
+	tableName || '__' || defaultLocale || '.studio <> ALL(game_studio_exclude_from_market)) AND ' ||
+	'(games_exclude_from_market IS NULL OR NOT ' ||
+	tableName || '__' || defaultLocale || '.device_configurations && games_exclude_from_market)';
 
 	qs := {{ $.SchemaName }}._finalize_query(qs, orderBy, skip, take, count);
 
