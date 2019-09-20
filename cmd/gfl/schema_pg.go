@@ -71,6 +71,8 @@ var pgSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		// ioutil.WriteFile("/tmp/schema", []byte(str), 0644)
+
 		_, err = db.Exec(str)
 		if err != nil {
 			log.Fatal(err)

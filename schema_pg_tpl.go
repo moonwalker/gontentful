@@ -1001,7 +1001,7 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }
 	_id serial primary key,
 	sys_id text not null unique,
 	{{- range $colidx, $col := $tbl.Columns }}
-	{{ .ColumnName }} {{ .ColumnType }},
+	"{{ .ColumnName }}" {{ .ColumnType }},
 	{{- end }}
 	version integer not null default 0,
 	created_at timestamp without time zone not null default now(),
@@ -1016,7 +1016,7 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }
 	_id serial primary key,
 	sys_id text not null unique,
 	{{- range $colidx, $col := $tbl.Columns }}
-	{{ .ColumnName }} {{ .ColumnType }}{{ .ColumnDesc }}{{- if and .Required (eq $locale $.DefaultLocale) }} not null{{- end -}},
+	"{{ .ColumnName }}" {{ .ColumnType }}{{ .ColumnDesc }}{{- if and .Required (eq $locale $.DefaultLocale) }} not null{{- end -}},
 	{{- end }}
 	version integer not null default 0,
 	published_at timestamp without time zone not null default now(),
@@ -1033,7 +1033,7 @@ BEGIN
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }} (
 	sys_id,
 	{{- range $colidx, $col := $tbl.Columns }}
-	{{ .ColumnName }},
+	"{{ .ColumnName }}",
 	{{- end }}
 	version,
 	created_at,
@@ -1054,7 +1054,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }} (
 ON CONFLICT (sys_id) DO UPDATE
 SET
 	{{- range $colidx, $col := $tbl.Columns }}
-	{{ .ColumnName }} = EXCLUDED.{{ .ColumnName }},
+	"{{ .ColumnName }}" = EXCLUDED.{{ .ColumnName }},
 	{{- end }}
 	version = EXCLUDED.version,
 	updated_at = now(),
@@ -1111,7 +1111,7 @@ BEGIN
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish (
 	sys_id,
 	{{- range $colidx, $col := $tbl.Columns }}
-	{{ .ColumnName }},
+	"{{ .ColumnName }}",
 	{{- end }}
 	version,
 	published_by
@@ -1119,7 +1119,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish (
 SELECT
 	sys_id,
 	{{- range $colidx, $col := $tbl.Columns }}
-	{{ .ColumnName }},
+	"{{ .ColumnName }}",
 	{{- end }}
 	version,
 	updated_by
@@ -1128,7 +1128,7 @@ WHERE _id = _aid
 ON CONFLICT (sys_id) DO UPDATE
 SET
 	{{- range $colidx, $col := $tbl.Columns }}
-	{{ .ColumnName }} = EXCLUDED.{{ .ColumnName }},
+	"{{ .ColumnName }}" = EXCLUDED.{{ .ColumnName }},
 	{{- end }}
 	version = EXCLUDED.version,
 	published_at = now(),
