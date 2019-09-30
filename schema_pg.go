@@ -4,6 +4,7 @@ package gontentful
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
 	"text/template"
 )
@@ -89,6 +90,31 @@ func NewPGSQLSchema(schemaName string, dropSchema bool, space *Space, items []*C
 	}
 
 	return schema
+}
+
+func (s *PGSQLSchema) Exec(schemaDatabaseURL string) error {
+	str, err := s.Render()
+	if err != nil {
+		return err
+	}
+
+	db, _ := sql.Open("postgres", schemaDatabaseURL)
+	txn, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(str)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *PGSQLSchema) Render() (string, error) {

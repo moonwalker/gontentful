@@ -36,17 +36,21 @@ var pgSchemaCmd = &cobra.Command{
 			CmaToken: CmaToken,
 		})
 
+		log.Println("get space...")
 		space, err := client.Spaces.GetSpace()
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Println("get space done")
 
-		types, err := client.ContentTypes.GetCMATypes()
+		log.Println("get cma types...")
+		cmaTypes, err := client.ContentTypes.GetCMATypes()
 		if err != nil {
 			log.Fatal(err)
 		}
+		log.Println("get cma done")
 
-		schema := gontentful.NewPGSQLSchema(schemaName, dropSchema, space, types.Items)
+		schema := gontentful.NewPGSQLSchema(schemaName, dropSchema, space, cmaTypes.Items)
 		str, err := schema.Render()
 		if err != nil {
 			log.Fatal(err)
@@ -65,6 +69,7 @@ var pgSchemaCmd = &cobra.Command{
 		if dropSchema {
 			log.Println("existing schema will be dropped")
 		}
+
 		db, _ := sql.Open("postgres", schemaDatabaseURL)
 		txn, err := db.Begin()
 		if err != nil {
