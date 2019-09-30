@@ -19,7 +19,7 @@ func appendTables(tablesByName map[string]*PGSyncTable, item *Entry, baseName st
 	fieldsByLocale := make(map[string][]*rowField, 0)
 
 	tblMetaColumns := []string{"version", "created_at", "created_by", "updated_at", "updated_by"}
-	pubMetaColumns := []string{"version", "published_at", "published_by"}
+	//pubMetaColumns := []string{"version", "published_at", "published_by"}
 
 	// iterate over fields
 	for fieldName, f := range item.Fields {
@@ -42,12 +42,12 @@ func appendTables(tablesByName map[string]*PGSyncTable, item *Entry, baseName st
 			}
 
 			// create publish table
-			pubTableName := fmtTablePublishName(baseName, locale)
-			pubTable := tablesByName[pubTableName]
-			if pubTable == nil {
-				pubTable := newPGSyncTable(pubTableName, fieldColumns, pubMetaColumns)
-				tablesByName[pubTableName] = pubTable
-			}
+			// pubTableName := fmtTablePublishName(baseName, locale)
+			// pubTable := tablesByName[pubTableName]
+			// if pubTable == nil {
+			// 	pubTable := newPGSyncTable(pubTableName, fieldColumns, pubMetaColumns)
+			// 	tablesByName[pubTableName] = pubTable
+			// }
 
 			// collect row fields by locale
 			fieldsByLocale[locale] = append(fieldsByLocale[locale], &rowField{columnName, fieldValue})
@@ -64,11 +64,11 @@ func appendTables(tablesByName map[string]*PGSyncTable, item *Entry, baseName st
 		}
 
 		// publish table
-		pubTableName := fmtTablePublishName(baseName, locale)
-		pubTable := tablesByName[pubTableName]
-		if pubTable != nil {
-			appendRowsToTable(item, pubTable, rowFields, fieldColumns, pubMetaColumns, templateFormat)
-		}
+		// pubTableName := fmtTablePublishName(baseName, locale)
+		// pubTable := tablesByName[pubTableName]
+		// if pubTable != nil {
+		// 	appendRowsToTable(item, pubTable, rowFields, fieldColumns, pubMetaColumns, templateFormat)
+		// }
 	}
 }
 

@@ -42,7 +42,7 @@ type PGSyncField struct {
 	Value interface{}
 }
 
-func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry, initSync bool) *PGSyncSchema {
+func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, initSync bool) *PGSyncSchema {
 	schema := &PGSyncSchema{
 		SchemaName: schemaName,
 		Tables:     make(map[string]*PGSyncTable, 0),
@@ -67,7 +67,7 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, items []*Entry, in
 		entriesTable.Rows = append(entriesTable.Rows, enrtiesRow)
 	}
 
-	for _, item := range items {
+	for _, item := range entries {
 		switch item.Sys.Type {
 		case ENTRY:
 			contentType := item.Sys.ContentType.Sys.ID
