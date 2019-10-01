@@ -58,7 +58,7 @@ var pgMigrateCmd = &cobra.Command{
 		log.Println("get data done")
 
 		log.Println("migrate database...")
-		err = gontentful.MigratePGSQL(migrateDatabaseURL, schemaName, space, types.Items, cmaTypes.Items, res.Items)
+		err = gontentful.MigratePGSQL(migrateDatabaseURL, schemaName, space, types.Items, cmaTypes.Items, res.Items, res.Token)
 		if err != nil {
 			log.Fatal(err)
 		}
