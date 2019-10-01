@@ -92,13 +92,13 @@ func NewPGSQLSchema(schemaName string, dropSchema bool, space *Space, items []*C
 	return schema
 }
 
-func (s *PGSQLSchema) Exec(schemaDatabaseURL string) error {
+func (s *PGSQLSchema) Exec(databaseURL string) error {
 	str, err := s.Render()
 	if err != nil {
 		return err
 	}
 
-	db, _ := sql.Open("postgres", schemaDatabaseURL)
+	db, _ := sql.Open("postgres", databaseURL)
 	txn, err := db.Begin()
 	if err != nil {
 		return err

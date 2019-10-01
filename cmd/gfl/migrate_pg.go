@@ -50,12 +50,12 @@ var pgMigrateCmd = &cobra.Command{
 		}
 		log.Println("get cma types done")
 
-		log.Println("sync data...")
+		log.Println("get data...")
 		res, err := client.Spaces.Sync("")
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Println("sync done")
+		log.Println("get data done")
 
 		log.Println("migrate database...")
 		err = gontentful.MigratePGSQL(migrateDatabaseURL, schemaName, space, types.Items, cmaTypes.Items, res.Items)

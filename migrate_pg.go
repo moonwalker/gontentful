@@ -6,39 +6,41 @@ import (
 )
 
 const (
-	tempSchemaNameTpl = "%s_NEW"
-	migrateSchemaTpl  = `ALTER SCHEMA %[1]s RENAME TO %[1]s_OLD;
-	ALTER SCHEMA %[1]s_NEW RENAME TO %[1]s;
-	DROP SCHEMA %[1]s_OLD CASCADE;`
+	newSchemaNameTpl = "%s_new"
+	oldSchemaNameTpl = "%s_old"
+	migrateSchemaTpl = `ALTER SCHEMA %[1]s RENAME TO %[2]s;
+	ALTER SCHEMA %[3]s RENAME TO %[1]s;
+	DROP SCHEMA %[2]s CASCADE;`
 )
 
 func MigratePGSQL(databaseURL string, schemaName string,
 	space *Space, types []*ContentType, cmaTypes []*ContentType, entries []*Entry) error {
 
-	tmpSchemaName := fmt.Sprintf(tempSchemaNameTpl, schemaName)
+	newSchemaName := fmt.Sprintf(newSchemaNameTpl, schemaName)
+	oldSchemaName := fmt.Sprintf(oldSchemaNameTpl, schemaName)
 
 	// 1) schema
-	schema := NewPGSQLSchema(tmpSchemaName, true, space, cmaTypes)
+	schema := NewPGSQLSchema(newSchemaName, true, space, cmaTypes)
 	err := schema.Exec(databaseURL)
 	if err != nil {
 		return err
 	}
 
 	// 2) data
-	sync := NewPGSyncSchema(tmpSchemaName, types, entries, true)
+	sync := NewPGSyncSchema(newSchemaName, types, entries, true)
 	err = sync.Exec(databaseURL)
 	if err != nil {
 		return err
 	}
 
-	// 3) rename
+	// 3) rename (swap schemas)
 	db, _ := sql.Open("postgres", databaseURL)
 	txn, err := db.Begin()
 	if err != nil {
 		return err
 	}
 
-	_, err = db.Exec(fmt.Sprintf(migrateSchemaTpl, schemaName))
+	_, err = db.Exec(fmt.Sprintf(migrateSchemaTpl, schemaName, oldSchemaName, newSchemaName))
 	if err != nil {
 		return err
 	}
