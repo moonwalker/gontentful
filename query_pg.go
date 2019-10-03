@@ -28,8 +28,7 @@ SELECT * FROM {{ $.SchemaName }}._run_query(
 '{{- $.Order -}}',
 {{- $.Skip -}},
 {{- $.Limit -}},
-{{- $.Include -}},
-{{- if $.UsePreview }}true{{ else }}false{{ end -}}
+{{- $.Include -}}
 )
 `
 
@@ -65,10 +64,9 @@ type PGQuery struct {
 	Limit         int
 	Skip          int
 	Include       int
-	UsePreview    bool
 }
 
-func ParsePGQuery(schemaName string, defaultLocale string, usePreview bool, q url.Values) *PGQuery {
+func ParsePGQuery(schemaName string, defaultLocale string, q url.Values) *PGQuery {
 	contentType := q.Get("content_type")
 	q.Del("content_type")
 
@@ -112,9 +110,9 @@ func ParsePGQuery(schemaName string, defaultLocale string, usePreview bool, q ur
 	order := q.Get("order")
 	q.Del("order")
 
-	return NewPGQuery(schemaName, contentType, locale, defaultLocale, fields, q, order, skip, limit, include, usePreview)
+	return NewPGQuery(schemaName, contentType, locale, defaultLocale, fields, q, order, skip, limit, include)
 }
-func NewPGQuery(schemaName string, tableName string, locale string, defaultLocale string, fields *[]string, filters url.Values, order string, skip int, limit int, include int, usePreview bool) *PGQuery {
+func NewPGQuery(schemaName string, tableName string, locale string, defaultLocale string, fields *[]string, filters url.Values, order string, skip int, limit int, include int) *PGQuery {
 
 	incl := include
 	if incl > MAX_INCLUDE {
@@ -127,11 +125,10 @@ func NewPGQuery(schemaName string, tableName string, locale string, defaultLocal
 		Locale:        fmtLocale(locale),
 		DefaultLocale: fmtLocale(defaultLocale),
 		//Fields:        formatFields(fields), // query ignores the fields for now and returns eveything
-		Order:      formatOrder(order, tableName, defaultLocale, usePreview),
-		Skip:       skip,
-		Limit:      limit,
-		Include:    incl,
-		UsePreview: usePreview,
+		Order:   formatOrder(order, tableName, defaultLocale),
+		Skip:    skip,
+		Limit:   limit,
+		Include: incl,
 	}
 
 	if tableName == "game" {
@@ -224,7 +221,7 @@ func formatField(f string) string {
 	return strings.TrimPrefix(strings.TrimPrefix(f, "fields."), "sys.")
 }
 
-func formatOrder(order string, tableName string, defaultLocale string, usePreview bool) string {
+func formatOrder(order string, tableName string, defaultLocale string) string {
 	if order == "" {
 		return order
 	}
@@ -241,11 +238,6 @@ func formatOrder(order string, tableName string, defaultLocale string, usePrevie
 			field = fmt.Sprintf("%s__%s.sys_id", toSnakeCase(tableName), defaultLocale)
 		} else if strings.HasPrefix(value, "sys.") {
 			field = strings.TrimPrefix(value, "sys.")
-			if usePreview && field == "publishedAt" {
-				field = "updatedAt"
-			} else if !usePreview && (field == "updatedAt" || field == "createdAt") {
-				field = "publishedAt"
-			}
 			field = fmt.Sprintf("%s__%s.%s", toSnakeCase(tableName), defaultLocale, toSnakeCase(field))
 		} else {
 			field = fmt.Sprintf("\"%s\"", strings.TrimPrefix(value, "fields."))
@@ -274,7 +266,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 		return 0, "", err
 	}
 
-	// fmt.Println(buff.String())
+	fmt.Println(buff.String())
 
 	var count int64
 	var items string
