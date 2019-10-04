@@ -266,7 +266,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 		return 0, "", err
 	}
 
-	fmt.Println(buff.String())
+	// fmt.Println(buff.String())
 
 	var count int64
 	var items string
