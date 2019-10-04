@@ -97,7 +97,7 @@ BEGIN
 		ELSEIF  comparer = 'gte' THEN
 			RETURN ' >= ' || fmtVal;
 		ELSEIF comparer = 'match' THEN
-			RETURN ' LIKE ' || fmtVal;
+			RETURN ' ILIKE ' || fmtVal;
 		ELSEIF comparer = 'in' THEN
 			IF isArray THEN
 				RETURN 	' && ARRAY[' || fmtVal || ']';
