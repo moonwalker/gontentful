@@ -83,11 +83,11 @@ RETURNS text AS $$
 BEGIN
 	IF fmtVal IS NOT NULL THEN
 		IF comparer = '' THEN
-			RETURN ' = ' || fmtVal;
+			RETURN ' IS NOT DISTINCT FROM ' || fmtVal;
 		ELSEIF  comparer = 'ne' THEN
-			RETURN ' <> ' || fmtVal;
+			RETURN ' IS DISTINCT FROM ' || fmtVal;
 		ELSEIF  comparer = 'exists' THEN
-			RETURN ' <> NULL';
+			RETURN ' IS NOT NULL';
 		ELSEIF  comparer = 'lt' THEN
 			RETURN ' < ' || fmtVal;
 		ELSEIF  comparer = 'lte' THEN
