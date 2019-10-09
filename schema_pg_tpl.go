@@ -1,6 +1,8 @@
 package gontentful
 
 const pgTemplate = `BEGIN;
+CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
+--
 DROP TYPE IF EXISTS _meta CASCADE;
 CREATE TYPE _meta AS (
 	name TEXT,
