@@ -12,7 +12,7 @@ import (
 )
 
 const queryTemplate = `
-SELECT * FROM {{ $.SchemaName }}._run_query(
+SELECT * FROM _run_query(
 {{- if $.Args }}{{- range $idx, $arg := $.Args -}}{{ $arg }},{{- end -}}{{- end -}}
 '{{ $.TableName }}','{{ $.Locale }}','{{ $.DefaultLocale }}',
 {{- if $.Fields }}ARRAY[
@@ -22,7 +22,7 @@ SELECT * FROM {{ $.SchemaName }}._run_query(
 ]{{- else }}NULL{{ end -}},
 {{- if $.Filters }}ARRAY[
 {{- range $idx, $filter := $.Filters -}}
-{{- if $idx -}},{{- end -}}({{ $filter }})::{{ $.SchemaName }}._filter
+{{- if $idx -}},{{- end -}}({{ $filter }})::_filter
 {{- end -}}]
 {{- else -}}NULL{{- end -}},
 '{{- $.Order -}}',
@@ -113,7 +113,6 @@ func ParsePGQuery(schemaName string, defaultLocale string, q url.Values) *PGQuer
 	return NewPGQuery(schemaName, contentType, locale, defaultLocale, fields, q, order, skip, limit, include)
 }
 func NewPGQuery(schemaName string, tableName string, locale string, defaultLocale string, fields *[]string, filters url.Values, order string, skip int, limit int, include int) *PGQuery {
-
 	incl := include
 	if incl > MAX_INCLUDE {
 		incl = MAX_INCLUDE
@@ -251,8 +250,13 @@ func formatOrder(order string, tableName string, defaultLocale string) string {
 
 func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 	db, _ := sql.Open("postgres", databaseURL)
-
 	defer db.Close()
+
+	// set schema in use
+	_, err := db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+	if err != nil {
+		return 0, "", err
+	}
 
 	tmpl, err := template.New("").Parse(queryTemplate)
 

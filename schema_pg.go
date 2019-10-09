@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"log"
 	"text/template"
 )
 
@@ -60,7 +61,7 @@ var schemaFuncMap = template.FuncMap{
 	"fmtLocale": fmtLocale,
 }
 
-func NewPGSQLSchema(schemaName string, dropSchema bool, space *Space, items []*ContentType) *PGSQLSchema {
+func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType) *PGSQLSchema {
 	defaultLocale := ""
 	for _, loc := range space.Locales {
 		if loc.Default {
@@ -77,7 +78,6 @@ func NewPGSQLSchema(schemaName string, dropSchema bool, space *Space, items []*C
 	}
 	schema := &PGSQLSchema{
 		SchemaName:    schemaName,
-		Drop:          dropSchema,
 		Space:         space,
 		Tables:        make([]*PGSQLTable, 0),
 		DefaultLocale: defaultLocale,
@@ -99,9 +99,19 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 	}
 
 	db, _ := sql.Open("postgres", databaseURL)
+	if err != nil {
+		return err
+	}
+
 	txn, err := db.Begin()
 	if err != nil {
 		return err
+	}
+
+	// set schema in use
+	_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	_, err = db.Exec(str)

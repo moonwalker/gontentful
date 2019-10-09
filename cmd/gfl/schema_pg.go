@@ -10,12 +10,7 @@ import (
 	"github.com/moonwalker/gontentful"
 )
 
-var (
-	dropSchema bool
-)
-
 func init() {
-	schemaCmd.PersistentFlags().BoolVarP(&dropSchema, "drop", "d", false, "drop schema")
 	schemaCmd.AddCommand(pgSchemaCmd)
 }
 
@@ -50,7 +45,7 @@ var pgSchemaCmd = &cobra.Command{
 		}
 		log.Println("get cma done")
 
-		schema := gontentful.NewPGSQLSchema(schemaName, dropSchema, space, cmaTypes.Items)
+		schema := gontentful.NewPGSQLSchema(schemaName, space, cmaTypes.Items)
 		str, err := schema.Render()
 		if err != nil {
 			log.Fatal(err)
@@ -66,12 +61,15 @@ var pgSchemaCmd = &cobra.Command{
 		}
 
 		log.Println("executing postgres schema...")
-		if dropSchema {
-			log.Println("existing schema will be dropped")
-		}
 
 		db, _ := sql.Open("postgres", schemaDatabaseURL)
 		txn, err := db.Begin()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// set schema in use
+		_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", schemaName))
 		if err != nil {
 			log.Fatal(err)
 		}

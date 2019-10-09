@@ -24,7 +24,12 @@ func GetSyncToken(databaseURL string, schemaName string) (string, error) {
 
 func SaveSyncToken(databaseURL string, schemaName string, token string) error {
 	db, _ := sql.Open("postgres", databaseURL)
-	_, err := db.Exec(fmt.Sprintf(createSyncTable, schemaName))
+	_, err := db.Exec(fmt.Sprintf("SET search_path='%s'", schemaName))
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(fmt.Sprintf(createSyncTable, schemaName))
 	if err != nil {
 		return err
 	}
