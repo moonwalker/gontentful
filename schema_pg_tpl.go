@@ -1,33 +1,28 @@
 package gontentful
 
 const pgTemplate = `BEGIN;
-{{ if .Drop }}
-DROP SCHEMA IF EXISTS {{ $.SchemaName }} CASCADE;
-{{ end -}}
-CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
---
-DROP TYPE IF EXISTS {{ $.SchemaName }}._meta CASCADE;
-CREATE TYPE {{ $.SchemaName }}._meta AS (
+DROP TYPE IF EXISTS _meta CASCADE;
+CREATE TYPE _meta AS (
 	name TEXT,
 	type TEXT,
 	items_type TEXT,
 	link_type TEXT,
 	is_localized BOOLEAN
 );
-DROP TYPE IF EXISTS {{ $.SchemaName }}._filter CASCADE;
-CREATE TYPE {{ $.SchemaName }}._filter AS (
+DROP TYPE IF EXISTS _filter CASCADE;
+CREATE TYPE _filter AS (
 	field TEXT,
 	comparer TEXT,
 	values TEXT[]
 );
-DROP TYPE IF EXISTS {{ $.SchemaName }}._result CASCADE;
-CREATE TYPE {{ $.SchemaName }}._result AS (
+DROP TYPE IF EXISTS _result CASCADE;
+CREATE TYPE _result AS (
 	count INTEGER,
 	items JSON
 );
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._get_meta(tableName text)
-RETURNS SETOF {{ $.SchemaName }}._meta AS $$
+CREATE OR REPLACE FUNCTION _get_meta(tableName text)
+RETURNS SETOF _meta AS $$
 BEGIN
 	 RETURN QUERY EXECUTE 'SELECT
 		name,
@@ -35,12 +30,12 @@ BEGIN
 		items_type,
 		link_type,
 		is_localized
-        FROM {{ $.SchemaName }}.' || tableName || '___meta';
+        FROM ' || tableName || '___meta';
 
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_column_name(colum text)
+CREATE OR REPLACE FUNCTION _fmt_column_name(colum text)
 RETURNS text AS $$
 DECLARE
 	splits text[];
@@ -50,7 +45,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_value(val text, isText boolean, isWildcard boolean, isList boolean)
+CREATE OR REPLACE FUNCTION _fmt_value(val text, isText boolean, isWildcard boolean, isList boolean)
 RETURNS text AS $$
 DECLARE
 	res text;
@@ -78,7 +73,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_comparer(comparer text, fmtVal text, isArray boolean)
+CREATE OR REPLACE FUNCTION _fmt_comparer(comparer text, fmtVal text, isArray boolean)
 RETURNS text AS $$
 BEGIN
 	IF fmtVal IS NOT NULL THEN
@@ -114,7 +109,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._fmt_clause(meta {{ $.SchemaName }}._meta, tableName text, defaultLocale text, locale text, comparer text, filterValues text[], field text, subField text)
+CREATE OR REPLACE FUNCTION _fmt_clause(meta _meta, tableName text, defaultLocale text, locale text, comparer text, filterValues text[], field text, subField text)
 RETURNS text AS $$
 DECLARE
 	colType text;
@@ -155,20 +150,20 @@ BEGIN
 		    ELSE
 		    	fmtVal := fmtVal || ',';
 		    END IF;
-			fmtVal:= fmtVal || {{ $.SchemaName }}._fmt_value(val, isText, isWildcard, isList);
+			fmtVal:= fmtVal || _fmt_value(val, isText, isWildcard, isList);
 		END LOOP;
 		IF subField IS NOT NULL THEN
-			RETURN 'EXISTS (SELECT FROM json_array_elements(_included_' || meta.name || '.res) js WHERE js ->> ''' || subField || '''' || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal, false) || ')';
+			RETURN 'EXISTS (SELECT FROM json_array_elements(_included_' || meta.name || '.res) js WHERE js ->> ''' || subField || '''' || _fmt_comparer(comparer, fmtVal, false) || ')';
 		END IF;
 		IF meta.is_localized AND locale <> defaultLocale THEN
 			RETURN 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-			tableName || '__' || defaultLocale || '.' || meta.name || ')' || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal, isArray);
+			tableName || '__' || defaultLocale || '.' || meta.name || ')' || _fmt_comparer(comparer, fmtVal, isArray);
 		END IF;
-		RETURN tableName || '__' || defaultLocale || '.' || meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal, isArray);
+		RETURN tableName || '__' || defaultLocale || '.' || meta.name || _fmt_comparer(comparer, fmtVal, isArray);
 	END IF;
 
 	FOREACH val IN ARRAY filterValues LOOP
-		fmtComp:= {{ $.SchemaName }}._fmt_comparer(comparer, {{ $.SchemaName }}._fmt_value(val, isText, isWildcard, isList), false);
+		fmtComp:= _fmt_comparer(comparer, _fmt_value(val, isText, isWildcard, isList), false);
 		IF fmtComp <> '' THEN
 			IF fmtVal <> '' THEN
 	    		fmtVal := fmtVal || ' OR ';
@@ -191,7 +186,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._build_critertia(tableName text, meta {{ $.SchemaName }}._meta, defaultLocale text, locale text)
+CREATE OR REPLACE FUNCTION _build_critertia(tableName text, meta _meta, defaultLocale text, locale text)
 RETURNS text AS $$
 DECLARE
 	c text;
@@ -213,13 +208,13 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._include_join(tableName TEXT, criteria TEXT, isArray BOOLEAN, locale TEXT, defaultLocale TEXT, includeDepth INTEGER)
+CREATE OR REPLACE FUNCTION _include_join(tableName TEXT, criteria TEXT, isArray BOOLEAN, locale TEXT, defaultLocale TEXT, includeDepth INTEGER)
 RETURNS text AS $$
 DECLARE
 	qs text;
 	hasLocalized boolean := false;
-	joinedTables {{ $.SchemaName }}._meta[];
-	meta {{ $.SchemaName }}._meta;
+	joinedTables _meta[];
+	meta _meta;
 	crit text;
 BEGIN
 	qs := 'json_build_object(';
@@ -253,10 +248,10 @@ BEGIN
 		END IF;
 	ELSE
 
-		FOR meta IN SELECT * FROM {{ $.SchemaName }}._get_meta(tableName) LOOP
+		FOR meta IN SELECT * FROM _get_meta(tableName) LOOP
 			qs := qs || ', ';
 
-			qs := qs || '''' || {{ $.SchemaName }}._fmt_column_name(meta.name) || ''',';
+			qs := qs || '''' || _fmt_column_name(meta.name) || ''',';
 
 			IF meta.is_localized AND locale <> defaultLocale THEN
 				hasLocalized:= true;
@@ -279,18 +274,18 @@ BEGIN
 		qs := 'json_agg(' || qs || ')';
 	END IF;
 
-	qs := qs || ') AS res FROM {{ $.SchemaName }}.' || tableName || '__' || defaultLocale || ' ' || tableName || '__' || defaultLocale;
+	qs := qs || ') AS res FROM ' || tableName || '__' || defaultLocale || ' ' || tableName || '__' || defaultLocale;
 
 	IF hasLocalized THEN
-		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '__' || locale || ' ' || tableName || '__' || locale ||
+		qs := qs || ' LEFT JOIN ' || tableName || '__' || locale || ' ' || tableName || '__' || locale ||
 		' ON ' || tableName || '__' || defaultLocale || '.sys_id = ' || tableName || '__' || locale || '.sys_id';
 	END IF;
 
 	IF joinedTables IS NOT NULL THEN
 		FOREACH meta IN ARRAY joinedTables LOOP
-			crit:= {{ $.SchemaName }}._build_critertia(tableName, meta, defaultLocale, locale);
+			crit:= _build_critertia(tableName, meta, defaultLocale, locale);
 			qs := qs || ' LEFT JOIN LATERAL (' ||
-			{{ $.SchemaName }}._include_join(meta.link_type, crit, meta.items_type <> '', locale, defaultLocale, includeDepth - 1)
+			_include_join(meta.link_type, crit, meta.items_type <> '', locale, defaultLocale, includeDepth - 1)
 			 || ') AS _included_' || meta.name || ' ON true';
 		END LOOP;
 	END IF;
@@ -304,13 +299,13 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._select_fields(metas {{ $.SchemaName }}._meta[], tableName TEXT, locale TEXT, defaultLocale TEXT, includeDepth INTEGER)
+CREATE OR REPLACE FUNCTION _select_fields(metas _meta[], tableName TEXT, locale TEXT, defaultLocale TEXT, includeDepth INTEGER)
 RETURNS text AS $$
 DECLARE
 	qs text:= 'SELECT ';
 	hasLocalized boolean := false;
 	joinedLaterals text:= '';
-	meta {{ $.SchemaName }}._meta;
+	meta _meta;
 BEGIN
 
 	-- qs:= qs || tableName || '__' || defaultLocale || '.sys_id  as sys_id,';
@@ -323,7 +318,7 @@ BEGIN
 		IF meta.link_type <> '' AND includeDepth > 0 THEN
 			qs := qs || '_included_' || meta.name || '.res';
 			joinedLaterals := joinedLaterals || ' LEFT JOIN LATERAL (' ||
-			{{ $.SchemaName }}._include_join(meta.link_type, {{ $.SchemaName }}._build_critertia(tableName, meta, defaultLocale, locale), meta.items_type <> '', locale, defaultLocale, includeDepth - 1) || ') AS _included_' || meta.name || ' ON true';
+			_include_join(meta.link_type, _build_critertia(tableName, meta, defaultLocale, locale), meta.items_type <> '', locale, defaultLocale, includeDepth - 1) || ') AS _included_' || meta.name || ' ON true';
 		ELSEIF meta.is_localized AND locale <> defaultLocale THEN
 			qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
 			tableName || '__' || defaultLocale || '.' || meta.name || ')';
@@ -335,13 +330,13 @@ BEGIN
 			hasLocalized := true;
 		END IF;
 
-		qs := qs || ' as "' || {{ $.SchemaName }}._fmt_column_name(meta.name) || '"';
+		qs := qs || ' as "' || _fmt_column_name(meta.name) || '"';
 	END LOOP;
 
-	qs := qs || ' FROM {{ $.SchemaName }}.' || tableName || '__' || defaultLocale || ' ' || tableName || '__' || defaultLocale;
+	qs := qs || ' FROM ' || tableName || '__' || defaultLocale || ' ' || tableName || '__' || defaultLocale;
 
 	IF hasLocalized THEN
-		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '__' || locale || ' ' || tableName || '__' || locale ||
+		qs := qs || ' LEFT JOIN ' || tableName || '__' || locale || ' ' || tableName || '__' || locale ||
 		' ON ' || tableName || '__' || defaultLocale || '.sys_id = ' || tableName || '__' || locale || '.sys_id';
 	END IF;
 
@@ -353,13 +348,13 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._filter_clauses(metas {{ $.SchemaName }}._meta[], tableName TEXT, defaultLocale TEXT, locale TEXT, filters {{ $.SchemaName }}._filter[])
+CREATE OR REPLACE FUNCTION _filter_clauses(metas _meta[], tableName TEXT, defaultLocale TEXT, locale TEXT, filters _filter[])
 RETURNS text AS $$
 DECLARE
 	qs text := '';
-	filter {{ $.SchemaName }}._filter;
+	filter _filter;
 	fFields text[];
-	meta {{ $.SchemaName }}._meta;
+	meta _meta;
 	clauses text[];
 	crit text;
 	isFirst boolean := true;
@@ -368,7 +363,7 @@ BEGIN
 		FOREACH filter IN ARRAY filters LOOP
 			fFields:= string_to_array(filter.field, '.');
 			SELECT * FROM unnest(metas) WHERE name = fFields[1] INTO meta;
-			clauses:= clauses || {{ $.SchemaName }}._fmt_clause(meta, tableName, defaultLocale, locale, filter.comparer, filter.values, fFields[1], fFields[2]);
+			clauses:= clauses || _fmt_clause(meta, tableName, defaultLocale, locale, filter.comparer, filter.values, fFields[1], fFields[2]);
 		END LOOP;
 	END IF;
 
@@ -391,7 +386,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._finalize_query(INOUT qs TEXT, orderBy TEXT, skip INTEGER, take INTEGER, count BOOLEAN)
+CREATE OR REPLACE FUNCTION _finalize_query(INOUT qs TEXT, orderBy TEXT, skip INTEGER, take INTEGER, count BOOLEAN)
 AS $$
 BEGIN
 	IF count THEN
@@ -414,49 +409,49 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters {{ $.SchemaName }}._filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, count BOOLEAN)
+CREATE OR REPLACE FUNCTION _generate_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters _filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, count BOOLEAN)
 RETURNS text AS $$
 DECLARE
 	qs text;
-	metas {{ $.SchemaName }}._meta[];
+	metas _meta[];
 BEGIN
-	SELECT ARRAY(SELECT {{ $.SchemaName }}._get_meta(tableName)) INTO metas;
+	SELECT ARRAY(SELECT _get_meta(tableName)) INTO metas;
 
-	qs := {{ $.SchemaName }}._select_fields(metas, tableName, locale, defaultLocale, includeDepth);
+	qs := _select_fields(metas, tableName, locale, defaultLocale, includeDepth);
 
-	qs:= qs || {{ $.SchemaName }}._filter_clauses(metas, tableName, defaultLocale, locale, filters);
+	qs:= qs || _filter_clauses(metas, tableName, defaultLocale, locale, filters);
 
-	qs := {{ $.SchemaName }}._finalize_query(qs, orderBy, skip, take, count);
+	qs := _finalize_query(qs, orderBy, skip, take, count);
 
 	RETURN qs;
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._join_exclude_games(market TEXT, device TEXT, defaultLocale TEXT)
+CREATE OR REPLACE FUNCTION _join_exclude_games(market TEXT, device TEXT, defaultLocale TEXT)
 RETURNS TEXT AS $$
 BEGIN
-	RETURN ' LEFT JOIN LATERAL(SELECT array_agg(game_device_configuration.sys_id) AS games_exclude_from_market FROM {{ $.SchemaName }}.games_exclude_from_market__' || defaultLocale || ' games_exclude_from_market LEFT JOIN {{ $.SchemaName }}.game_id__' || defaultLocale ||
-	' game_device_configuration ON game_device_configuration.sys_id = ANY(games_exclude_from_market.games) LEFT JOIN {{ $.SchemaName }}.game_device__' || 	defaultLocale || ' AS game_device ON lower(game_device.type) = ''' || device || ''' WHERE games_exclude_from_market.market = ''' ||
+	RETURN ' LEFT JOIN LATERAL(SELECT array_agg(game_device_configuration.sys_id) AS games_exclude_from_market FROM games_exclude_from_market__' || defaultLocale || ' games_exclude_from_market LEFT JOIN game_id__' || defaultLocale ||
+	' game_device_configuration ON game_device_configuration.sys_id = ANY(games_exclude_from_market.games) LEFT JOIN game_device__' || 	defaultLocale || ' AS game_device ON lower(game_device.type) = ''' || device || ''' WHERE games_exclude_from_market.market = ''' ||
 	market || ''' AND game_device.sys_id = ANY(game_device_configuration.devices)) AS games_exclude_from_market ON true LEFT JOIN LATERAL(
-SELECT studios AS game_studio_exclude_from_market FROM {{ $.SchemaName }}.game_studio_exclude_from_market__' || defaultLocale || ' WHERE market = ''' ||
+SELECT studios AS game_studio_exclude_from_market FROM game_studio_exclude_from_market__' || defaultLocale || ' WHERE market = ''' ||
 	market || ''') AS game_studio_exclude_from_market ON true';
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_gamebrowser(market TEXT, device TEXT, tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters {{ $.SchemaName }}._filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, count BOOLEAN)
+CREATE OR REPLACE FUNCTION _generate_gamebrowser(market TEXT, device TEXT, tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters _filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER, count BOOLEAN)
 RETURNS text AS $$
 DECLARE
 	qs text;
-	metas {{ $.SchemaName }}._meta[];
+	metas _meta[];
 	fc text;
 BEGIN
-	SELECT ARRAY(SELECT {{ $.SchemaName }}._get_meta(tableName)) INTO metas;
+	SELECT ARRAY(SELECT _get_meta(tableName)) INTO metas;
 
-	qs := {{ $.SchemaName }}._select_fields(metas, tableName, locale, defaultLocale, includeDepth);
+	qs := _select_fields(metas, tableName, locale, defaultLocale, includeDepth);
 
-	qs := qs || {{ $.SchemaName }}._join_exclude_games(market, device, defaultLocale);
+	qs := qs || _join_exclude_games(market, device, defaultLocale);
 
-	fc := {{ $.SchemaName }}._filter_clauses(metas, tableName, defaultLocale, locale, filters);
+	fc := _filter_clauses(metas, tableName, defaultLocale, locale, filters);
 
 	IF fc <> '' THEN
 		qs :=  qs || fc || ' AND ';
@@ -469,46 +464,46 @@ BEGIN
 	'(games_exclude_from_market IS NULL OR NOT ' ||
 	tableName || '__' || defaultLocale || '.device_configurations && games_exclude_from_market)';
 
-	qs := {{ $.SchemaName }}._finalize_query(qs, orderBy, skip, take, count);
+	qs := _finalize_query(qs, orderBy, skip, take, count);
 
 	RETURN qs;
 END;
 $$ LANGUAGE 'plpgsql';
 
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._run_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters {{ $.SchemaName }}._filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER)
-RETURNS {{ $.SchemaName }}._result AS $$
+CREATE OR REPLACE FUNCTION _run_query(tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters _filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER)
+RETURNS _result AS $$
 DECLARE
 	count integer;
 	items json;
-	res {{ $.SchemaName }}._result;
+	res _result;
 BEGIN
-	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, true) INTO count;
-	EXECUTE {{ $.SchemaName }}._generate_query(tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, false) INTO items;
+	EXECUTE _generate_query(tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, true) INTO count;
+	EXECUTE _generate_query(tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, false) INTO items;
 	IF items IS NULL THEN
 		items:= '[]'::JSON;
 	END IF;
-	RETURN ROW(count, items)::{{ $.SchemaName }}._result;
+	RETURN ROW(count, items)::_result;
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._run_query(market TEXT, device TEXT, tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters {{ $.SchemaName }}._filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER)
-RETURNS {{ $.SchemaName }}._result AS $$
+CREATE OR REPLACE FUNCTION _run_query(market TEXT, device TEXT, tableName TEXT, locale TEXT, defaultLocale TEXT, fields TEXT[], filters _filter[], orderBy TEXT, skip INTEGER, take INTEGER, includeDepth INTEGER)
+RETURNS _result AS $$
 DECLARE
 	count integer;
 	items json;
-	res {{ $.SchemaName }}._result;
+	res _result;
 BEGIN
-	EXECUTE {{ $.SchemaName }}._generate_gamebrowser(market, device, tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, true) INTO count;
-	EXECUTE {{ $.SchemaName }}._generate_gamebrowser(market, device, tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, false) INTO items;
+	EXECUTE _generate_gamebrowser(market, device, tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, true) INTO count;
+	EXECUTE _generate_gamebrowser(market, device, tableName, locale, defaultLocale, fields, filters, orderBy, skip, take, includeDepth, false) INTO items;
 	IF items IS NULL THEN
 		items:= '[]'::JSON;
 	END IF;
-	RETURN ROW(count, items)::{{ $.SchemaName }}._result;
+	RETURN ROW(count, items)::_result;
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._space (
+CREATE TABLE IF NOT EXISTS _space (
 	_id serial primary key,
 	spaceid text not null unique,
 	name text not null,
@@ -517,9 +512,9 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._space (
 	updated_at timestamp without time zone default now(),
 	updated_by text not null
 );
-CREATE UNIQUE INDEX IF NOT EXISTS spaceid ON {{ $.SchemaName }}._space(spaceid);
+CREATE UNIQUE INDEX IF NOT EXISTS spaceid ON _space(spaceid);
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._locales (
+CREATE TABLE IF NOT EXISTS _locales (
 	_id serial primary key,
 	code text not null unique,
 	name text not null,
@@ -530,9 +525,9 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._locales (
 	updated_at timestamp without time zone default now(),
 	updated_by text not null
 );
-CREATE UNIQUE INDEX IF NOT EXISTS code ON {{ $.SchemaName }}._locales(code);
+CREATE UNIQUE INDEX IF NOT EXISTS code ON _locales(code);
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._models (
+CREATE TABLE IF NOT EXISTS _models (
 	_id serial primary key,
 	name text not null unique,
 	label text not null,
@@ -544,18 +539,18 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._models (
 	updated_at timestamp without time zone default now(),
 	updated_by text not null
 );
-CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._models(name);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON _models(name);
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._entries (
+CREATE TABLE IF NOT EXISTS _entries (
 	_id serial primary key,
 	sys_id text not null unique,
 	table_name text not null
 );
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}._entries(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON _entries(sys_id);
 --
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
-INSERT INTO {{ $.SchemaName }}._locales (
+INSERT INTO _locales (
 	code,
 	name,
 	is_default,
@@ -579,7 +574,7 @@ SET
 	updated_by = EXCLUDED.updated_by
 ;
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset___meta (
+CREATE TABLE IF NOT EXISTS _asset___meta (
 	_id serial primary key,
 	name text not null unique,
 	label text not null,
@@ -597,10 +592,10 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset___meta (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._asset___meta(name);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON _asset___meta(name);
 --
 {{ range $aidx, $col := $.AssetColumns }}
-INSERT INTO {{ $.SchemaName }}._asset___meta (
+INSERT INTO _asset___meta (
 	name,
 	label,
 	type,
@@ -616,7 +611,7 @@ INSERT INTO {{ $.SchemaName }}._asset___meta (
 ON CONFLICT (name) DO NOTHING;
 {{- end -}}
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset__{{ $locale }} (
+CREATE TABLE IF NOT EXISTS _asset__{{ $locale }} (
 	_id serial primary key,
 	sys_id text not null unique,
 	title text not null,
@@ -631,14 +626,14 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset__{{ $locale }} (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}._asset__{{ $locale }}(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON _asset__{{ $locale }}(sys_id);
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__asset__{{ $locale }}_insert() CASCADE;
+DROP FUNCTION IF EXISTS on__asset__{{ $locale }}_insert() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__asset__{{ $locale }}_insert()
+CREATE FUNCTION on__asset__{{ $locale }}_insert()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}._entries (
+	INSERT INTO _entries (
 		sys_id,
 		table_name
 	) VALUES (
@@ -649,36 +644,36 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_insert ON {{ $.SchemaName }}._asset__{{ $locale }};
+DROP TRIGGER IF EXISTS __asset__{{ $locale }}_insert ON _asset__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}_insert
-	AFTER INSERT ON {{ $.SchemaName }}._asset__{{ $locale }}
+CREATE TRIGGER __asset__{{ $locale }}_insert
+	AFTER INSERT ON _asset__{{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}_insert();
+	EXECUTE PROCEDURE on__asset__{{ $locale }}_insert();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__asset__{{ $locale }}_delete() CASCADE;
+DROP FUNCTION IF EXISTS on__asset__{{ $locale }}_delete() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__asset__{{ $locale }}_delete()
+CREATE FUNCTION on__asset__{{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '_asset__{{ $locale }}';
+	DELETE FROM _entries WHERE sys_id = OLD.sys_id AND table_name = '_asset__{{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_delete ON {{ $.SchemaName }}._asset__{{ $locale }};
+DROP TRIGGER IF EXISTS __asset__{{ $locale }}_delete ON _asset__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}_delete
-	AFTER DELETE ON {{ $.SchemaName }}._asset__{{ $locale }}
+CREATE TRIGGER __asset__{{ $locale }}_delete
+	AFTER DELETE ON _asset__{{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}_delete();
+	EXECUTE PROCEDURE on__asset__{{ $locale }}_delete();
 --
 {{ end -}}
 COMMIT;
 ----
 {{ range $tblidx, $tbl := $.Tables }}
 BEGIN;
-INSERT INTO {{ $.SchemaName }}._models (
+INSERT INTO _models (
 	name,
 	label,
 	description,
@@ -708,7 +703,7 @@ SET
 	updated_by = EXCLUDED.updated_by
 ;
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}___meta (
+CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}___meta (
 	_id serial primary key,
 	name text not null unique,
 	label text not null,
@@ -726,10 +721,10 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}___meta (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}.{{ $tbl.TableName }}___meta(name);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $tbl.TableName }}___meta(name);
 --
 {{ range $fieldsidx, $fields := $tbl.Data.Metas }}
-INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}___meta (
+INSERT INTO {{ $tbl.TableName }}___meta (
 	name,
 	label,
 	type,
@@ -774,7 +769,7 @@ SET
 --
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }} (
+CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}__{{ $locale }} (
 	_id serial primary key,
 	sys_id text not null unique,
 	{{- range $colidx, $col := $tbl.Columns }}
@@ -787,14 +782,14 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $tbl.TableName }}__{{ $locale }}(sys_id);
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_insert() CASCADE;
+DROP FUNCTION IF EXISTS on_{{ $tbl.TableName }}__{{ $locale }}_insert() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_insert()
+CREATE FUNCTION on_{{ $tbl.TableName }}__{{ $locale }}_insert()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}._entries (
+	INSERT INTO _entries (
 		sys_id,
 		table_name
 	) VALUES (
@@ -805,29 +800,29 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_insert ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
+DROP TRIGGER IF EXISTS _{{ $tbl.TableName }}__{{ $locale }}_insert ON {{ $tbl.TableName }}__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_insert
-    AFTER INSERT ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}
+CREATE TRIGGER _{{ $tbl.TableName }}__{{ $locale }}_insert
+    AFTER INSERT ON {{ $tbl.TableName }}__{{ $locale }}
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_insert();
+	EXECUTE PROCEDURE on_{{ $tbl.TableName }}__{{ $locale }}_insert();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_delete() CASCADE;
+DROP FUNCTION IF EXISTS on_{{ $tbl.TableName }}__{{ $locale }}_delete() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_delete()
+CREATE FUNCTION on_{{ $tbl.TableName }}__{{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '{{ $tbl.TableName }}__{{ $locale }}';
+	DELETE FROM _entries WHERE sys_id = OLD.sys_id AND table_name = '{{ $tbl.TableName }}__{{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
+DROP TRIGGER IF EXISTS _{{ $tbl.TableName }}__{{ $locale }}_delete ON {{ $tbl.TableName }}__{{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_delete
-	AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}
+CREATE TRIGGER _{{ $tbl.TableName }}__{{ $locale }}_delete
+	AFTER DELETE ON {{ $tbl.TableName }}__{{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_delete();
+	EXECUTE PROCEDURE on_{{ $tbl.TableName }}__{{ $locale }}_delete();
 --
 {{ end -}}
 {{ end -}}
