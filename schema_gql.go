@@ -218,7 +218,7 @@ func getResolverArgs(collection bool, fields []*ContentTypeField) []*GraphQLReso
 
 func getSingleArgs(fields []*ContentTypeField) []*GraphQLResolverArg {
 	args := singleArgs
-	for _, a := range singleExtraArgs {
+	for _, a := range singleIdentityFields {
 		if hasField(fields, a.ArgName) {
 			args = append(args, a)
 		}
