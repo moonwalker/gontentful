@@ -84,25 +84,25 @@ type Asset {
 
 var (
 	singleArgs = []*GraphQLResolverArg{
-		&GraphQLResolverArg{"id", "ID"},
-		&GraphQLResolverArg{"locale", "String"},
-		&GraphQLResolverArg{"include", "Int"},
-		&GraphQLResolverArg{"select", "String"},
+		&GraphQLResolverArg{"_id", "ID"},
+		&GraphQLResolverArg{"_locale", "String"},
+		&GraphQLResolverArg{"_include", "Int"},
+		&GraphQLResolverArg{"_select", "String"},
 	}
-	singleExtraArgs = []*GraphQLResolverArg{
+	singleIdentityFields = []*GraphQLResolverArg{
 		&GraphQLResolverArg{"slug", "String"},
 		&GraphQLResolverArg{"code", "String"},
 		&GraphQLResolverArg{"name", "String"},
 		&GraphQLResolverArg{"key", "String"},
 	}
 	collectionArgs = []*GraphQLResolverArg{
-		&GraphQLResolverArg{"locale", "String"},
-		&GraphQLResolverArg{"skip", "Int"},
-		&GraphQLResolverArg{"limit", "Int"},
-		&GraphQLResolverArg{"include", "Int"},
-		&GraphQLResolverArg{"select", "String"},
-		&GraphQLResolverArg{"order", "String"},
-		&GraphQLResolverArg{"q", "String"},
+		&GraphQLResolverArg{"_locale", "String"},
+		&GraphQLResolverArg{"_skip", "Int"},
+		&GraphQLResolverArg{"_limit", "Int"},
+		&GraphQLResolverArg{"_include", "Int"},
+		&GraphQLResolverArg{"_select", "String"},
+		&GraphQLResolverArg{"_order", "String"},
+		&GraphQLResolverArg{"_q", "String"},
 	}
 )
 
