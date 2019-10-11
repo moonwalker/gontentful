@@ -155,7 +155,7 @@ BEGIN
 			fmtVal:= fmtVal || _fmt_value(val, isText, isWildcard, isList);
 		END LOOP;
 		IF subField IS NOT NULL THEN
-			IF isArray
+			IF isArray THEN
 				RETURN 'EXISTS (SELECT FROM json_array_elements(_included_' || meta.name || '.res) js WHERE js ->> ''' || subField || '''' || _fmt_comparer(comparer, fmtVal, false) || ')';
 			ELSE
 				RETURN '(_included_' || meta.name || '.res ->> ''' || subField || '''' || _fmt_comparer(comparer, fmtVal, false) || ')';
