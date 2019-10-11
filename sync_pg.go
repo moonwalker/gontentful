@@ -198,7 +198,8 @@ func (r *PGSyncRow) GetFieldValue(fieldColumn string) string {
 
 func (s *PGSyncSchema) Exec(databaseURL string) error {
 	db, _ := sql.Open("postgres", databaseURL)
-
+	defer db.Close()
+	
 	// set schema name
 	_, err := db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
 	if err != nil {

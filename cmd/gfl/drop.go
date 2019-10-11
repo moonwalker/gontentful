@@ -5,16 +5,11 @@ import (
 )
 
 var (
-	dropDatabaseURL string
 	dropSchema      string
 )
 
 func init() {
-	dropCmd.PersistentFlags().StringVarP(&dropDatabaseURL, "url", "u", "", "database url")
-	if dropDatabaseURL == "" {
-		dropDatabaseURL = "postgres://postgres@localhost:5432/?sslmode=disable"
-	}
-	dropCmd.PersistentFlags().StringVarP(&dropSchema, "schema", "n", "", "schema name")
+	dropCmd.PersistentFlags().StringVarP(&dropSchema, "drop", "d", "", "schema to drop")
 	if dropSchema == "" {
 		dropSchema = schemaName
 	}

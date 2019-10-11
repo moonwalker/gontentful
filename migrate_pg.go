@@ -39,6 +39,8 @@ func MigratePGSQL(databaseURL string, schemaName string,
 
 	// 3) rename (swap schemas)
 	db, _ := sql.Open("postgres", databaseURL)
+	defer db.Close()
+	
 	txn, err := db.Begin()
 	if err != nil {
 		return err

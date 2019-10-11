@@ -4,15 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	queryDatabaseURL string
-)
-
 func init() {
-	queryCmd.PersistentFlags().StringVarP(&queryDatabaseURL, "url", "u", "", "database url")
-	if queryDatabaseURL == "" {
-		queryDatabaseURL = "postgres://postgres@localhost:5432/?sslmode=disable"
-	}
 	rootCmd.AddCommand(queryCmd)
 }
 

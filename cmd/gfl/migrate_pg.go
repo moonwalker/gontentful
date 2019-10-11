@@ -23,10 +23,10 @@ var pgMigrateCmd = &cobra.Command{
 
 		client := gontentful.NewClient(&gontentful.ClientOptions{
 			CdnURL:   apiURL,
-			SpaceID:  SpaceID,
-			CdnToken: CdnToken,
+			SpaceID:  spaceID,
+			CdnToken: cdnToken,
 			CmaURL:   cmaURL,
-			CmaToken: CmaToken,
+			CmaToken: cmaToken,
 		})
 
 		log.Println("get space...")

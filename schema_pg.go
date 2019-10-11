@@ -99,9 +99,7 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 	}
 
 	db, _ := sql.Open("postgres", databaseURL)
-	if err != nil {
-		return err
-	}
+	defer db.Close()
 
 	txn, err := db.Begin()
 	if err != nil {
@@ -120,6 +118,12 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 	}
 
 	err = txn.Commit()
+	if err != nil {
+		return err
+	}
+
+	funcs:= NewPGFunctions(s.SchemaName)
+	err = funcs.Exec(databaseURL)
 	if err != nil {
 		return err
 	}

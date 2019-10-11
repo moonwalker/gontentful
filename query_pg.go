@@ -166,7 +166,9 @@ func createFilters(filters url.Values) *[]string {
 				filterFields = append(filterFields, fmt.Sprintf("'%s','%s',ARRAY[%s]", f, c, vals))
 			}
 		}
-		return &filterFields
+		if len(filterFields) > 0 {
+			return &filterFields
+		}
 	}
 	return nil
 }
@@ -186,9 +188,10 @@ func getFilter(key string) (string, string) {
 
 	if strings.Contains(colName, ".") {
 		// content.fields.name%5Bmatch%5D=jack&content.sys.contentType.sys.id=gameInfo
+		// content.sys.contentType.sys.id=gameId&deviceConfigurations.sys.id=1yyHAve4aE6AQgkIyYG4im
 		fkeysMatch := foreignKeyRegex.FindStringSubmatch(colName)
 		if len(fkeysMatch) > 0 {
-			if strings.HasPrefix(fkeysMatch[2], "sys.") {
+			if fkeysMatch[2] != "sys.id" && strings.HasPrefix(fkeysMatch[2], "sys.") {
 				// ignore sys fields
 				return "", ""
 			}

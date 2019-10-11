@@ -8,9 +8,10 @@ import (
 )
 
 var (
-	SpaceID  string
-	CdnToken string
-	CmaToken string
+	spaceID  string
+	cdnToken string
+	cmaToken string
+	databaseURL string
 )
 
 const (
@@ -26,12 +27,14 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVarP(&SpaceID, "space", "s", "", "cf space id (required)")
-	rootCmd.PersistentFlags().StringVarP(&CdnToken, "token", "t", "", "cdn token (required)")
-	rootCmd.PersistentFlags().StringVarP(&CmaToken, "cma", "c", "", "cma token (required)")
+	rootCmd.PersistentFlags().StringVarP(&spaceID, "space", "s", "", "cf space id (required)")
+	rootCmd.PersistentFlags().StringVarP(&cdnToken, "token", "t", "", "cdn token (required)")
+	rootCmd.PersistentFlags().StringVarP(&cmaToken, "cma", "c", "", "cma token (required)")
+	rootCmd.PersistentFlags().StringVarP(&databaseURL, "url", "u", "postgres://postgres@localhost:5432/?sslmode=disable", "database url")
 	rootCmd.MarkFlagRequired("space")
 	rootCmd.MarkFlagRequired("token")
 	rootCmd.MarkFlagRequired("cma")
+	rootCmd.MarkFlagRequired("url")
 }
 
 func main() {

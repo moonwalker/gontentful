@@ -19,16 +19,16 @@ var pgSchemaCmd = &cobra.Command{
 	Short: "Creates postgres schema",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(schemaDatabaseURL) > 0 {
+		if len(databaseURL) > 0 {
 			log.Println("creating postgres schema...")
 		}
 
 		client := gontentful.NewClient(&gontentful.ClientOptions{
 			CdnURL:   apiURL,
-			SpaceID:  SpaceID,
-			CdnToken: CdnToken,
+			SpaceID:  spaceID,
+			CdnToken: cdnToken,
 			CmaURL:   cmaURL,
-			CmaToken: CmaToken,
+			CmaToken: cmaToken,
 		})
 
 		log.Println("get space...")
@@ -53,7 +53,7 @@ var pgSchemaCmd = &cobra.Command{
 
 		// ioutil.WriteFile("/tmp/schema", []byte(str), 0644)
 
-		if len(schemaDatabaseURL) == 0 {
+		if len(databaseURL) == 0 {
 			fmt.Println(str)
 			return
 		} else {
@@ -62,7 +62,7 @@ var pgSchemaCmd = &cobra.Command{
 
 		log.Println("executing postgres schema...")
 
-		db, _ := sql.Open("postgres", schemaDatabaseURL)
+		db, _ := sql.Open("postgres", databaseURL)
 		txn, err := db.Begin()
 		if err != nil {
 			log.Fatal(err)

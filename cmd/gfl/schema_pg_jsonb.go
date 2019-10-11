@@ -18,14 +18,14 @@ var jsonbSchemaCmd = &cobra.Command{
 	Short: "Creates postgres jsonb schema",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(schemaDatabaseURL) > 0 {
+		if len(databaseURL) > 0 {
 			log.Println("creating postgres jsonb schema...")
 		}
 
 		client := gontentful.NewClient(&gontentful.ClientOptions{
 			CdnURL:   apiURL,
-			SpaceID:  SpaceID,
-			CdnToken: CdnToken,
+			SpaceID:  spaceID,
+			CdnToken: cdnToken,
 		})
 
 		types, err := client.ContentTypes.GetTypes()
@@ -39,7 +39,7 @@ var jsonbSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		if len(schemaDatabaseURL) == 0 {
+		if len(databaseURL) == 0 {
 			fmt.Println(str)
 			return
 		} else {

@@ -24,17 +24,17 @@ var pgSyncCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		client := gontentful.NewClient(&gontentful.ClientOptions{
 			CdnURL:   apiURL,
-			SpaceID:  SpaceID,
-			CdnToken: CdnToken,
+			SpaceID:  spaceID,
+			CdnToken: cdnToken,
 		})
 
 		var err error
 		var syncToken string
 		if !initSync {
 			// retrieve token from db, if exists
-			if len(syncDatabaseURL) > 0 {
+			if len(databaseURL) > 0 {
 				log.Println("retrieving sync token...")
-				syncToken, err = gontentful.GetSyncToken(syncDatabaseURL, schemaName)
+				syncToken, err = gontentful.GetSyncToken(databaseURL, schemaName)
 				if err != nil {
 					log.Println("no sync token found")
 				} else {
@@ -64,16 +64,16 @@ var pgSyncCmd = &cobra.Command{
 
 		log.Println("exec...")
 		schema := gontentful.NewPGSyncSchema(schemaName, types.Items, res.Items, len(syncToken) == 0)
-		err = schema.Exec(syncDatabaseURL)
+		err = schema.Exec(databaseURL)
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Println("exec done")
 
 		// save token to db, overwrite if exists
-		if len(syncDatabaseURL) > 0 {
+		if len(databaseURL) > 0 {
 			log.Println("saving sync token...")
-			err = gontentful.SaveSyncToken(syncDatabaseURL, schemaName, res.Token)
+			err = gontentful.SaveSyncToken(databaseURL, schemaName, res.Token)
 			if err != nil {
 				log.Fatal(err)
 			}

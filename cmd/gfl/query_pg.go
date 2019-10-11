@@ -51,14 +51,15 @@ var (
 		//"content_type=game&fields.device=desktop&fields.marketCode=EU&fields.tags%5Bin%5D=top&include=3&limit=12&locale=en-EU&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
 		//"content_type=market&include=3&limit=200&skip=0",
 		//"content_type=locale&fields.disable%5Bne%5D=true&include=3&limit=200&skip=0",
-		"content_type=game&fields.device=desktop&fields.format%5Bin%5D=live&fields.marketCode=ROW&fields.type.slug%5Bin%5D=classic%2Ccraps%2Cbaccarat%2Cpoker%2Cother&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
-		"content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.themes.slug%5Bin%5D=world-renowned&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
-		"content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.wildFeatures.slug%5Bin%5D=walking-wilds&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
-		"content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.winFeatures.slug%5Bin%5D=grid-play&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
-		"content_type=game&fields.category.slug=slots&fields.device=desktop&fields.marketCode=ROW&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
-		"content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.tags%5Bin%5D=top&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
-		"content_type=game&fields.device=desktop&fields.format%5Bin%5D=live&fields.marketCode=ROW&fields.tags%5Bin%5D=vip&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
-		"content_type=game&fields.device=desktop&fields.format%5Bin%5D=live%2Cvirtual&fields.marketCode=ROW&fields.type.slug=roulette&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		// "content_type=game&fields.device=desktop&fields.format%5Bin%5D=live&fields.marketCode=ROW&fields.type.slug%5Bin%5D=classic%2Ccraps%2Cbaccarat%2Cpoker%2Cother&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		// "content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.themes.slug%5Bin%5D=world-renowned&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		// "content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.wildFeatures.slug%5Bin%5D=walking-wilds&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		// "content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.winFeatures.slug%5Bin%5D=grid-play&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		// "content_type=game&fields.category.slug=slots&fields.device=desktop&fields.marketCode=ROW&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		// "content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.tags%5Bin%5D=top&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		// "content_type=game&fields.device=desktop&fields.format%5Bin%5D=live&fields.marketCode=ROW&fields.tags%5Bin%5D=vip&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		// "content_type=game&fields.device=desktop&fields.format%5Bin%5D=live%2Cvirtual&fields.marketCode=ROW&fields.type.slug=roulette&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		"content_type=game&fields.content.sys.contentType.sys.id=gameId&fields.deviceConfigurations.sys.id=1yyHAve4aE6AQgkIyYG4im&include=3&limit=1&select=sys%2Cfields.slug&skip=0",
 	}
 )
 
@@ -82,7 +83,7 @@ var pgQueryCmd = &cobra.Command{
 			query := gontentful.ParsePGQuery(schemaName, defaultLocale, q)
 
 			log.Println("executing query...")
-			total, items, err := query.Exec(queryDatabaseURL)
+			total, items, err := query.Exec(databaseURL)
 			if err != nil {
 				log.Fatal(err)
 			}
