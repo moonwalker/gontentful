@@ -155,7 +155,11 @@ BEGIN
 			fmtVal:= fmtVal || _fmt_value(val, isText, isWildcard, isList);
 		END LOOP;
 		IF subField IS NOT NULL THEN
-			RETURN 'EXISTS (SELECT FROM json_array_elements(_included_' || meta.name || '.res) js WHERE js ->> ''' || subField || '''' || _fmt_comparer(comparer, fmtVal, false) || ')';
+			IF isArray
+				RETURN 'EXISTS (SELECT FROM json_array_elements(_included_' || meta.name || '.res) js WHERE js ->> ''' || subField || '''' || _fmt_comparer(comparer, fmtVal, false) || ')';
+			ELSE
+				RETURN '(_included_' || meta.name || '.res ->> ''' || subField || '''' || _fmt_comparer(comparer, fmtVal, false) || ')';
+			END IF;
 		END IF;
 		IF meta.is_localized AND locale <> defaultLocale THEN
 			RETURN 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||

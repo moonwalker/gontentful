@@ -242,7 +242,7 @@ func formatOrder(order string, tableName string, defaultLocale string) string {
 			field = fmt.Sprintf("\"%s\"", strings.TrimPrefix(value, "fields."))
 		}
 
-		orders = append(orders, fmt.Sprintf("%s%s", field, desc))
+		orders = append(orders, fmt.Sprintf("%s%s NULLS LAST", field, desc))
 	}
 
 	return strings.Join(orders, ",")
