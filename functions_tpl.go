@@ -275,9 +275,20 @@ BEGIN
 				hasLocalized:= true;
 			END IF;
 
-			IF meta.link_type <> '' AND includeDepth > 0 THEN
-				qs := qs || '_included_' || meta.name || '.res';
-				joinedTables:= joinedTables || meta;
+			IF meta.link_type <> '' THEN
+				IF includeDepth > 0 THEN
+					qs := qs || '_included_' || meta.name || '.res';
+					joinedTables:= joinedTables || meta;
+				ELSE
+					qs := qs || 'json_build_object(''sys'',json_build_object(''id'',';
+					IF hasLocalized THEN
+						qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
+							tableName || '__' || defaultLocale || '.' || meta.name || ')';
+					ELSE
+						qs := qs || tableName || '__' || defaultLocale || '.sys_id';
+					END IF;
+					qs := qs || '))';
+				END IF;
 			ELSEIF hasLocalized THEN
 				qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
 					tableName || '__' || defaultLocale || '.' || meta.name || ')';
