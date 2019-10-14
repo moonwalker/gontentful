@@ -86,6 +86,12 @@ var pgSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		funcs:= gontentful.NewPGFunctions(schemaName)
+		err = funcs.Exec(databaseURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		log.Println("postgres schema successfully executed")
 	},
 }
