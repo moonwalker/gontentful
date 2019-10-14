@@ -340,10 +340,21 @@ BEGIN
 	    qs := qs || ', ';
 
 		-- joins
-		IF meta.link_type <> '' AND includeDepth > 0 THEN
-			qs := qs || '_included_' || meta.name || '.res';
-			joinedLaterals := joinedLaterals || ' LEFT JOIN LATERAL (' ||
-			_include_join(meta.link_type, _build_critertia(tableName, meta, defaultLocale, locale), tableName, meta.name, meta.is_localized, meta.items_type <> '', locale, defaultLocale, includeDepth - 1) || ') AS _included_' || meta.name || ' ON true';
+		IF meta.link_type <> '' THEN
+			IF includeDepth > 0 THEN
+				qs := qs || '_included_' || meta.name || '.res';
+				joinedLaterals := joinedLaterals || ' LEFT JOIN LATERAL (' ||
+				_include_join(meta.link_type, _build_critertia(tableName, meta, defaultLocale, locale), tableName, meta.name, meta.is_localized, meta.items_type <> '', locale, defaultLocale, includeDepth - 1) || ') AS _included_' || meta.name || ' ON true';
+			ELSE
+				qs := qs || 'json_build_object(''sys'',json_build_object(''id'',';
+				IF meta.is_localized AND locale <> defaultLocale THEN
+					qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
+					tableName || '__' || defaultLocale || '.' || meta.name || ')';
+				ELSE
+					qs := qs || meta.name || '__' || defaultLocale || '.sys_id';
+				END IF;
+				qs := qs || '))';
+			END IF;
 		ELSEIF meta.is_localized AND locale <> defaultLocale THEN
 			qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
 			tableName || '__' || defaultLocale || '.' || meta.name || ')';
