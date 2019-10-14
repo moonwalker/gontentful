@@ -159,14 +159,14 @@ BEGIN
 			subFieldFmt:= '''' || subField || '''';
 			IF isArray THEN
 				IF subField = 'sys' THEN
-				subFieldFmt:= '((js ->> ''sys'')::json ->> ''id'')::text''';
+				subFieldFmt:= '((js ->> ''sys'')::json ->> ''id'')::text';
 			ELSE
 				subFieldFmt:= 'js ->> ' || subFieldFmt;
 			END IF;
 				RETURN 'EXISTS (SELECT FROM json_array_elements(_included_' || meta.name || '.res) js WHERE ' || subFieldFmt ||_fmt_comparer(comparer, fmtVal, false) || ')';
 			ELSE
 				IF subField = 'sys' THEN
-					subFieldFmt:= '((_included_' || meta.name || '.res ->> ''sys'')::json ->> ''id'')::text''';
+					subFieldFmt:= '((_included_' || meta.name || '.res ->> ''sys'')::json ->> ''id'')::text';
 				ELSE
 					subFieldFmt:= '_included_' || meta.name || '.res ->> ' || subFieldFmt;
 				END IF;
