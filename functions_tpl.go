@@ -160,14 +160,14 @@ BEGIN
 			IF isArray THEN
 				IF subField = 'sys' THEN
 				subFieldFmt:= '((js ->> ''sys'')::json ->> ''id'')::text''';
-			ELSE 
+			ELSE
 				subFieldFmt:= 'js ->> ' || subFieldFmt;
 			END IF;
 				RETURN 'EXISTS (SELECT FROM json_array_elements(_included_' || meta.name || '.res) js WHERE ' || subFieldFmt ||_fmt_comparer(comparer, fmtVal, false) || ')';
 			ELSE
 				IF subField = 'sys' THEN
 					subFieldFmt:= '((_included_' || meta.name || '.res ->> ''sys'')::json ->> ''id'')::text''';
-				ELSE 
+				ELSE
 					subFieldFmt:= '_included_' || meta.name || '.res ->> ' || subFieldFmt;
 				END IF;
 				RETURN '(' || subFieldFmt || _fmt_comparer(comparer, fmtVal, false) || ')';
@@ -226,7 +226,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION _include_join(tableName TEXT, criteria TEXT, isArray BOOLEAN, locale TEXT, defaultLocale TEXT, includeDepth INTEGER)
+CREATE OR REPLACE FUNCTION _include_join(tableName TEXT, criteria TEXT, parentTableName TEXT, fieldName TEXT, isArray BOOLEAN, locale TEXT, defaultLocale TEXT, includeDepth INTEGER)
 RETURNS text AS $$
 DECLARE
 	qs text;
@@ -289,7 +289,14 @@ BEGIN
 	END IF;
 
 	IF isArray THEN
-		qs := 'json_agg(' || qs || ')';
+		qs := 'json_agg(' || qs || ') ORDER BY array_position(';
+		IF hasLocalized THEN
+			qs := qs || 'COALESCE(' || parentTableName || '__' || locale || '.' || fieldName || ',' ||
+			parentTableName || '__' || defaultLocale || '.' || fieldName || ')';
+		ELSE
+			qs := qs || parentTableName || '__' || defaultLocale || '.' || fieldName;
+		END IF;
+		qs := qs || ',' || tableName || '__' || defaultLocale || '.sys_id)';
 	END IF;
 
 	qs := qs || ') AS res FROM ' || tableName || '__' || defaultLocale || ' ' || tableName || '__' || defaultLocale;
@@ -303,7 +310,7 @@ BEGIN
 		FOREACH meta IN ARRAY joinedTables LOOP
 			crit:= _build_critertia(tableName, meta, defaultLocale, locale);
 			qs := qs || ' LEFT JOIN LATERAL (' ||
-			_include_join(meta.link_type, crit, meta.items_type <> '', locale, defaultLocale, includeDepth - 1)
+			_include_join(meta.link_type, crit, tableName, meta.name, meta.items_type <> '', locale, defaultLocale, includeDepth - 1)
 			 || ') AS _included_' || meta.name || ' ON true';
 		END LOOP;
 	END IF;
@@ -336,7 +343,7 @@ BEGIN
 		IF meta.link_type <> '' AND includeDepth > 0 THEN
 			qs := qs || '_included_' || meta.name || '.res';
 			joinedLaterals := joinedLaterals || ' LEFT JOIN LATERAL (' ||
-			_include_join(meta.link_type, _build_critertia(tableName, meta, defaultLocale, locale), meta.items_type <> '', locale, defaultLocale, includeDepth - 1) || ') AS _included_' || meta.name || ' ON true';
+			_include_join(meta.link_type, _build_critertia(tableName, meta, defaultLocale, locale), tableName, meta.name, meta.items_type <> '', locale, defaultLocale, includeDepth - 1) || ') AS _included_' || meta.name || ' ON true';
 		ELSEIF meta.is_localized AND locale <> defaultLocale THEN
 			qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
 			tableName || '__' || defaultLocale || '.' || meta.name || ')';

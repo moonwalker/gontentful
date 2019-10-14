@@ -59,7 +59,9 @@ var (
 		// "content_type=game&fields.device=desktop&fields.marketCode=ROW&fields.tags%5Bin%5D=top&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
 		// "content_type=game&fields.device=desktop&fields.format%5Bin%5D=live&fields.marketCode=ROW&fields.tags%5Bin%5D=vip&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
 		// "content_type=game&fields.device=desktop&fields.format%5Bin%5D=live%2Cvirtual&fields.marketCode=ROW&fields.type.slug=roulette&include=3&limit=12&locale=en&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
-		"content_type=game&fields.content.sys.contentType.sys.id=gameId&fields.deviceConfigurations.sys.id=1yyHAve4aE6AQgkIyYG4im&include=3&limit=1&select=sys%2Cfields.slug&skip=0",
+		// "content_type=game&fields.content.sys.contentType.sys.id=gameId&fields.deviceConfigurations.sys.id=1yyHAve4aE6AQgkIyYG4im&include=3&limit=1&select=sys%2Cfields.slug&skip=0",
+		// "content_type=game&fields.content.sys.contentType.sys.id=gameId&fields.deviceConfigurations.sys.id=4MYHgClCek8uqqyqAMI8ey&include=3&limit=1&select=sys%2Cfields.slug&skip=0",
+		"content_type=menu&fields.slug=casino&include=2&limit=1&locale=en-NZ&skip=0",
 	}
 )
 

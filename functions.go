@@ -8,25 +8,16 @@ import (
 )
 
 type PGFunctions struct {
-	SchemaName    string
+	SchemaName string
 }
 
 func NewPGFunctions(schemaName string) *PGFunctions {
 	return &PGFunctions{
-		SchemaName:    schemaName,
+		SchemaName: schemaName,
 	}
 }
 
-func (s *PGFunctions) Exec(databaseURL string) (error) {
-	db, _ := sql.Open("postgres", databaseURL)
-	defer db.Close()
-
-	// set schema in use
-	_, err := db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
-	if err != nil {
-		return err
-	}
-
+func (s *PGFunctions) Exec(databaseURL string) error {
 	tmpl, err := template.New("").Parse(pgFuncTemplate)
 
 	if err != nil {
@@ -35,5 +26,32 @@ func (s *PGFunctions) Exec(databaseURL string) (error) {
 
 	var buff bytes.Buffer
 	err = tmpl.Execute(&buff, s)
-	return err
+	if err != nil {
+		return err
+	}
+
+	db, _ := sql.Open("postgres", databaseURL)
+	defer db.Close()
+
+	txn, err := db.Begin()
+	if err != nil {
+		return err
+	}
+
+	// set schema in use
+	_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(buff.String())
+	if err != nil {
+		return err
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
 }
