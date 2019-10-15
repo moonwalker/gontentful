@@ -2,8 +2,9 @@ package gontentful
 
 import (
 	"bytes"
-	"database/sql"
 	"text/template"
+
+	"github.com/jmoiron/sqlx"
 )
 
 const dropTemplate = "DROP SCHEMA IF EXISTS {{ $.SchemaName }} CASCADE;"
@@ -20,7 +21,10 @@ func NewPGDrop(schemaName string) *PGDrop {
 }
 
 func (s *PGDrop) Exec(databaseURL string) error {
-	db, _ := sql.Open("postgres", databaseURL)
+	db, err := sqlx.Connect("postgres", databaseURL)
+	if err != nil {
+		return err
+	}
 
 	defer db.Close()
 

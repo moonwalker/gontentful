@@ -4,10 +4,10 @@ package gontentful
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
-	"log"
 	"text/template"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type PGSQLColumn struct {
@@ -98,21 +98,24 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 		return err
 	}
 
-	db, _ := sql.Open("postgres", databaseURL)
+	db, err := sqlx.Connect("postgres", databaseURL)
+	if err != nil {
+		return err
+	}
 	defer db.Close()
 
-	txn, err := db.Begin()
+	txn, err := db.Beginx()
 	if err != nil {
 		return err
 	}
 
 	// set schema in use
-	_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+	_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	_, err = db.Exec(str)
+	_, err = txn.Exec(str)
 	if err != nil {
 		return err
 	}
@@ -122,7 +125,7 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 		return err
 	}
 
-	funcs:= NewPGFunctions(s.SchemaName)
+	funcs := NewPGFunctions(s.SchemaName)
 	err = funcs.Exec(databaseURL)
 	if err != nil {
 		return err

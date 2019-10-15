@@ -2,9 +2,10 @@ package gontentful
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
 	"text/template"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type PGFunctions struct {
@@ -30,21 +31,24 @@ func (s *PGFunctions) Exec(databaseURL string) error {
 		return err
 	}
 
-	db, _ := sql.Open("postgres", databaseURL)
+	db, err := sqlx.Open("postgres", databaseURL)
+	if err != nil {
+		return err
+	}
 	defer db.Close()
 
-	txn, err := db.Begin()
+	txn, err := db.Beginx()
 	if err != nil {
 		return err
 	}
 
 	// set schema in use
-	_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+	_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
 	if err != nil {
 		return err
 	}
 
-	_, err = db.Exec(buff.String())
+	_, err = txn.Exec(buff.String())
 	if err != nil {
 		return err
 	}

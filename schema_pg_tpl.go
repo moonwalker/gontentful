@@ -1,6 +1,6 @@
 package gontentful
 
-const pgTemplate = `BEGIN;
+const pgTemplate = `
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
 CREATE TABLE IF NOT EXISTS _space (
@@ -169,10 +169,8 @@ CREATE TRIGGER __asset__{{ $locale }}_delete
 	EXECUTE PROCEDURE on__asset__{{ $locale }}_delete();
 --
 {{ end -}}
-COMMIT;
 ----
 {{ range $tblidx, $tbl := $.Tables }}
-BEGIN;
 INSERT INTO _models (
 	name,
 	label,
@@ -326,5 +324,4 @@ CREATE TRIGGER _{{ $tbl.TableName }}__{{ $locale }}_delete
 --
 {{ end -}}
 {{ end -}}
-COMMIT;
 `

@@ -1,6 +1,6 @@
 package gontentful
 
-const pgFuncTemplate = `BEGIN;
+const pgFuncTemplate = `
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
 DROP TYPE IF EXISTS _meta CASCADE;
@@ -549,4 +549,4 @@ BEGIN
 	RETURN ROW(count, items)::_result;
 END;
 $$ LANGUAGE 'plpgsql';
-COMMIT;`
+`

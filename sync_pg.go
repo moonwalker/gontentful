@@ -2,10 +2,10 @@ package gontentful
 
 import (
 	"bytes"
-	"database/sql"
 	"fmt"
 	"text/template"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 )
 
@@ -197,11 +197,19 @@ func (r *PGSyncRow) GetFieldValue(fieldColumn string) string {
 }
 
 func (s *PGSyncSchema) Exec(databaseURL string) error {
-	db, _ := sql.Open("postgres", databaseURL)
+	db, err := sqlx.Connect("postgres", databaseURL)
+	if err != nil {
+		return err
+	}
 	defer db.Close()
-	
+
+	txn, err := db.Beginx()
+	if err != nil {
+		return err
+	}
+
 	// set schema name
-	_, err := db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+	_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
 	if err != nil {
 		return err
 	}
@@ -209,16 +217,16 @@ func (s *PGSyncSchema) Exec(databaseURL string) error {
 	// init sync
 	if s.InitSync {
 		// disable triggers for the current session
-		_, err := db.Exec("SET session_replication_role=replica")
+		_, err := txn.Exec("SET session_replication_role=replica")
 		if err != nil {
 			return err
 		}
 
 		// bulk insert
-		return s.bulkInsert(db)
+		return s.bulkInsert(txn)
 	}
 
-	rows, err := db.Query(fmt.Sprintf(localesQueryFormat, s.SchemaName))
+	rows, err := txn.Query(fmt.Sprintf(localesQueryFormat, s.SchemaName))
 	if err != nil {
 		return err
 	}
@@ -234,21 +242,16 @@ func (s *PGSyncSchema) Exec(databaseURL string) error {
 	}
 
 	// insert and/or delete changes
-	return s.deltaSync(db)
+	return s.deltaSync(txn)
 }
 
-func (s *PGSyncSchema) bulkInsert(db *sql.DB) error {
-	txn, err := db.Begin()
-	if err != nil {
-		return err
-	}
-
+func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 	for _, tbl := range s.Tables {
 		if len(tbl.Rows) == 0 {
 			continue
 		}
 
-		stmt, err := txn.Prepare(pq.CopyIn(tbl.TableName, tbl.Columns...))
+		stmt, err := txn.Preparex(pq.CopyIn(tbl.TableName, tbl.Columns...))
 		if err != nil {
 			return err
 		}
@@ -274,7 +277,7 @@ func (s *PGSyncSchema) bulkInsert(db *sql.DB) error {
 	return txn.Commit()
 }
 
-func (s *PGSyncSchema) deltaSync(db *sql.DB) error {
+func (s *PGSyncSchema) deltaSync(txn *sqlx.Tx) error {
 	tmpl, err := template.New("").Parse(pgSyncTemplate)
 	if err != nil {
 		return err
@@ -282,11 +285,6 @@ func (s *PGSyncSchema) deltaSync(db *sql.DB) error {
 
 	var buff bytes.Buffer
 	err = tmpl.Execute(&buff, s)
-	if err != nil {
-		return err
-	}
-
-	txn, err := db.Begin()
 	if err != nil {
 		return err
 	}

@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
+
+	"github.com/jmoiron/sqlx"
 )
 
 const queryTemplate = `
@@ -252,11 +254,14 @@ func formatOrder(order string, tableName string, defaultLocale string) string {
 }
 
 func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
-	db, _ := sql.Open("postgres", databaseURL)
+	db, err := sqlx.Connect("postgres", databaseURL)
+	if err != nil {
+		return 0, "", err
+	}
 	defer db.Close()
 
 	// set schema in use
-	_, err := db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+	_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
 	if err != nil {
 		return 0, "", err
 	}

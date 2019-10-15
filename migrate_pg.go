@@ -1,8 +1,9 @@
 package gontentful
 
 import (
-	"database/sql"
 	"fmt"
+
+	"github.com/jmoiron/sqlx"
 )
 
 const (
@@ -38,15 +39,18 @@ func MigratePGSQL(databaseURL string, schemaName string,
 	}
 
 	// 3) rename (swap schemas)
-	db, _ := sql.Open("postgres", databaseURL)
+	db, err := sqlx.Connect("postgres", databaseURL)
+	if err != nil {
+		return err
+	}
 	defer db.Close()
-	
-	txn, err := db.Begin()
+
+	txn, err := db.Beginx()
 	if err != nil {
 		return err
 	}
 
-	_, err = db.Exec(fmt.Sprintf(migrateSchemaTpl, schemaName, oldSchemaName, newSchemaName))
+	_, err = txn.Exec(fmt.Sprintf(migrateSchemaTpl, schemaName, oldSchemaName, newSchemaName))
 	if err != nil {
 		return err
 	}

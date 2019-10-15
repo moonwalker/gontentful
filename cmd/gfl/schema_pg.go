@@ -1,10 +1,10 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 
 	"github.com/moonwalker/gontentful"
@@ -62,21 +62,21 @@ var pgSchemaCmd = &cobra.Command{
 
 		log.Println("executing postgres schema...")
 
-		db, _ := sql.Open("postgres", databaseURL)
-		txn, err := db.Begin()
+		db, _ := sqlx.Connect("postgres", databaseURL)
+		txn, err := db.Beginx()
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		// set schema in use
-		_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", schemaName))
+		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", schemaName))
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		// ioutil.WriteFile("/tmp/schema", []byte(str), 0644)
 
-		_, err = db.Exec(str)
+		_, err = txn.Exec(str)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -86,7 +86,9 @@ var pgSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		funcs:= gontentful.NewPGFunctions(schemaName)
+		log.Println("creating postgres functions...")
+
+		funcs := gontentful.NewPGFunctions(schemaName)
 		err = funcs.Exec(databaseURL)
 		if err != nil {
 			log.Fatal(err)
