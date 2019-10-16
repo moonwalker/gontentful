@@ -345,7 +345,7 @@ DECLARE
 BEGIN
 
 	-- qs:= qs || tableName || '__' || defaultLocale || '.sys_id  as sys_id,';
-	qs := qs || 'json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id) as sys';
+	qs := qs || 'json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id) AS sys';
 
 	FOREACH meta IN ARRAY metas LOOP
 	    qs := qs || ', ';
@@ -377,7 +377,11 @@ BEGIN
 			hasLocalized := true;
 		END IF;
 
-		qs := qs || ' as "' || _fmt_column_name(meta.name) || '"';
+		IF meta.type = 'Object' THEN
+			qs := qs || '::text';
+		END IF;
+
+		qs := qs || ' AS "' || _fmt_column_name(meta.name) || '"';
 	END LOOP;
 
 	qs := qs || ' FROM ' || tableName || '__' || defaultLocale || ' ' || tableName || '__' || defaultLocale;
