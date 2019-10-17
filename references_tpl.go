@@ -1,17 +1,17 @@
 package gontentful
 
 const pgReferencesTemplate = `
-{{ range $idx, $tbl := $.ConTables }}
-CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }} (
+{{ range $idx, $tbl := $.Schema.ConTables }}
+CREATE TABLE IF NOT EXISTS {{ .TableName }} (
 	_id serial primary key,
-	{{- range $colidx, $col := $tbl.Columns }}
+	{{- range $colidx, $col := .Columns }}
 	{{- if $colidx -}},{{- end }}
 	"{{ .ColumnName }}" TEXT NOT NULL
 	{{- end }}
 );
 {{ end -}}
 --
-{{ range $idx, $ref := $.References }}
+{{ range $idx, $ref := $.Schema.References }}
 ALTER TABLE IF EXISTS {{ .TableName }} DROP CONSTRAINT IF EXISTS {{ .TableName }}_{{ .ForeignKey }}_fkey;
 --
 ALTER TABLE IF EXISTS {{ .TableName }}

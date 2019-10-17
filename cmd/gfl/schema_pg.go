@@ -86,6 +86,14 @@ var pgSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
+		log.Println("creating references...")
+
+		refs := gontentful.NewPGReferences(schema)
+		err = refs.Exec(databaseURL)
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		log.Println("creating postgres functions...")
 
 		funcs := gontentful.NewPGFunctions(schemaName)
