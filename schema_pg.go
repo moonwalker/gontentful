@@ -361,7 +361,7 @@ func NewPGSQLCon(tableName string, reference string, locale string) *PGSQLTable 
 	}
 
 	return &PGSQLTable{
-		TableName: fmt.Sprintf("con__%s__%s__%s", tableName, reference, locale),
+		TableName: fmt.Sprintf("%s__%s__%s__con", tableName, reference, locale),
 		Columns:   columns,
 	}
 }
