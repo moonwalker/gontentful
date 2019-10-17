@@ -293,7 +293,11 @@ BEGIN
 				qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
 					tableName || '__' || defaultLocale || '.' || meta.name || ')';
 			ELSE
-			   	qs := qs || tableName || '__' || defaultLocale || '.' || meta.name;
+				qs := qs || tableName || '__' || defaultLocale || '.' || meta.name;
+			END IF;
+
+			IF meta.type = 'Object' THEN
+				qs := qs || '::text';
 			END IF;
 		END LOOP;
 
