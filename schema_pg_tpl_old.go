@@ -1,6 +1,6 @@
 package gontentful
 
-const pgTemplate = `
+const pgTemplateOld = `
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
 CREATE TABLE IF NOT EXISTS _space (
@@ -109,7 +109,7 @@ INSERT INTO _asset___meta (
 	'system'
 )
 ON CONFLICT (name) DO NOTHING;
-{{ end -}}
+{{- end -}}
 --
 CREATE TABLE IF NOT EXISTS _asset__{{ $locale }} (
 	_id serial primary key,
@@ -127,6 +127,46 @@ CREATE TABLE IF NOT EXISTS _asset__{{ $locale }} (
 );
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON _asset__{{ $locale }}(sys_id);
+--
+DROP FUNCTION IF EXISTS on__asset__{{ $locale }}_insert() CASCADE;
+--
+CREATE FUNCTION on__asset__{{ $locale }}_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO _entries (
+		sys_id,
+		table_name
+	) VALUES (
+		NEW.sys_id,
+		'_asset__{{ $locale }}'
+	) ON CONFLICT (sys_id) DO NOTHING;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+--
+DROP TRIGGER IF EXISTS __asset__{{ $locale }}_insert ON _asset__{{ $locale }};
+--
+CREATE TRIGGER __asset__{{ $locale }}_insert
+	AFTER INSERT ON _asset__{{ $locale }}
+	FOR EACH ROW
+	EXECUTE PROCEDURE on__asset__{{ $locale }}_insert();
+--
+DROP FUNCTION IF EXISTS on__asset__{{ $locale }}_delete() CASCADE;
+--
+CREATE FUNCTION on__asset__{{ $locale }}_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+	DELETE FROM _entries WHERE sys_id = OLD.sys_id AND table_name = '_asset__{{ $locale }}';
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+--
+DROP TRIGGER IF EXISTS __asset__{{ $locale }}_delete ON _asset__{{ $locale }};
+--
+CREATE TRIGGER __asset__{{ $locale }}_delete
+	AFTER DELETE ON _asset__{{ $locale }}
+	FOR EACH ROW
+	EXECUTE PROCEDURE on__asset__{{ $locale }}_delete();
 --
 {{ end -}}
 ----
@@ -241,6 +281,46 @@ CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}__{{ $locale }} (
 );
 --
 CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $tbl.TableName }}__{{ $locale }}(sys_id);
+--
+DROP FUNCTION IF EXISTS on_{{ $tbl.TableName }}__{{ $locale }}_insert() CASCADE;
+--
+CREATE FUNCTION on_{{ $tbl.TableName }}__{{ $locale }}_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+	INSERT INTO _entries (
+		sys_id,
+		table_name
+	) VALUES (
+		NEW.sys_id,
+		'{{ $tbl.TableName }}__{{ $locale }}'
+	) ON CONFLICT (sys_id) DO NOTHING;
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+--
+DROP TRIGGER IF EXISTS _{{ $tbl.TableName }}__{{ $locale }}_insert ON {{ $tbl.TableName }}__{{ $locale }};
+--
+CREATE TRIGGER _{{ $tbl.TableName }}__{{ $locale }}_insert
+    AFTER INSERT ON {{ $tbl.TableName }}__{{ $locale }}
+    FOR EACH ROW
+	EXECUTE PROCEDURE on_{{ $tbl.TableName }}__{{ $locale }}_insert();
+--
+DROP FUNCTION IF EXISTS on_{{ $tbl.TableName }}__{{ $locale }}_delete() CASCADE;
+--
+CREATE FUNCTION on_{{ $tbl.TableName }}__{{ $locale }}_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+	DELETE FROM _entries WHERE sys_id = OLD.sys_id AND table_name = '{{ $tbl.TableName }}__{{ $locale }}';
+	RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+--
+DROP TRIGGER IF EXISTS _{{ $tbl.TableName }}__{{ $locale }}_delete ON {{ $tbl.TableName }}__{{ $locale }};
+--
+CREATE TRIGGER _{{ $tbl.TableName }}__{{ $locale }}_delete
+	AFTER DELETE ON {{ $tbl.TableName }}__{{ $locale }}
+	FOR EACH ROW
+	EXECUTE PROCEDURE on_{{ $tbl.TableName }}__{{ $locale }}_delete();
 --
 {{ end -}}
 {{ end -}}

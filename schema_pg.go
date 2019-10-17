@@ -5,6 +5,7 @@ package gontentful
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
@@ -48,11 +49,19 @@ type PGSQLTable struct {
 	Columns   []*PGSQLColumn
 }
 
+type PGSQLReference struct {
+	TableName  string
+	ForeignKey string
+	Reference  string
+}
+
 type PGSQLSchema struct {
 	SchemaName    string
 	Drop          bool
 	Space         *Space
 	Tables        []*PGSQLTable
+	ConTables     []*PGSQLTable
+	References    []*PGSQLReference
 	DefaultLocale string
 	AssetColumns  []string
 }
@@ -80,6 +89,8 @@ func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType) *PGSQ
 		SchemaName:    schemaName,
 		Space:         space,
 		Tables:        make([]*PGSQLTable, 0),
+		ConTables:     make([]*PGSQLTable, 0),
+		References:    make([]*PGSQLReference, 0),
 		DefaultLocale: defaultLocale,
 		AssetColumns:  assetColumns,
 	}
@@ -87,6 +98,10 @@ func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType) *PGSQ
 	for _, item := range items {
 		table := NewPGSQLTable(item)
 		schema.Tables = append(schema.Tables, table)
+
+		conTables, references := createReferences(item, table, space.Locales, defaultLocale)
+		schema.ConTables = append(schema.ConTables, conTables...)
+		schema.References = append(schema.References, references...)
 	}
 
 	return schema
@@ -125,6 +140,12 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 		return err
 	}
 
+	refs := NewPGReferences(s)
+	err = refs.Exec(databaseURL)
+	if err != nil {
+		return err
+	}
+
 	funcs := NewPGFunctions(s.SchemaName)
 	err = funcs.Exec(databaseURL)
 	if err != nil {
@@ -145,6 +166,8 @@ func (s *PGSQLSchema) Render() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	ioutil.WriteFile("/tmp/dat1", []byte(buff.String()), 0644)
 
 	return buff.String(), nil
 }
@@ -203,12 +226,13 @@ func getColumnType(fieldType string, fieldItems *FieldTypeArrayItem) string {
 	case "Link":
 		return "text"
 	case "Array":
-		if fieldItems != nil {
-			return fmt.Sprintf("%s ARRAY", getColumnType(fieldItems.Type, nil))
-		}
-		return "text ARRAY"
+		return "text"
+		// if fieldItems != nil {
+		// 	return fmt.Sprintf("%s ARRAY", getColumnType(fieldItems.Type, nil))
+		// }
+		// return "text ARRAY"
 	case "Object":
-		return "jsonb"
+		return "text"
 	default:
 		return "text"
 	}
@@ -277,4 +301,67 @@ func makeMeta(field *ContentTypeField) *PGSQLMeta {
 	}
 
 	return meta
+}
+
+func createReferences(item *ContentType, table *PGSQLTable, locales []*Locale, defaultLocale string) ([]*PGSQLTable, []*PGSQLReference) {
+	conTables := make([]*PGSQLTable, 0)
+	references := make([]*PGSQLReference, 0)
+	for _, field := range item.Fields {
+		linkType := ""
+		if field.LinkType != "" {
+			linkType = getFieldLinkType(field.LinkType, field.Validations)
+		}
+		if field.Items != nil {
+			linkType = getFieldLinkType(field.Items.LinkType, field.Items.Validations)
+		}
+		if linkType != "" {
+			if field.Localized {
+				for _, loc := range locales {
+					locale := fmtLocale(loc.Code)
+					conTable := NewPGSQLCon(table.TableName, linkType, locale)
+					conTables = append(conTables, conTable)
+					references = append(references, &PGSQLReference{
+						TableName:  table.TableName,
+						Reference:  conTable.TableName,
+						ForeignKey: linkType,
+					})
+					references = append(references, &PGSQLReference{
+						TableName:  conTable.TableName,
+						Reference:  fmt.Sprintf("%s__%s", linkType, locale),
+						ForeignKey: "sys_id",
+					})
+				}
+			} else {
+				conTable := NewPGSQLCon(table.TableName, linkType, defaultLocale)
+				conTables = append(conTables, conTable)
+				references = append(references, &PGSQLReference{
+					TableName:  table.TableName,
+					Reference:  conTable.TableName,
+					ForeignKey: linkType,
+				})
+				references = append(references, &PGSQLReference{
+					TableName:  conTable.TableName,
+					Reference:  fmt.Sprintf("%s__%s", linkType, defaultLocale),
+					ForeignKey: "sys_id",
+				})
+			}
+		}
+	}
+	return conTables, references
+}
+
+func NewPGSQLCon(tableName string, reference string, locale string) *PGSQLTable {
+	columns := []*PGSQLColumn{
+		&PGSQLColumn{
+			ColumnName: tableName,
+		},
+		&PGSQLColumn{
+			ColumnName: reference,
+		},
+	}
+
+	return &PGSQLTable{
+		TableName: fmt.Sprintf("con__%s__%s__%s", tableName, reference, locale),
+		Columns:   columns,
+	}
 }
