@@ -5,7 +5,6 @@ package gontentful
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
@@ -166,8 +165,6 @@ func (s *PGSQLSchema) Render() (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	ioutil.WriteFile("/tmp/dat1", []byte(buff.String()), 0644)
 
 	return buff.String(), nil
 }
