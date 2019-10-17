@@ -47,7 +47,7 @@ func (s *PGReferences) Exec(databaseURL string) error {
 	if err != nil {
 		return err
 	}
-
+	//ioutil.WriteFile("/tmp/dat1", []byte(buff.String()), 0644)
 	_, err = txn.Exec(buff.String())
 	if err != nil {
 		return err

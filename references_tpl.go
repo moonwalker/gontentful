@@ -3,7 +3,7 @@ package gontentful
 const pgReferencesTemplate = `
 {{ range $idx, $tbl := $.Schema.ConTables }}
 CREATE TABLE IF NOT EXISTS {{ .TableName }} (
-	_id serial primary key,
+	primary key ({{- range $colidx, $col := .Columns }}{{- if $colidx -}},{{- end -}}{{ .ColumnName }}{{- end -}}),
 	{{- range $colidx, $col := .Columns }}
 	{{- if $colidx -}},{{- end }}
 	"{{ .ColumnName }}" TEXT NOT NULL
@@ -17,7 +17,7 @@ ALTER TABLE IF EXISTS {{ .TableName }} DROP CONSTRAINT IF EXISTS {{ .TableName }
 ALTER TABLE IF EXISTS {{ .TableName }}
   ADD CONSTRAINT {{ .TableName }}_{{ .ForeignKey }}_fkey
   FOREIGN KEY ({{ .ForeignKey }})
-  REFERENCES {{ .Reference }}
+  REFERENCES {{ .Reference }} (sys_id)
   ON DELETE CASCADE;
 --
 {{- end -}}

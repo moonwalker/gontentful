@@ -314,35 +314,35 @@ func createReferences(item *ContentType, table *PGSQLTable, locales []*Locale, d
 			if field.Items != nil {
 				linkType = getFieldLinkType(field.Items.LinkType, field.Items.Validations)
 			}
-			if linkType != "" {
+			if linkType != "" && linkType != ENTRY {
 				if field.Localized {
 					for _, loc := range locales {
 						locale := fmtLocale(loc.Code)
 						conTable := NewPGSQLCon(table.TableName, linkType, locale)
 						conTables = append(conTables, conTable)
 						references = append(references, &PGSQLReference{
-							TableName:  table.TableName,
-							Reference:  conTable.TableName,
-							ForeignKey: linkType,
+							TableName:  conTable.TableName,
+							Reference:  fmt.Sprintf("%s__%s", table.TableName, locale),
+							ForeignKey: table.TableName,
 						})
 						references = append(references, &PGSQLReference{
 							TableName:  conTable.TableName,
 							Reference:  fmt.Sprintf("%s__%s", linkType, locale),
-							ForeignKey: "sys_id",
+							ForeignKey: linkType,
 						})
 					}
 				} else {
 					conTable := NewPGSQLCon(table.TableName, linkType, defaultLocale)
 					conTables = append(conTables, conTable)
 					references = append(references, &PGSQLReference{
-						TableName:  table.TableName,
-						Reference:  conTable.TableName,
-						ForeignKey: linkType,
+						TableName:  conTable.TableName,
+						Reference:  fmt.Sprintf("%s__%s", table.TableName, defaultLocale),
+						ForeignKey: table.TableName,
 					})
 					references = append(references, &PGSQLReference{
 						TableName:  conTable.TableName,
 						Reference:  fmt.Sprintf("%s__%s", linkType, defaultLocale),
-						ForeignKey: "sys_id",
+						ForeignKey: linkType,
 					})
 				}
 			}
