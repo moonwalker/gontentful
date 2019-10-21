@@ -307,44 +307,10 @@ func createReferences(item *ContentType, table *PGSQLTable, locales []*Locale, d
 	references := make([]*PGSQLReference, 0)
 	for _, field := range item.Fields {
 		if !field.Disabled {
-			linkType := ""
 			if field.LinkType != "" {
-				linkType = getFieldLinkType(field.LinkType, field.Validations)
-			}
-			if field.Items != nil {
-				linkType = getFieldLinkType(field.Items.LinkType, field.Items.Validations)
-			}
-			if linkType != "" && linkType != ENTRY {
-				if field.Localized {
-					for _, loc := range locales {
-						locale := fmtLocale(loc.Code)
-						conTable := NewPGSQLCon(table.TableName, linkType, locale)
-						conTables = append(conTables, conTable)
-						references = append(references, &PGSQLReference{
-							TableName:  conTable.TableName,
-							Reference:  fmt.Sprintf("%s__%s", table.TableName, locale),
-							ForeignKey: table.TableName,
-						})
-						references = append(references, &PGSQLReference{
-							TableName:  conTable.TableName,
-							Reference:  fmt.Sprintf("%s__%s", linkType, locale),
-							ForeignKey: linkType,
-						})
-					}
-				} else {
-					conTable := NewPGSQLCon(table.TableName, linkType, defaultLocale)
-					conTables = append(conTables, conTable)
-					references = append(references, &PGSQLReference{
-						TableName:  conTable.TableName,
-						Reference:  fmt.Sprintf("%s__%s", table.TableName, defaultLocale),
-						ForeignKey: table.TableName,
-					})
-					references = append(references, &PGSQLReference{
-						TableName:  conTable.TableName,
-						Reference:  fmt.Sprintf("%s__%s", linkType, defaultLocale),
-						ForeignKey: linkType,
-					})
-				}
+				references = addOneTOne(references, table.TableName, field, locales, defaultLocale)
+			} else if field.Items != nil {
+				conTables, references = addManyToMany(conTables, references, table.TableName, field, locales, defaultLocale)
 			}
 		}
 	}
@@ -365,4 +331,50 @@ func NewPGSQLCon(tableName string, reference string, locale string) *PGSQLTable 
 		TableName: fmt.Sprintf("%s__%s__%s__con", tableName, reference, locale),
 		Columns:   columns,
 	}
+}
+
+func addReference(references []*PGSQLReference, tableName string, reference string, foreignKey string, locale string) []*PGSQLReference {
+	fmt.Println("addReference", tableName, foreignKey, reference)
+	return append(references, &PGSQLReference{
+		TableName:  tableName,
+		Reference:  fmt.Sprintf("%s__%s", reference, locale),
+		ForeignKey: foreignKey,
+	})
+}
+
+func addOneTOne(references []*PGSQLReference, tableName string, field *ContentTypeField, locales []*Locale, defaultLocale string) []*PGSQLReference {
+	linkType := getFieldLinkType(field.LinkType, field.Validations)
+	if linkType != "" && linkType != ENTRY {
+		foreignKey := toSnakeCase(field.ID)
+		if field.Localized {
+			for _, loc := range locales {
+				locale := fmtLocale(loc.Code)
+				references = addReference(references, fmt.Sprintf("%s__%s", tableName, locale), linkType, foreignKey, locale)
+			}
+		} else {
+			references = addReference(references, fmt.Sprintf("%s__%s", tableName, defaultLocale), linkType, foreignKey, defaultLocale)
+		}
+	}
+	return references
+}
+
+func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, tableName string, field *ContentTypeField, locales []*Locale, defaultLocale string) ([]*PGSQLTable, []*PGSQLReference) {
+	linkType := getFieldLinkType(field.Items.LinkType, field.Items.Validations)
+	if linkType != "" && linkType != ENTRY {
+		if field.Localized {
+			for _, loc := range locales {
+				locale := fmtLocale(loc.Code)
+				conTable := NewPGSQLCon(tableName, linkType, locale)
+				conTables = append(conTables, conTable)
+				references = addReference(references, conTable.TableName, tableName, tableName, locale)
+				references = addReference(references, conTable.TableName, linkType, linkType, locale)
+			}
+		} else {
+			conTable := NewPGSQLCon(tableName, linkType, defaultLocale)
+			conTables = append(conTables, conTable)
+			references = addReference(references, conTable.TableName, tableName, tableName, defaultLocale)
+			references = addReference(references, conTable.TableName, linkType, linkType, defaultLocale)
+		}
+	}
+	return conTables, references
 }
