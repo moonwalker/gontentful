@@ -32,6 +32,7 @@ type PGSyncTable struct {
 type PGSyncSchema struct {
 	SchemaName string
 	Tables     map[string]*PGSyncTable
+	ConTables  map[string]*PGSyncConTable
 	Deleted    []string
 	InitSync   bool
 	Locales    []string
@@ -42,10 +43,17 @@ type PGSyncField struct {
 	Value interface{}
 }
 
+type PGSyncConTable struct {
+	TableName string
+	Columns   []string
+	Rows      [][]interface{}
+}
+
 func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, initSync bool) *PGSyncSchema {
 	schema := &PGSyncSchema{
 		SchemaName: schemaName,
 		Tables:     make(map[string]*PGSyncTable, 0),
+		ConTables:  make(map[string]*PGSyncConTable, 0),
 		Deleted:    make([]string, 0),
 		InitSync:   initSync,
 	}
@@ -71,15 +79,15 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, 
 		switch item.Sys.Type {
 		case ENTRY:
 			contentType := item.Sys.ContentType.Sys.ID
-			fieldColumns := getFieldColumns(types, contentType)
+			fieldColumns, refColumns := getFieldColumns(types, contentType)
 			baseName := toSnakeCase(contentType)
-			appendTables(schema.Tables, item, baseName, fieldColumns, !initSync)
+			appendTables(schema.Tables, schema.ConTables, item, baseName, fieldColumns, refColumns, !initSync)
 			// append to "global" entries table
 			appendToEntries(baseName, item.Sys.ID, !initSync)
 			break
 		case ASSET:
 			baseName := assetTableName
-			appendTables(schema.Tables, item, baseName, assetColumns, !initSync)
+			appendTables(schema.Tables, schema.ConTables, item, baseName, assetColumns, nil, !initSync)
 			// append to "global" entries table
 			appendToEntries(baseName, item.Sys.ID, !initSync)
 			break
@@ -258,6 +266,34 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 
 		for _, row := range tbl.Rows {
 			_, err = stmt.Exec(row.Fields()...)
+			if err != nil {
+				return err
+			}
+		}
+
+		_, err = stmt.Exec()
+		if err != nil {
+			return err
+		}
+
+		err = stmt.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, tbl := range s.ConTables {
+		if len(tbl.Rows) == 0 {
+			continue
+		}
+
+		stmt, err := txn.Preparex(pq.CopyIn(tbl.TableName, tbl.Columns...))
+		if err != nil {
+			return err
+		}
+
+		for _, row := range tbl.Rows {
+			_, err = stmt.Exec(row...)
 			if err != nil {
 				return err
 			}

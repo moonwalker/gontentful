@@ -15,7 +15,7 @@ type rowField struct {
 	fieldValue interface{}
 }
 
-func appendTables(tablesByName map[string]*PGSyncTable, item *Entry, baseName string, fieldColumns []string, templateFormat bool) {
+func appendTables(tablesByName map[string]*PGSyncTable, conTablesByName map[string]*PGSyncConTable, item *Entry, baseName string, fieldColumns []string, refColumns map[string]string, templateFormat bool) {
 	fieldsByLocale := make(map[string][]*rowField, 0)
 
 	tblMetaColumns := []string{"version", "created_at", "created_by", "updated_at", "updated_by"}
@@ -60,7 +60,7 @@ func appendTables(tablesByName map[string]*PGSyncTable, item *Entry, baseName st
 		tableName := fmtTableName(baseName, locale)
 		tbl := tablesByName[tableName]
 		if tbl != nil {
-			appendRowsToTable(item, tbl, rowFields, fieldColumns, tblMetaColumns, templateFormat)
+			appendRowsToTable(item, tbl, rowFields, fieldColumns, tblMetaColumns, templateFormat, conTablesByName, refColumns, baseName, locale)
 		}
 
 		// publish table
@@ -72,7 +72,7 @@ func appendTables(tablesByName map[string]*PGSyncTable, item *Entry, baseName st
 	}
 }
 
-func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fieldColumns []string, metaColums []string, templateFormat bool) {
+func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fieldColumns []string, metaColums []string, templateFormat bool, conTables map[string]*PGSyncConTable, refColumns map[string]string, baseName string, locale string) {
 	fieldValues := make(map[string]interface{}, len(fieldColumns))
 	for _, rowField := range rowFields {
 		fieldValues[rowField.fieldName] = convertFieldValue(rowField.fieldValue, templateFormat)
@@ -90,6 +90,30 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 			fieldValues["file_name"] = fileName
 			fieldValues["content_type"] = contentType
 		}
+		// append con tables with Array Links
+		if refColumns[rowField.fieldName] != "" {
+			links, ok := rowField.fieldValue.([]interface{})
+			if ok {
+				conRows := make([][]interface{}, 0)
+				sysID := item.Sys.ID
+				for _, e := range links {
+					f, ok := e.(map[string]interface{})
+					if ok {
+						id := convertSys(f, templateFormat)
+						if id != "" {
+							row := []interface{}{sysID, id}
+							conRows = append(conRows, row)
+						}
+					}
+				}
+				conTableName := getConTableName(baseName, refColumns[rowField.fieldName], locale)
+				conTables[conTableName] = &PGSyncConTable{
+					TableName: conTableName,
+					Columns:   []string{baseName, refColumns[rowField.fieldName]},
+					Rows:      conRows,
+				}
+			}
+		}
 	}
 	row := newPGSyncRow(item, fieldColumns, fieldValues, metaColums)
 	tbl.Rows = append(tbl.Rows, row)
@@ -100,14 +124,9 @@ func convertFieldValue(v interface{}, t bool) interface{} {
 
 	case map[string]interface{}:
 		if f["sys"] != nil {
-			s, ok := f["sys"].(map[string]interface{})
-			if ok {
-				if s["type"] == "Link" {
-					if t {
-						return fmt.Sprintf("'%v'", s["id"])
-					}
-					return fmt.Sprintf("%v", s["id"])
-				}
+			s := convertSys(f, t)
+			if s != "" {
+				return s
 			}
 		} else if f["fileName"] != nil {
 			var v *AssetFile
@@ -149,4 +168,17 @@ func convertFieldValue(v interface{}, t bool) interface{} {
 	}
 
 	return v
+}
+
+func convertSys(f map[string]interface{}, t bool) string {
+	s, ok := f["sys"].(map[string]interface{})
+	if ok {
+		if s["type"] == "Link" {
+			if t {
+				return fmt.Sprintf("'%v'", s["id"])
+			}
+			return fmt.Sprintf("%v", s["id"])
+		}
+	}
+	return ""
 }

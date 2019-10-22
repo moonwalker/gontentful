@@ -43,4 +43,18 @@ END $$;
 {{ end -}}
 {{ end -}}
 {{ end -}}
+--
+{{ range $tblidx, $tbl := .ConTables }}
+{{ range $rowidx, $row := .Rows }}
+INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
+	{{- range $k, $v := .Columns }}
+	{{- if $k -}},{{- end -}}{{ $v }}
+	{{- end }}
+) VALUES (
+	{{- range $k, $v := $row }}
+	{{- if $k -}},{{- end -}}{{ $v }}
+)
+;
+{{ end -}}
+{{ end -}}
 `

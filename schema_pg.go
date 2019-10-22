@@ -177,11 +177,13 @@ func NewPGSQLTable(item *ContentType) *PGSQLTable {
 	}
 
 	for _, field := range item.Fields {
-		if !field.Disabled {
+		if !field.Omitted {
 			column := NewPGSQLColumn(field)
 			table.Columns = append(table.Columns, column)
 			meta := makeMeta(field)
 			table.Data.Metas = append(table.Data.Metas, meta)
+			// } else {
+			// 	fmt.Println("Ignoring omitted field", field.ID, "in", table.TableName)
 		}
 	}
 
@@ -201,7 +203,7 @@ func (c *PGSQLColumn) getColumnDesc(field *ContentTypeField) {
 	if isUnique(field.Validations) {
 		columnDesc += " unique"
 	}
-	c.Required = field.Required && !field.Disabled
+	c.Required = field.Required && !field.Omitted
 	c.ColumnType = getColumnType(field.Type, field.Items)
 	c.ColumnDesc = columnDesc
 }
@@ -225,11 +227,11 @@ func getColumnType(fieldType string, fieldItems *FieldTypeArrayItem) string {
 	case "Link":
 		return "text"
 	case "Array":
-		return "text"
-		// if fieldItems != nil {
-		// 	return fmt.Sprintf("%s ARRAY", getColumnType(fieldItems.Type, nil))
-		// }
-		// return "text ARRAY"
+		// return "text"
+		if fieldItems != nil {
+			return fmt.Sprintf("%s ARRAY", getColumnType(fieldItems.Type, nil))
+		}
+		return "text ARRAY"
 	case "Object":
 		return "text"
 	default:
@@ -306,7 +308,7 @@ func createReferences(item *ContentType, table *PGSQLTable, locales []*Locale, d
 	conTables := make([]*PGSQLTable, 0)
 	references := make([]*PGSQLReference, 0)
 	for _, field := range item.Fields {
-		if !field.Disabled {
+		if !field.Omitted {
 			if field.LinkType != "" {
 				references = addOneTOne(references, table.TableName, field, locales, defaultLocale)
 			} else if field.Items != nil {
@@ -318,7 +320,17 @@ func createReferences(item *ContentType, table *PGSQLTable, locales []*Locale, d
 }
 
 func NewPGSQLCon(tableName string, reference string, locale string) *PGSQLTable {
-	columns := []*PGSQLColumn{
+	return &PGSQLTable{
+		TableName: getConTableName(tableName, reference, locale),
+		Columns:   getConTableColumns(tableName, reference),
+	}
+}
+
+func getConTableName(tableName string, reference string, locale string) string {
+	return fmt.Sprintf("%s__%s__%s__con", tableName, reference, locale)
+}
+func getConTableColumns(tableName string, reference string) []*PGSQLColumn {
+	return []*PGSQLColumn{
 		&PGSQLColumn{
 			ColumnName: tableName,
 		},
@@ -326,18 +338,12 @@ func NewPGSQLCon(tableName string, reference string, locale string) *PGSQLTable 
 			ColumnName: reference,
 		},
 	}
-
-	return &PGSQLTable{
-		TableName: fmt.Sprintf("%s__%s__%s__con", tableName, reference, locale),
-		Columns:   columns,
-	}
 }
 
 func addReference(references []*PGSQLReference, tableName string, reference string, foreignKey string, locale string) []*PGSQLReference {
-	fmt.Println("addReference", tableName, foreignKey, reference)
 	return append(references, &PGSQLReference{
 		TableName:  tableName,
-		Reference:  fmt.Sprintf("%s__%s", reference, locale),
+		Reference:  fmt.Sprintf("%s__%s", reference, fmtLocale(locale)),
 		ForeignKey: foreignKey,
 	})
 }
