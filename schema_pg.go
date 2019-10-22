@@ -327,7 +327,7 @@ func NewPGSQLCon(tableName string, reference string, locale string) *PGSQLTable 
 }
 
 func getConTableName(tableName string, reference string, locale string) string {
-	return fmt.Sprintf("%s__%s__%s__con", tableName, reference, locale)
+	return fmt.Sprintf("%s$%s$%s$con", tableName, reference, fmtLocale(locale))
 }
 func getConTableColumns(tableName string, reference string) []*PGSQLColumn {
 	return []*PGSQLColumn{
@@ -343,7 +343,7 @@ func getConTableColumns(tableName string, reference string) []*PGSQLColumn {
 func addReference(references []*PGSQLReference, tableName string, reference string, foreignKey string, locale string) []*PGSQLReference {
 	return append(references, &PGSQLReference{
 		TableName:  tableName,
-		Reference:  fmt.Sprintf("%s__%s", reference, fmtLocale(locale)),
+		Reference:  fmt.Sprintf("%s$%s", reference, fmtLocale(locale)),
 		ForeignKey: foreignKey,
 	})
 }
@@ -355,10 +355,10 @@ func addOneTOne(references []*PGSQLReference, tableName string, field *ContentTy
 		if field.Localized {
 			for _, loc := range locales {
 				locale := fmtLocale(loc.Code)
-				references = addReference(references, fmt.Sprintf("%s__%s", tableName, locale), linkType, foreignKey, locale)
+				references = addReference(references, fmt.Sprintf("%s$%s", tableName, locale), linkType, foreignKey, locale)
 			}
 		} else {
-			references = addReference(references, fmt.Sprintf("%s__%s", tableName, defaultLocale), linkType, foreignKey, defaultLocale)
+			references = addReference(references, fmt.Sprintf("%s$%s", tableName, defaultLocale), linkType, foreignKey, defaultLocale)
 		}
 	}
 	return references

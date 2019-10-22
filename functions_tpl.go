@@ -32,7 +32,7 @@ BEGIN
 		items_type,
 		link_type,
 		is_localized
-        FROM ' || tableName || '___meta';
+        FROM ' || tableName || '$meta';
 
 END;
 $$ LANGUAGE 'plpgsql';
@@ -174,10 +174,10 @@ BEGIN
 			END IF;
 		END IF;
 		IF meta.is_localized AND locale <> defaultLocale THEN
-			RETURN 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-			tableName || '__' || defaultLocale || '.' || meta.name || ')' || _fmt_comparer(comparer, fmtVal, isArray);
+			RETURN 'COALESCE(' || tableName || '$' || locale || '.' || meta.name || ',' ||
+			tableName || '$' || defaultLocale || '.' || meta.name || ')' || _fmt_comparer(comparer, fmtVal, isArray);
 		END IF;
-		RETURN tableName || '__' || defaultLocale || '.' || meta.name || _fmt_comparer(comparer, fmtVal, isArray);
+		RETURN tableName || '$' || defaultLocale || '.' || meta.name || _fmt_comparer(comparer, fmtVal, isArray);
 	END IF;
 
 	FOREACH val IN ARRAY filterValues LOOP
@@ -190,13 +190,13 @@ BEGIN
 				IF subField IS NOT NULL THEN
 					fmtVal := fmtVal || '(_included_' || field || '.res ->> ''' || subField || ''')::text' || fmtComp;
 				ELSEIF meta.is_localized AND locale <> defaultLocale THEN
-					fmtVal := fmtVal || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-					tableName || '__' || defaultLocale || '.' || meta.name || ')' || fmtComp;
+					fmtVal := fmtVal || 'COALESCE(' || tableName || '$' || locale || '.' || meta.name || ',' ||
+					tableName || '$' || defaultLocale || '.' || meta.name || ')' || fmtComp;
 				ELSE
-					fmtVal := fmtVal || tableName || '__' || defaultLocale || '.' || meta.name || fmtComp;
+					fmtVal := fmtVal || tableName || '$' || defaultLocale || '.' || meta.name || fmtComp;
 				END IF;
 			ELSE
-				fmtVal := fmtVal || tableName || '__' || defaultLocale || '.' || field || fmtComp;
+				fmtVal := fmtVal || tableName || '$' || defaultLocale || '.' || field || fmtComp;
 			END IF;
 	    END IF;
 	END LOOP;
@@ -210,12 +210,12 @@ DECLARE
 	c text;
 	f text;
 BEGIN
-	c:= meta.link_type || '__' || defaultLocale || '.sys_id = ';
+	c:= meta.link_type || '$' || defaultLocale || '.sys_id = ';
 	IF meta.is_localized AND locale <> defaultLocale THEN
-		f := 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-		tableName || '__' || defaultLocale || '.' || meta.name || ')';
+		f := 'COALESCE(' || tableName || '$' || locale || '.' || meta.name || ',' ||
+		tableName || '$' || defaultLocale || '.' || meta.name || ')';
 	ELSE
-		f := tableName || '__' || defaultLocale || '.' || meta.name;
+		f := tableName || '$' || defaultLocale || '.' || meta.name;
 	END IF;
 
 	IF meta.items_type <> '' THEN
@@ -237,8 +237,8 @@ DECLARE
 BEGIN
 	qs := 'json_build_object(';
 
-	-- qs:= qs || tableName || '__' || defaultLocale || '.sys_id as sys_id, ';
-	qs:= qs || '''sys'',json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id)';
+	-- qs:= qs || tableName || '$' || defaultLocale || '.sys_id as sys_id, ';
+	qs:= qs || '''sys'',json_build_object(''id'','  || tableName || '$' || defaultLocale || '.sys_id)';
 
 	IF tableName = '_asset' THEN
 		qs := qs || ',';
@@ -249,20 +249,20 @@ BEGIN
 
 		IF hasLocalized THEN
 			qs := qs ||
-			'''title'',' || 'COALESCE(' || tableName || '__' || locale || '.title,' || tableName || '__' || defaultLocale || '.title),' ||
-			'''description'',' || 'COALESCE(' || tableName || '__' || locale || '.description,' || tableName || '__' || defaultLocale || '.description),' ||
+			'''title'',' || 'COALESCE(' || tableName || '$' || locale || '.title,' || tableName || '$' || defaultLocale || '.title),' ||
+			'''description'',' || 'COALESCE(' || tableName || '$' || locale || '.description,' || tableName || '$' || defaultLocale || '.description),' ||
 			'''file'',json_build_object(' ||
-				'''contentType'',COALESCE(' || tableName || '__' || locale || '.content_type,' || tableName || '__' || defaultLocale || '.content_type),' ||
-				'''fileName'',COALESCE(' || tableName || '__' || locale || '.file_name,' || tableName || '__' || defaultLocale || '.file_name),' ||
-				'''url'',COALESCE(' || tableName || '__' || locale || '.url,' || tableName || '__' || defaultLocale || '.url))';
+				'''contentType'',COALESCE(' || tableName || '$' || locale || '.content_type,' || tableName || '$' || defaultLocale || '.content_type),' ||
+				'''fileName'',COALESCE(' || tableName || '$' || locale || '.file_name,' || tableName || '$' || defaultLocale || '.file_name),' ||
+				'''url'',COALESCE(' || tableName || '$' || locale || '.url,' || tableName || '$' || defaultLocale || '.url))';
 		ELSE
 			qs := qs ||
-			'''title'',' || tableName || '__' || defaultLocale || '.title,' ||
-			'''description'',' || tableName || '__' || defaultLocale || '.description,' ||
+			'''title'',' || tableName || '$' || defaultLocale || '.title,' ||
+			'''description'',' || tableName || '$' || defaultLocale || '.description,' ||
 			'''file'',json_build_object(' ||
-				'''contentType'',' || tableName || '__' || defaultLocale || '.content_type,' ||
-				'''fileName'',' || tableName || '__' || defaultLocale || '.file_name,' ||
-				'''url'',' || tableName || '__' || defaultLocale || '.url)';
+				'''contentType'',' || tableName || '$' || defaultLocale || '.content_type,' ||
+				'''fileName'',' || tableName || '$' || defaultLocale || '.file_name,' ||
+				'''url'',' || tableName || '$' || defaultLocale || '.url)';
 		END IF;
 	ELSE
 
@@ -282,18 +282,18 @@ BEGIN
 				ELSE
 					qs := qs || 'json_build_object(''sys'',json_build_object(''id'',';
 					IF hasLocalized THEN
-						qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-							tableName || '__' || defaultLocale || '.' || meta.name || ')';
+						qs := qs || 'COALESCE(' || tableName || '$' || locale || '.' || meta.name || ',' ||
+							tableName || '$' || defaultLocale || '.' || meta.name || ')';
 					ELSE
-						qs := qs || tableName || '__' || defaultLocale || '.sys_id';
+						qs := qs || tableName || '$' || defaultLocale || '.sys_id';
 					END IF;
 					qs := qs || '))';
 				END IF;
 			ELSEIF hasLocalized THEN
-				qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-					tableName || '__' || defaultLocale || '.' || meta.name || ')';
+				qs := qs || 'COALESCE(' || tableName || '$' || locale || '.' || meta.name || ',' ||
+					tableName || '$' || defaultLocale || '.' || meta.name || ')';
 			ELSE
-				qs := qs || tableName || '__' || defaultLocale || '.' || meta.name;
+				qs := qs || tableName || '$' || defaultLocale || '.' || meta.name;
 			END IF;
 
 			IF meta.type = 'Object' THEN
@@ -306,19 +306,19 @@ BEGIN
 	IF isArray THEN
 		qs := 'json_agg(' || qs || ') ORDER BY array_position(';
 		IF fieldLocalized AND locale <> defaultLocale THEN
-			qs := qs || 'COALESCE(' || parentTableName || '__' || locale || '.' || fieldName || ',' ||
-			parentTableName || '__' || defaultLocale || '.' || fieldName || ')';
+			qs := qs || 'COALESCE(' || parentTableName || '$' || locale || '.' || fieldName || ',' ||
+			parentTableName || '$' || defaultLocale || '.' || fieldName || ')';
 		ELSE
-			qs := qs || parentTableName || '__' || defaultLocale || '.' || fieldName;
+			qs := qs || parentTableName || '$' || defaultLocale || '.' || fieldName;
 		END IF;
-		qs := qs || ',' || tableName || '__' || defaultLocale || '.sys_id)';
+		qs := qs || ',' || tableName || '$' || defaultLocale || '.sys_id)';
 	END IF;
 
-	qs := qs || ') AS res FROM ' || tableName || '__' || defaultLocale || ' ' || tableName || '__' || defaultLocale;
+	qs := qs || ') AS res FROM ' || tableName || '$' || defaultLocale || ' ' || tableName || '$' || defaultLocale;
 
 	IF hasLocalized THEN
-		qs := qs || ' LEFT JOIN ' || tableName || '__' || locale || ' ' || tableName || '__' || locale ||
-		' ON ' || tableName || '__' || defaultLocale || '.sys_id = ' || tableName || '__' || locale || '.sys_id';
+		qs := qs || ' LEFT JOIN ' || tableName || '$' || locale || ' ' || tableName || '$' || locale ||
+		' ON ' || tableName || '$' || defaultLocale || '.sys_id = ' || tableName || '$' || locale || '.sys_id';
 	END IF;
 
 	IF joinedTables IS NOT NULL THEN
@@ -348,8 +348,8 @@ DECLARE
 	meta _meta;
 BEGIN
 
-	-- qs:= qs || tableName || '__' || defaultLocale || '.sys_id  as sys_id,';
-	qs := qs || 'json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id) AS sys';
+	-- qs:= qs || tableName || '$' || defaultLocale || '.sys_id  as sys_id,';
+	qs := qs || 'json_build_object(''id'','  || tableName || '$' || defaultLocale || '.sys_id) AS sys';
 
 	FOREACH meta IN ARRAY metas LOOP
 	    qs := qs || ', ';
@@ -363,18 +363,18 @@ BEGIN
 			ELSE
 				qs := qs || 'json_build_object(''sys'',json_build_object(''id'',';
 				IF meta.is_localized AND locale <> defaultLocale THEN
-					qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-					tableName || '__' || defaultLocale || '.' || meta.name || ')';
+					qs := qs || 'COALESCE(' || tableName || '$' || locale || '.' || meta.name || ',' ||
+					tableName || '$' || defaultLocale || '.' || meta.name || ')';
 				ELSE
-					qs := qs || meta.name || '__' || defaultLocale || '.sys_id';
+					qs := qs || meta.name || '$' || defaultLocale || '.sys_id';
 				END IF;
 				qs := qs || '))';
 			END IF;
 		ELSEIF meta.is_localized AND locale <> defaultLocale THEN
-			qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-			tableName || '__' || defaultLocale || '.' || meta.name || ')';
+			qs := qs || 'COALESCE(' || tableName || '$' || locale || '.' || meta.name || ',' ||
+			tableName || '$' || defaultLocale || '.' || meta.name || ')';
 		ELSE
-	    	qs := qs || tableName || '__' || defaultLocale || '.' || meta.name;
+	    	qs := qs || tableName || '$' || defaultLocale || '.' || meta.name;
 		END IF;
 
 		IF meta.is_localized AND locale <> defaultLocale THEN
@@ -388,11 +388,11 @@ BEGIN
 		qs := qs || ' AS "' || _fmt_column_name(meta.name) || '"';
 	END LOOP;
 
-	qs := qs || ' FROM ' || tableName || '__' || defaultLocale || ' ' || tableName || '__' || defaultLocale;
+	qs := qs || ' FROM ' || tableName || '$' || defaultLocale || ' ' || tableName || '$' || defaultLocale;
 
 	IF hasLocalized THEN
-		qs := qs || ' LEFT JOIN ' || tableName || '__' || locale || ' ' || tableName || '__' || locale ||
-		' ON ' || tableName || '__' || defaultLocale || '.sys_id = ' || tableName || '__' || locale || '.sys_id';
+		qs := qs || ' LEFT JOIN ' || tableName || '$' || locale || ' ' || tableName || '$' || locale ||
+		' ON ' || tableName || '$' || defaultLocale || '.sys_id = ' || tableName || '$' || locale || '.sys_id';
 	END IF;
 
 	IF joinedLaterals IS NOT NULL THEN
@@ -485,10 +485,10 @@ $$ LANGUAGE 'plpgsql';
 CREATE OR REPLACE FUNCTION _join_exclude_games(market TEXT, device TEXT, defaultLocale TEXT)
 RETURNS TEXT AS $$
 BEGIN
-	RETURN ' LEFT JOIN LATERAL(SELECT array_agg(game_device_configuration.sys_id) AS games_exclude_from_market FROM games_exclude_from_market__' || defaultLocale || ' games_exclude_from_market LEFT JOIN game_id__' || defaultLocale ||
-	' game_device_configuration ON game_device_configuration.sys_id = ANY(games_exclude_from_market.games) LEFT JOIN game_device__' || 	defaultLocale || ' AS game_device ON lower(game_device.type) = ''' || device || ''' WHERE games_exclude_from_market.market = ''' ||
+	RETURN ' LEFT JOIN LATERAL(SELECT array_agg(game_device_configuration.sys_id) AS games_exclude_from_market FROM games_exclude_from_market$' || defaultLocale || ' games_exclude_from_market LEFT JOIN game_id$' || defaultLocale ||
+	' game_device_configuration ON game_device_configuration.sys_id = ANY(games_exclude_from_market.games) LEFT JOIN game_device$' || 	defaultLocale || ' AS game_device ON lower(game_device.type) = ''' || device || ''' WHERE games_exclude_from_market.market = ''' ||
 	market || ''' AND game_device.sys_id = ANY(game_device_configuration.devices)) AS games_exclude_from_market ON true LEFT JOIN LATERAL(
-SELECT studios AS game_studio_exclude_from_market FROM game_studio_exclude_from_market__' || defaultLocale || ' WHERE market = ''' ||
+SELECT studios AS game_studio_exclude_from_market FROM game_studio_exclude_from_market$' || defaultLocale || ' WHERE market = ''' ||
 	market || ''') AS game_studio_exclude_from_market ON true';
 END;
 $$ LANGUAGE 'plpgsql';
@@ -515,9 +515,9 @@ BEGIN
 	END IF;
 
 	qs := qs || '(game_studio_exclude_from_market IS NULL OR ' ||
-	tableName || '__' || defaultLocale || '.studio <> ALL(game_studio_exclude_from_market)) AND ' ||
+	tableName || '$' || defaultLocale || '.studio <> ALL(game_studio_exclude_from_market)) AND ' ||
 	'(games_exclude_from_market IS NULL OR NOT ' ||
-	tableName || '__' || defaultLocale || '.device_configurations && games_exclude_from_market)';
+	tableName || '$' || defaultLocale || '.device_configurations && games_exclude_from_market)';
 
 	qs := _finalize_query(qs, orderBy, skip, take, count);
 

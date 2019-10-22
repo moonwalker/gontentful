@@ -35,7 +35,7 @@ BEGIN
 		items_type,
 		link_type,
 		is_localized
-        FROM {{ $.SchemaName }}.' || tableName || '___meta';
+        FROM {{ $.SchemaName }}.' || tableName || '$meta';
 
 END;
 $$ LANGUAGE 'plpgsql';
@@ -161,10 +161,10 @@ BEGIN
 			RETURN 'EXISTS (SELECT FROM json_array_elements(_included_' || meta.name || '.res) js WHERE js ->> ''' || subField || '''' || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal, false) || ')';
 		END IF;
 		IF meta.is_localized AND locale <> defaultLocale THEN
-			RETURN 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-			tableName || '__' || defaultLocale || '.' || meta.name || ')' || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal, isArray);
+			RETURN 'COALESCE(' || tableName || '$' || locale || '.' || meta.name || ',' ||
+			tableName || '$' || defaultLocale || '.' || meta.name || ')' || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal, isArray);
 		END IF;
-		RETURN tableName || '__' || defaultLocale || '.' || meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal, isArray);
+		RETURN tableName || '$' || defaultLocale || '.' || meta.name || {{ $.SchemaName }}._fmt_comparer(comparer, fmtVal, isArray);
 	END IF;
 
 	FOREACH val IN ARRAY filterValues LOOP
@@ -177,13 +177,13 @@ BEGIN
 				IF subField IS NOT NULL THEN
 					fmtVal := fmtVal || '(_included_' || field || '.res ->> ''' || subField || ''')::text' || fmtComp;
 				ELSEIF meta.is_localized AND locale <> defaultLocale THEN
-					fmtVal := fmtVal || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-					tableName || '__' || defaultLocale || '.' || meta.name || ')' || fmtComp;
+					fmtVal := fmtVal || 'COALESCE(' || tableName || '$' || locale || '.' || meta.name || ',' ||
+					tableName || '$' || defaultLocale || '.' || meta.name || ')' || fmtComp;
 				ELSE
-					fmtVal := fmtVal || tableName || '__' || defaultLocale || '.' || meta.name || fmtComp;
+					fmtVal := fmtVal || tableName || '$' || defaultLocale || '.' || meta.name || fmtComp;
 				END IF;
 			ELSE
-				fmtVal := fmtVal || tableName || '__' || defaultLocale || '.' || field || fmtComp;
+				fmtVal := fmtVal || tableName || '$' || defaultLocale || '.' || field || fmtComp;
 			END IF;
 	    END IF;
 	END LOOP;
@@ -197,12 +197,12 @@ DECLARE
 	c text;
 	f text;
 BEGIN
-	c:= meta.link_type || '__' || defaultLocale || '.sys_id = ';
+	c:= meta.link_type || '$' || defaultLocale || '.sys_id = ';
 	IF meta.is_localized AND locale <> defaultLocale THEN
-		f := 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-		tableName || '__' || defaultLocale || '.' || meta.name || ')';
+		f := 'COALESCE(' || tableName || '$' || locale || '.' || meta.name || ',' ||
+		tableName || '$' || defaultLocale || '.' || meta.name || ')';
 	ELSE
-		f := tableName || '__' || defaultLocale || '.' || meta.name;
+		f := tableName || '$' || defaultLocale || '.' || meta.name;
 	END IF;
 
 	IF meta.items_type <> '' THEN
@@ -224,8 +224,8 @@ DECLARE
 BEGIN
 	qs := 'json_build_object(';
 
-	-- qs:= qs || tableName || '__' || defaultLocale || '.sys_id as sys_id, ';
-	qs:= qs || '''sys'',json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id)';
+	-- qs:= qs || tableName || '$' || defaultLocale || '.sys_id as sys_id, ';
+	qs:= qs || '''sys'',json_build_object(''id'','  || tableName || '$' || defaultLocale || '.sys_id)';
 
 	IF tableName = '_asset' THEN
 		qs := qs || ',';
@@ -236,20 +236,20 @@ BEGIN
 
 		IF hasLocalized THEN
 			qs := qs ||
-			'''title'',' || 'COALESCE(' || tableName || '__' || locale || '.title,' || tableName || '__' || defaultLocale || '.title),' ||
-			'''description'',' || 'COALESCE(' || tableName || '__' || locale || '.description,' || tableName || '__' || defaultLocale || '.description),' ||
+			'''title'',' || 'COALESCE(' || tableName || '$' || locale || '.title,' || tableName || '$' || defaultLocale || '.title),' ||
+			'''description'',' || 'COALESCE(' || tableName || '$' || locale || '.description,' || tableName || '$' || defaultLocale || '.description),' ||
 			'''file'',json_build_object(' ||
-				'''contentType'',COALESCE(' || tableName || '__' || locale || '.content_type,' || tableName || '__' || defaultLocale || '.content_type),' ||
-				'''fileName'',COALESCE(' || tableName || '__' || locale || '.file_name,' || tableName || '__' || defaultLocale || '.file_name),' ||
-				'''url'',COALESCE(' || tableName || '__' || locale || '.url,' || tableName || '__' || defaultLocale || '.url))';
+				'''contentType'',COALESCE(' || tableName || '$' || locale || '.content_type,' || tableName || '$' || defaultLocale || '.content_type),' ||
+				'''fileName'',COALESCE(' || tableName || '$' || locale || '.file_name,' || tableName || '$' || defaultLocale || '.file_name),' ||
+				'''url'',COALESCE(' || tableName || '$' || locale || '.url,' || tableName || '$' || defaultLocale || '.url))';
 		ELSE
 			qs := qs ||
-			'''title'',' || tableName || '__' || defaultLocale || '.title,' ||
-			'''description'',' || tableName || '__' || defaultLocale || '.description,' ||
+			'''title'',' || tableName || '$' || defaultLocale || '.title,' ||
+			'''description'',' || tableName || '$' || defaultLocale || '.description,' ||
 			'''file'',json_build_object(' ||
-				'''contentType'',' || tableName || '__' || defaultLocale || '.content_type,' ||
-				'''fileName'',' || tableName || '__' || defaultLocale || '.file_name,' ||
-				'''url'',' || tableName || '__' || defaultLocale || '.url)';
+				'''contentType'',' || tableName || '$' || defaultLocale || '.content_type,' ||
+				'''fileName'',' || tableName || '$' || defaultLocale || '.file_name,' ||
+				'''url'',' || tableName || '$' || defaultLocale || '.url)';
 		END IF;
 	ELSE
 
@@ -266,10 +266,10 @@ BEGIN
 				qs := qs || '_included_' || meta.name || '.res';
 				joinedTables:= joinedTables || meta;
 			ELSEIF hasLocalized THEN
-				qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-					tableName || '__' || defaultLocale || '.' || meta.name || ')';
+				qs := qs || 'COALESCE(' || tableName || '$' || locale || '.' || meta.name || ',' ||
+					tableName || '$' || defaultLocale || '.' || meta.name || ')';
 			ELSE
-			   	qs := qs || tableName || '__' || defaultLocale || '.' || meta.name;
+			   	qs := qs || tableName || '$' || defaultLocale || '.' || meta.name;
 			END IF;
 		END LOOP;
 
@@ -279,11 +279,11 @@ BEGIN
 		qs := 'json_agg(' || qs || ')';
 	END IF;
 
-	qs := qs || ') AS res FROM {{ $.SchemaName }}.' || tableName || '__' || defaultLocale || suffix || ' ' || tableName || '__' || defaultLocale;
+	qs := qs || ') AS res FROM {{ $.SchemaName }}.' || tableName || '$' || defaultLocale || suffix || ' ' || tableName || '$' || defaultLocale;
 
 	IF hasLocalized THEN
-		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '__' || locale || suffix || ' ' || tableName || '__' || locale ||
-		' ON ' || tableName || '__' || defaultLocale || '.sys_id = ' || tableName || '__' || locale || '.sys_id';
+		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '$' || locale || suffix || ' ' || tableName || '$' || locale ||
+		' ON ' || tableName || '$' || defaultLocale || '.sys_id = ' || tableName || '$' || locale || '.sys_id';
 	END IF;
 
 	IF joinedTables IS NOT NULL THEN
@@ -313,8 +313,8 @@ DECLARE
 	meta {{ $.SchemaName }}._meta;
 BEGIN
 
-	-- qs:= qs || tableName || '__' || defaultLocale || '.sys_id  as sys_id,';
-	qs := qs || 'json_build_object(''id'','  || tableName || '__' || defaultLocale || '.sys_id) as sys';
+	-- qs:= qs || tableName || '$' || defaultLocale || '.sys_id  as sys_id,';
+	qs := qs || 'json_build_object(''id'','  || tableName || '$' || defaultLocale || '.sys_id) as sys';
 
 	FOREACH meta IN ARRAY metas LOOP
 	    qs := qs || ', ';
@@ -325,10 +325,10 @@ BEGIN
 			joinedLaterals := joinedLaterals || ' LEFT JOIN LATERAL (' ||
 			{{ $.SchemaName }}._include_join(meta.link_type, {{ $.SchemaName }}._build_critertia(tableName, meta, defaultLocale, locale), meta.items_type <> '', locale, defaultLocale, suffix, includeDepth - 1) || ') AS _included_' || meta.name || ' ON true';
 		ELSEIF meta.is_localized AND locale <> defaultLocale THEN
-			qs := qs || 'COALESCE(' || tableName || '__' || locale || '.' || meta.name || ',' ||
-			tableName || '__' || defaultLocale || '.' || meta.name || ')';
+			qs := qs || 'COALESCE(' || tableName || '$' || locale || '.' || meta.name || ',' ||
+			tableName || '$' || defaultLocale || '.' || meta.name || ')';
 		ELSE
-	    	qs := qs || tableName || '__' || defaultLocale || '.' || meta.name;
+	    	qs := qs || tableName || '$' || defaultLocale || '.' || meta.name;
 		END IF;
 
 		IF meta.is_localized AND locale <> defaultLocale THEN
@@ -338,11 +338,11 @@ BEGIN
 		qs := qs || ' as "' || {{ $.SchemaName }}._fmt_column_name(meta.name) || '"';
 	END LOOP;
 
-	qs := qs || ' FROM {{ $.SchemaName }}.' || tableName || '__' || defaultLocale || suffix || ' ' || tableName || '__' || defaultLocale;
+	qs := qs || ' FROM {{ $.SchemaName }}.' || tableName || '$' || defaultLocale || suffix || ' ' || tableName || '$' || defaultLocale;
 
 	IF hasLocalized THEN
-		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '__' || locale || suffix || ' ' || tableName || '__' || locale ||
-		' ON ' || tableName || '__' || defaultLocale || '.sys_id = ' || tableName || '__' || locale || '.sys_id';
+		qs := qs || ' LEFT JOIN {{ $.SchemaName }}.' || tableName || '$' || locale || suffix || ' ' || tableName || '$' || locale ||
+		' ON ' || tableName || '$' || defaultLocale || '.sys_id = ' || tableName || '$' || locale || '.sys_id';
 	END IF;
 
 	IF joinedLaterals IS NOT NULL THEN
@@ -418,7 +418,7 @@ CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_query(tableName TEXT, lo
 RETURNS text AS $$
 DECLARE
 	qs text;
-	suffix text := '__publish';
+	suffix text := '$publish';
 	metas {{ $.SchemaName }}._meta[];
 BEGIN
 	IF usePreview THEN
@@ -440,10 +440,10 @@ $$ LANGUAGE 'plpgsql';
 CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._join_exclude_games(market TEXT, device TEXT, defaultLocale TEXT, suffix TEXT)
 RETURNS TEXT AS $$
 BEGIN
-	RETURN ' LEFT JOIN LATERAL(SELECT array_agg(game_device_configuration.sys_id) AS games_exclude_from_market FROM {{ $.SchemaName }}.games_exclude_from_market__' || defaultLocale || ' games_exclude_from_market LEFT JOIN {{ $.SchemaName }}.game_id__' || defaultLocale ||
-	' game_device_configuration ON game_device_configuration.sys_id = ANY(games_exclude_from_market.games) LEFT JOIN {{ $.SchemaName }}.game_device__' || 	defaultLocale || ' AS game_device ON lower(game_device.type) = ''' || device || ''' WHERE games_exclude_from_market.market = ''' ||
+	RETURN ' LEFT JOIN LATERAL(SELECT array_agg(game_device_configuration.sys_id) AS games_exclude_from_market FROM {{ $.SchemaName }}.games_exclude_from_market$' || defaultLocale || ' games_exclude_from_market LEFT JOIN {{ $.SchemaName }}.game_id$' || defaultLocale ||
+	' game_device_configuration ON game_device_configuration.sys_id = ANY(games_exclude_from_market.games) LEFT JOIN {{ $.SchemaName }}.game_device$' || 	defaultLocale || ' AS game_device ON lower(game_device.type) = ''' || device || ''' WHERE games_exclude_from_market.market = ''' ||
 	market || ''' AND game_device.sys_id = ANY(game_device_configuration.devices)) AS games_exclude_from_market ON true LEFT JOIN LATERAL(
-SELECT studios AS game_studio_exclude_from_market FROM {{ $.SchemaName }}.game_studio_exclude_from_market__' || defaultLocale || ' WHERE market = ''' ||
+SELECT studios AS game_studio_exclude_from_market FROM {{ $.SchemaName }}.game_studio_exclude_from_market$' || defaultLocale || ' WHERE market = ''' ||
 	market || ''') AS game_studio_exclude_from_market ON true';
 END;
 $$ LANGUAGE 'plpgsql';
@@ -452,7 +452,7 @@ CREATE OR REPLACE FUNCTION {{ $.SchemaName }}._generate_gamebrowser(market TEXT,
 RETURNS text AS $$
 DECLARE
 	qs text;
-	suffix text := '__publish';
+	suffix text := '$publish';
 	metas {{ $.SchemaName }}._meta[];
 	fc text;
 BEGIN
@@ -475,9 +475,9 @@ BEGIN
 	END IF;
 
 	qs := qs || '(game_studio_exclude_from_market IS NULL OR ' ||
-	tableName || '__' || defaultLocale || '.studio <> ALL(game_studio_exclude_from_market)) AND ' ||
+	tableName || '$' || defaultLocale || '.studio <> ALL(game_studio_exclude_from_market)) AND ' ||
 	'(games_exclude_from_market IS NULL OR NOT ' ||
-	tableName || '__' || defaultLocale || '.device_configurations && games_exclude_from_market)';
+	tableName || '$' || defaultLocale || '.device_configurations && games_exclude_from_market)';
 
 	qs := {{ $.SchemaName }}._finalize_query(qs, orderBy, skip, take, count);
 
@@ -556,7 +556,7 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._models (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._models(name);
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._models__history(
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._models$history(
 	_id serial primary key,
 	pub_id integer not null,
 	name text not null,
@@ -566,12 +566,12 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._models__history(
 	created_by text not null
 );
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__models_update() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on$models_update() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__models_update()
+CREATE FUNCTION {{ $.SchemaName }}.on$models_update()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}._models__history (
+	INSERT INTO {{ $.SchemaName }}._models$history (
 		pub_id,
 		name,
 		fields,
@@ -588,12 +588,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__models_update ON {{ $.SchemaName }}._models;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}$models_update ON {{ $.SchemaName }}._models;
 --
-CREATE TRIGGER {{ $.SchemaName }}__models_update
+CREATE TRIGGER {{ $.SchemaName }}$models_update
     AFTER UPDATE ON {{ $.SchemaName }}._models
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__models_update();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on$models_update();
 --
 CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._entries (
 	_id serial primary key,
@@ -628,7 +628,7 @@ SET
 	updated_by = EXCLUDED.updated_by
 ;
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset___meta (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset$meta (
 	_id serial primary key,
 	name text not null unique,
 	label text not null,
@@ -646,10 +646,10 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset___meta (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._asset___meta(name);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}._asset$meta(name);
 --
 {{ range $aidx, $col := $.AssetColumns }}
-INSERT INTO {{ $.SchemaName }}._asset___meta (
+INSERT INTO {{ $.SchemaName }}._asset$meta (
 	name,
 	label,
 	type,
@@ -665,7 +665,7 @@ INSERT INTO {{ $.SchemaName }}._asset___meta (
 ON CONFLICT (name) DO NOTHING;
 {{- end -}}
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset__{{ $locale }} (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset${{ $locale }} (
 	_id serial primary key,
 	sys_id text not null unique,
 	title text not null,
@@ -680,9 +680,9 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset__{{ $locale }} (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}._asset__{{ $locale }}(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}._asset${{ $locale }}(sys_id);
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset__{{ $locale }}__publish (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset${{ $locale }}$publish (
 	_id serial primary key,
 	sys_id text not null unique,
 	title text not null,
@@ -695,14 +695,14 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset__{{ $locale }}__publish (
 	published_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}._asset__{{ $locale }}__publish(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}._asset${{ $locale }}$publish(sys_id);
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.asset__{{ $locale }}_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.asset${{ $locale }}_upsert(text, text, text, text, text, text, integer, timestamp, text, timestamp, text) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.asset__{{ $locale }}_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
+CREATE FUNCTION {{ $.SchemaName }}.asset${{ $locale }}_upsert(_sysId text, _title text, _description text, _fileName text, _contentType text, _url text, _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
 RETURNS void AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}._asset__{{ $locale }} (
+INSERT INTO {{ $.SchemaName }}._asset${{ $locale }} (
 	sys_id,
 	title,
 	description,
@@ -741,9 +741,9 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__asset__{{ $locale }}_insert() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on$asset${{ $locale }}_insert() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__asset__{{ $locale }}_insert()
+CREATE FUNCTION {{ $.SchemaName }}.on$asset${{ $locale }}_insert()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._entries (
@@ -751,42 +751,42 @@ BEGIN
 		table_name
 	) VALUES (
 		NEW.sys_id,
-		'_asset__{{ $locale }}'
+		'_asset${{ $locale }}'
 	) ON CONFLICT (sys_id) DO NOTHING;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_insert ON {{ $.SchemaName }}._asset__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}$asset${{ $locale }}_insert ON {{ $.SchemaName }}._asset${{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}_insert
-	AFTER INSERT ON {{ $.SchemaName }}._asset__{{ $locale }}
+CREATE TRIGGER {{ $.SchemaName }}$asset${{ $locale }}_insert
+	AFTER INSERT ON {{ $.SchemaName }}._asset${{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}_insert();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on$asset${{ $locale }}_insert();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__asset__{{ $locale }}_delete() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on$asset${{ $locale }}_delete() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__asset__{{ $locale }}_delete()
+CREATE FUNCTION {{ $.SchemaName }}.on$asset${{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '_asset__{{ $locale }}';
+	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '_asset${{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_delete ON {{ $.SchemaName }}._asset__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}$asset${{ $locale }}_delete ON {{ $.SchemaName }}._asset${{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}_delete
-	AFTER DELETE ON {{ $.SchemaName }}._asset__{{ $locale }}
+CREATE TRIGGER {{ $.SchemaName }}$asset${{ $locale }}_delete
+	AFTER DELETE ON {{ $.SchemaName }}._asset${{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}_delete();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on$asset${{ $locale }}_delete();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.asset__{{ $locale }}_publish(integer) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.asset${{ $locale }}_publish(integer) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.asset__{{ $locale }}_publish(_aid integer)
+CREATE FUNCTION {{ $.SchemaName }}.asset${{ $locale }}_publish(_aid integer)
 RETURNS void AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}._asset__{{ $locale }}__publish (
+INSERT INTO {{ $.SchemaName }}._asset${{ $locale }}$publish (
 	sys_id,
 	title,
 	description,
@@ -805,7 +805,7 @@ SELECT
 	url,
 	version,
 	updated_by
-FROM {{ $.SchemaName }}._asset__{{ $locale }}
+FROM {{ $.SchemaName }}._asset${{ $locale }}
 WHERE _id = _aid
 ON CONFLICT (sys_id) DO UPDATE
 SET
@@ -821,7 +821,7 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset__{{ $locale }}__history(
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset${{ $locale }}$history(
 	_id serial primary key,
 	pub_id integer not null,
 	sys_id text not null,
@@ -831,12 +831,12 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}._asset__{{ $locale }}__history(
 	created_by text not null
 );
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on__asset__{{ $locale }}__publish_update() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on$asset${{ $locale }}$publish_update() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on__asset__{{ $locale }}__publish_update()
+CREATE FUNCTION {{ $.SchemaName }}.on$asset${{ $locale }}$publish_update()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}._asset__{{ $locale }}__history (
+	INSERT INTO {{ $.SchemaName }}._asset${{ $locale }}$history (
 		pub_id,
 		sys_id,
 		fields,
@@ -853,12 +853,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}__asset__{{ $locale }}_update ON {{ $.SchemaName }}._asset__{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}$asset${{ $locale }}_update ON {{ $.SchemaName }}._asset${{ $locale }}$publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}__asset__{{ $locale }}__publish_update
-    AFTER UPDATE ON {{ $.SchemaName }}._asset__{{ $locale }}__publish
+CREATE TRIGGER {{ $.SchemaName }}$asset${{ $locale }}$publish_update
+    AFTER UPDATE ON {{ $.SchemaName }}._asset${{ $locale }}$publish
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on__asset__{{ $locale }}__publish_update();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on$asset${{ $locale }}$publish_update();
 --
 {{ end -}}
 COMMIT;
@@ -895,7 +895,7 @@ SET
 	updated_by = EXCLUDED.updated_by
 ;
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}___meta (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}$meta (
 	_id serial primary key,
 	name text not null unique,
 	label text not null,
@@ -913,9 +913,9 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}___meta (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}.{{ $tbl.TableName }}___meta(name);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $.SchemaName }}.{{ $tbl.TableName }}$meta(name);
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}___meta_history (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}$meta_history (
 	_id serial primary key,
 	meta_id integer not null,
 	name text not null,
@@ -924,12 +924,12 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}___meta_histor
 	created_by text not null
 );
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}___meta_update() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}$meta_update() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}___meta_update()
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}$meta_update()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}___meta_history (
+	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}$meta_history (
 		meta_id,
 		name,
 		fields,
@@ -944,15 +944,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}___meta_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}___meta;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}$meta_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}$meta;
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}___meta_update
-    AFTER UPDATE ON {{ $.SchemaName }}.{{ $tbl.TableName }}___meta
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}$meta_update
+    AFTER UPDATE ON {{ $.SchemaName }}.{{ $tbl.TableName }}$meta
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}___meta_update();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}$meta_update();
 --
 {{ range $fieldsidx, $fields := $tbl.Data.Metas }}
-INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}___meta (
+INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}$meta (
 	name,
 	label,
 	type,
@@ -997,7 +997,7 @@ SET
 --
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }} (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }} (
 	_id serial primary key,
 	sys_id text not null unique,
 	{{- range $colidx, $col := $tbl.Columns }}
@@ -1010,9 +1010,9 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}(sys_id);
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}$publish (
 	_id serial primary key,
 	sys_id text not null unique,
 	{{- range $colidx, $col := $tbl.Columns }}
@@ -1023,14 +1023,14 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }
 	published_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}$publish(sys_id);
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}_upsert(text,{{ range $colidx, $col := $tbl.Columns }} {{ .ColumnType }},{{ end }} integer, timestamp, text, timestamp, text) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}_upsert(text,{{ range $colidx, $col := $tbl.Columns }} {{ .ColumnType }},{{ end }} integer, timestamp, text, timestamp, text) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}_upsert(_sysId text,{{ range $colidx, $col := $tbl.Columns }} _{{ .ColumnName }} {{ .ColumnType }},{{ end }} _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
+CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}_upsert(_sysId text,{{ range $colidx, $col := $tbl.Columns }} _{{ .ColumnName }} {{ .ColumnType }},{{ end }} _version integer, _created_at timestamp, _created_by text, _updated_at timestamp, _updated_by text)
 RETURNS void AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }} (
+INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }} (
 	sys_id,
 	{{- range $colidx, $col := $tbl.Columns }}
 	"{{ .ColumnName }}",
@@ -1063,9 +1063,9 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_insert() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}${{ $locale }}_insert() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_insert()
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}${{ $locale }}_insert()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO {{ $.SchemaName }}._entries (
@@ -1073,42 +1073,42 @@ BEGIN
 		table_name
 	) VALUES (
 		NEW.sys_id,
-		'{{ $tbl.TableName }}__{{ $locale }}'
+		'{{ $tbl.TableName }}${{ $locale }}'
 	) ON CONFLICT (sys_id) DO NOTHING;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_insert ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}${{ $locale }}_insert ON {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_insert
-    AFTER INSERT ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}${{ $locale }}_insert
+    AFTER INSERT ON {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_insert();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}${{ $locale }}_insert();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_delete() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}${{ $locale }}_delete() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_delete()
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}${{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '{{ $tbl.TableName }}__{{ $locale }}';
+	DELETE FROM {{ $.SchemaName }}._entries WHERE sys_id = OLD.sys_id AND table_name = '{{ $tbl.TableName }}${{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }};
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}${{ $locale }}_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }};
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}_delete
-	AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}${{ $locale }}_delete
+	AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}_delete();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}${{ $locale }}_delete();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}_publish(integer) CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}_publish(integer) CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}_publish(_aid integer)
+CREATE FUNCTION {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}_publish(_aid integer)
 RETURNS integer AS $$
 BEGIN
-INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish (
+INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}$publish (
 	sys_id,
 	{{- range $colidx, $col := $tbl.Columns }}
 	"{{ .ColumnName }}",
@@ -1123,7 +1123,7 @@ SELECT
 	{{- end }}
 	version,
 	updated_by
-FROM {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}
+FROM {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}
 WHERE _id = _aid
 ON CONFLICT (sys_id) DO UPDATE
 SET
@@ -1137,7 +1137,7 @@ SET
 END;
 $$  LANGUAGE plpgsql;
 --
-CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__history(
+CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}$history(
 	_id serial primary key,
 	pub_id integer not null,
 	sys_id text not null,
@@ -1147,12 +1147,12 @@ CREATE TABLE IF NOT EXISTS {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }
 	created_by text not null
 );
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_update() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}${{ $locale }}$publish_update() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_update()
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}${{ $locale }}$publish_update()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__history (
+	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}$history (
 		pub_id,
 		sys_id,
 		fields,
@@ -1169,19 +1169,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}${{ $locale }}$publish_update ON {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}$publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_update
-    AFTER UPDATE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}${{ $locale }}$publish_update
+    AFTER UPDATE ON {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}$publish
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_update();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}${{ $locale }}$publish_update();
 --
-DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_delete() CASCADE;
+DROP FUNCTION IF EXISTS {{ $.SchemaName }}.on_{{ $tbl.TableName }}${{ $locale }}$publish_delete() CASCADE;
 --
-CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_delete()
+CREATE FUNCTION {{ $.SchemaName }}.on_{{ $tbl.TableName }}${{ $locale }}$publish_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__history (
+	INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}$history (
 		pub_id,
 		sys_id,
 		fields,
@@ -1198,12 +1198,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish;
+DROP TRIGGER IF EXISTS {{ $.SchemaName }}_{{ $tbl.TableName }}${{ $locale }}$publish_delete ON {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}$publish;
 --
-CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}__{{ $locale }}__publish_delete
-    AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}__{{ $locale }}__publish
+CREATE TRIGGER {{ $.SchemaName }}_{{ $tbl.TableName }}${{ $locale }}$publish_delete
+    AFTER DELETE ON {{ $.SchemaName }}.{{ $tbl.TableName }}${{ $locale }}$publish
     FOR EACH ROW
-	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}__{{ $locale }}__publish_delete();
+	EXECUTE PROCEDURE {{ $.SchemaName }}.on_{{ $tbl.TableName }}${{ $locale }}$publish_delete();
 --
 {{ end -}}
 {{ end -}}

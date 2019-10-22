@@ -37,7 +37,7 @@ DECLARE tn TEXT;
 BEGIN
   SELECT table_name INTO tn FROM content._entries WHERE sys_id = '{{ $sys_id }}';
   IF tn IS NOT NULL THEN
-	  EXECUTE 'DELETE FROM content.' || tn || '__{{$loc}}__publish WHERE sys_id = ''{{ $sys_id }}''';
+	  EXECUTE 'DELETE FROM content.' || tn || '${{$loc}}$publish WHERE sys_id = ''{{ $sys_id }}''';
   END IF;
 END $$;
 {{ end -}}

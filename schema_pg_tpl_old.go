@@ -74,7 +74,7 @@ SET
 	updated_by = EXCLUDED.updated_by
 ;
 --
-CREATE TABLE IF NOT EXISTS _asset___meta (
+CREATE TABLE IF NOT EXISTS _asset$meta (
 	_id serial primary key,
 	name text not null unique,
 	label text not null,
@@ -92,10 +92,10 @@ CREATE TABLE IF NOT EXISTS _asset___meta (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS name ON _asset___meta(name);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON _asset$meta(name);
 --
 {{ range $aidx, $col := $.AssetColumns }}
-INSERT INTO _asset___meta (
+INSERT INTO _asset$meta (
 	name,
 	label,
 	type,
@@ -111,7 +111,7 @@ INSERT INTO _asset___meta (
 ON CONFLICT (name) DO NOTHING;
 {{- end -}}
 --
-CREATE TABLE IF NOT EXISTS _asset__{{ $locale }} (
+CREATE TABLE IF NOT EXISTS _asset${{ $locale }} (
 	_id serial primary key,
 	sys_id text not null unique,
 	title text not null,
@@ -126,11 +126,11 @@ CREATE TABLE IF NOT EXISTS _asset__{{ $locale }} (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON _asset__{{ $locale }}(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON _asset${{ $locale }}(sys_id);
 --
-DROP FUNCTION IF EXISTS on__asset__{{ $locale }}_insert() CASCADE;
+DROP FUNCTION IF EXISTS on$asset${{ $locale }}_insert() CASCADE;
 --
-CREATE FUNCTION on__asset__{{ $locale }}_insert()
+CREATE FUNCTION on$asset${{ $locale }}_insert()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO _entries (
@@ -138,35 +138,35 @@ BEGIN
 		table_name
 	) VALUES (
 		NEW.sys_id,
-		'_asset__{{ $locale }}'
+		'_asset${{ $locale }}'
 	) ON CONFLICT (sys_id) DO NOTHING;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS __asset__{{ $locale }}_insert ON _asset__{{ $locale }};
+DROP TRIGGER IF EXISTS $asset${{ $locale }}_insert ON _asset${{ $locale }};
 --
-CREATE TRIGGER __asset__{{ $locale }}_insert
-	AFTER INSERT ON _asset__{{ $locale }}
+CREATE TRIGGER $asset${{ $locale }}_insert
+	AFTER INSERT ON _asset${{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE on__asset__{{ $locale }}_insert();
+	EXECUTE PROCEDURE on$asset${{ $locale }}_insert();
 --
-DROP FUNCTION IF EXISTS on__asset__{{ $locale }}_delete() CASCADE;
+DROP FUNCTION IF EXISTS on$asset${{ $locale }}_delete() CASCADE;
 --
-CREATE FUNCTION on__asset__{{ $locale }}_delete()
+CREATE FUNCTION on$asset${{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM _entries WHERE sys_id = OLD.sys_id AND table_name = '_asset__{{ $locale }}';
+	DELETE FROM _entries WHERE sys_id = OLD.sys_id AND table_name = '_asset${{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS __asset__{{ $locale }}_delete ON _asset__{{ $locale }};
+DROP TRIGGER IF EXISTS $asset${{ $locale }}_delete ON _asset${{ $locale }};
 --
-CREATE TRIGGER __asset__{{ $locale }}_delete
-	AFTER DELETE ON _asset__{{ $locale }}
+CREATE TRIGGER $asset${{ $locale }}_delete
+	AFTER DELETE ON _asset${{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE on__asset__{{ $locale }}_delete();
+	EXECUTE PROCEDURE on$asset${{ $locale }}_delete();
 --
 {{ end -}}
 ----
@@ -201,7 +201,7 @@ SET
 	updated_by = EXCLUDED.updated_by
 ;
 --
-CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}___meta (
+CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}$meta (
 	_id serial primary key,
 	name text not null unique,
 	label text not null,
@@ -219,10 +219,10 @@ CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}___meta (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $tbl.TableName }}___meta(name);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $tbl.TableName }}$meta(name);
 --
 {{ range $fieldsidx, $fields := $tbl.Data.Metas }}
-INSERT INTO {{ $tbl.TableName }}___meta (
+INSERT INTO {{ $tbl.TableName }}$meta (
 	name,
 	label,
 	type,
@@ -267,7 +267,7 @@ SET
 --
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
-CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}__{{ $locale }} (
+CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}${{ $locale }} (
 	_id serial primary key,
 	sys_id text not null unique,
 	{{- range $colidx, $col := $tbl.Columns }}
@@ -280,11 +280,11 @@ CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}__{{ $locale }} (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $tbl.TableName }}__{{ $locale }}(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $tbl.TableName }}${{ $locale }}(sys_id);
 --
-DROP FUNCTION IF EXISTS on_{{ $tbl.TableName }}__{{ $locale }}_insert() CASCADE;
+DROP FUNCTION IF EXISTS on_{{ $tbl.TableName }}${{ $locale }}_insert() CASCADE;
 --
-CREATE FUNCTION on_{{ $tbl.TableName }}__{{ $locale }}_insert()
+CREATE FUNCTION on_{{ $tbl.TableName }}${{ $locale }}_insert()
 RETURNS TRIGGER AS $$
 BEGIN
 	INSERT INTO _entries (
@@ -292,35 +292,35 @@ BEGIN
 		table_name
 	) VALUES (
 		NEW.sys_id,
-		'{{ $tbl.TableName }}__{{ $locale }}'
+		'{{ $tbl.TableName }}${{ $locale }}'
 	) ON CONFLICT (sys_id) DO NOTHING;
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS _{{ $tbl.TableName }}__{{ $locale }}_insert ON {{ $tbl.TableName }}__{{ $locale }};
+DROP TRIGGER IF EXISTS _{{ $tbl.TableName }}${{ $locale }}_insert ON {{ $tbl.TableName }}${{ $locale }};
 --
-CREATE TRIGGER _{{ $tbl.TableName }}__{{ $locale }}_insert
-    AFTER INSERT ON {{ $tbl.TableName }}__{{ $locale }}
+CREATE TRIGGER _{{ $tbl.TableName }}${{ $locale }}_insert
+    AFTER INSERT ON {{ $tbl.TableName }}${{ $locale }}
     FOR EACH ROW
-	EXECUTE PROCEDURE on_{{ $tbl.TableName }}__{{ $locale }}_insert();
+	EXECUTE PROCEDURE on_{{ $tbl.TableName }}${{ $locale }}_insert();
 --
-DROP FUNCTION IF EXISTS on_{{ $tbl.TableName }}__{{ $locale }}_delete() CASCADE;
+DROP FUNCTION IF EXISTS on_{{ $tbl.TableName }}${{ $locale }}_delete() CASCADE;
 --
-CREATE FUNCTION on_{{ $tbl.TableName }}__{{ $locale }}_delete()
+CREATE FUNCTION on_{{ $tbl.TableName }}${{ $locale }}_delete()
 RETURNS TRIGGER AS $$
 BEGIN
-	DELETE FROM _entries WHERE sys_id = OLD.sys_id AND table_name = '{{ $tbl.TableName }}__{{ $locale }}';
+	DELETE FROM _entries WHERE sys_id = OLD.sys_id AND table_name = '{{ $tbl.TableName }}${{ $locale }}';
 	RETURN NULL;
 END;
 $$ LANGUAGE plpgsql;
 --
-DROP TRIGGER IF EXISTS _{{ $tbl.TableName }}__{{ $locale }}_delete ON {{ $tbl.TableName }}__{{ $locale }};
+DROP TRIGGER IF EXISTS _{{ $tbl.TableName }}${{ $locale }}_delete ON {{ $tbl.TableName }}${{ $locale }};
 --
-CREATE TRIGGER _{{ $tbl.TableName }}__{{ $locale }}_delete
-	AFTER DELETE ON {{ $tbl.TableName }}__{{ $locale }}
+CREATE TRIGGER _{{ $tbl.TableName }}${{ $locale }}_delete
+	AFTER DELETE ON {{ $tbl.TableName }}${{ $locale }}
 	FOR EACH ROW
-	EXECUTE PROCEDURE on_{{ $tbl.TableName }}__{{ $locale }}_delete();
+	EXECUTE PROCEDURE on_{{ $tbl.TableName }}${{ $locale }}_delete();
 --
 {{ end -}}
 {{ end -}}

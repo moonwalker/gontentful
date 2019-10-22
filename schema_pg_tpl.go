@@ -74,7 +74,7 @@ SET
 	updated_by = EXCLUDED.updated_by
 ;
 --
-CREATE TABLE IF NOT EXISTS _asset___meta (
+CREATE TABLE IF NOT EXISTS _asset$meta (
 	_id serial primary key,
 	name text not null unique,
 	label text not null,
@@ -92,10 +92,10 @@ CREATE TABLE IF NOT EXISTS _asset___meta (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS name ON _asset___meta(name);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON _asset$meta(name);
 --
 {{ range $aidx, $col := $.AssetColumns }}
-INSERT INTO _asset___meta (
+INSERT INTO _asset$meta (
 	name,
 	label,
 	type,
@@ -111,7 +111,7 @@ INSERT INTO _asset___meta (
 ON CONFLICT (name) DO NOTHING;
 {{ end -}}
 --
-CREATE TABLE IF NOT EXISTS _asset__{{ $locale }} (
+CREATE TABLE IF NOT EXISTS _asset${{ $locale }} (
 	_id serial primary key,
 	sys_id text not null unique,
 	title text not null,
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS _asset__{{ $locale }} (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON _asset__{{ $locale }}(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON _asset${{ $locale }}(sys_id);
 --
 {{ end -}}
 ----
@@ -161,7 +161,7 @@ SET
 	updated_by = EXCLUDED.updated_by
 ;
 --
-CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}___meta (
+CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}$meta (
 	_id serial primary key,
 	name text not null unique,
 	label text not null,
@@ -179,10 +179,10 @@ CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}___meta (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $tbl.TableName }}___meta(name);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $tbl.TableName }}$meta(name);
 --
 {{ range $fieldsidx, $fields := $tbl.Data.Metas }}
-INSERT INTO {{ $tbl.TableName }}___meta (
+INSERT INTO {{ $tbl.TableName }}$meta (
 	name,
 	label,
 	type,
@@ -227,7 +227,7 @@ SET
 --
 {{ range $locidx, $loc := $.Space.Locales }}
 {{$locale:=(fmtLocale $loc.Code)}}
-CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}__{{ $locale }} (
+CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}${{ $locale }} (
 	_id serial primary key,
 	sys_id text not null unique,
 	{{- range $colidx, $col := $tbl.Columns }}
@@ -240,7 +240,7 @@ CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}__{{ $locale }} (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $tbl.TableName }}__{{ $locale }}(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $tbl.TableName }}${{ $locale }}(sys_id);
 --
 {{ end -}}
 {{ end -}}
