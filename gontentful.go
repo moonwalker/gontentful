@@ -75,7 +75,7 @@ func NewClient(options *ClientOptions) *Client {
 	}
 
 	if options.CacheResponses {
-		dc := diskcache.New("/tmp")
+		dc := diskcache.New("/tmp/gontentful")
 		httpClient.Transport = httpcache.NewTransport(dc)
 	}
 
