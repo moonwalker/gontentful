@@ -18,28 +18,6 @@ func fmtTablePublishName(contentType string, locale string) string {
 	return fmt.Sprintf("%s$%s$publish", strings.ToLower(contentType), fmtLocale(locale))
 }
 
-func getFieldColumns(types []*ContentType, contentType string) ([]string, map[string]string) {
-	fieldColumns := make([]string, 0)
-	refColumns := make(map[string]string)
-	for _, t := range types {
-		if t.Sys.ID == contentType {
-			for _, f := range t.Fields {
-				if !f.Omitted {
-					colName := toSnakeCase(f.ID)
-					fieldColumns = append(fieldColumns, colName)
-					if f.Items != nil {
-						linkType := getFieldLinkType(f.Items.LinkType, f.Items.Validations)
-						if linkType != "" {
-							refColumns[colName] = linkType
-						}
-					}
-				}
-			}
-		}
-	}
-	return fieldColumns, refColumns
-}
-
 var camel = regexp.MustCompile("(^[^A-Z]*|[A-Z]*)([A-Z][^A-Z]+|$)")
 var snake = regexp.MustCompile(`([_ ]\w)`)
 

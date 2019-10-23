@@ -9,17 +9,23 @@ import (
 	"github.com/lib/pq"
 )
 
+const (
+	entriesTableName = "_entries"
+)
+
+var (
+	metaColumns = []string{"_locale", "_version", "_created_at", "_created_by", "_updated_at", "_updated_by"}
+)
+
 type PGSyncRow struct {
-	SysID            string
-	FieldColumns     []string
-	FieldValues      map[string]interface{}
-	MetaColumns      []string
-	Locale           string
-	Version          int
-	PublishedVersion int
-	CreatedAt        string
-	UpdatedAt        string
-	PublishedAt      string
+	SysID        string
+	FieldColumns []string
+	FieldValues  map[string]interface{}
+	MetaColumns  []string
+	Locale       string
+	Version      int
+	CreatedAt    string
+	UpdatedAt    string
 }
 
 type PGSyncTable struct {
@@ -57,7 +63,7 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, 
 	}
 
 	// create a "global" entries table to store all entries with sys_id for later delete
-	entriesTable := newPGSyncTable("_entries", []string{"table_name"}, []string{})
+	entriesTable := newPGSyncTable(entriesTableName, []string{"table_name"})
 	appendToEntries := func(tableName string, sysID string, templateFormat bool) {
 		fieldValue := tableName
 		if templateFormat {
@@ -73,13 +79,17 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, 
 		entriesTable.Rows = append(entriesTable.Rows, enrtiesRow)
 	}
 
+	// append the "global" entries table to the tables
+	schema.Tables[entriesTableName] = entriesTable
+
+	columnsByContentType := getColumnsByContentType(types)
+
 	for _, item := range entries {
 		switch item.Sys.Type {
 		case ENTRY:
 			contentType := item.Sys.ContentType.Sys.ID
-			fieldColumns, refColumns := getFieldColumns(types, contentType)
 			tableName := toSnakeCase(contentType)
-			appendTables(schema.Tables, schema.ConTables, item, tableName, fieldColumns, refColumns, !initSync)
+			appendTables(schema.Tables, schema.ConTables, item, tableName, columnsByContentType[contentType].fieldColumns, columnsByContentType[contentType].columnReferences, !initSync)
 			// append to "global" entries table
 			appendToEntries(tableName, item.Sys.ID, !initSync)
 			break
@@ -94,16 +104,15 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, 
 		}
 	}
 
-	// append the "global" entries table to the tables
-	schema.Tables["_entries"] = entriesTable
-
 	return schema
 }
 
-func newPGSyncTable(tableName string, fieldColumns []string, metaColumns []string) *PGSyncTable {
+func newPGSyncTable(tableName string, fieldColumns []string) *PGSyncTable {
 	columns := []string{"_sys_id"}
 	columns = append(columns, fieldColumns...)
-	columns = append(columns, metaColumns...)
+	if tableName != entriesTableName {
+		columns = append(columns, metaColumns...)
+	}
 
 	return &PGSyncTable{
 		TableName: tableName,
@@ -112,94 +121,42 @@ func newPGSyncTable(tableName string, fieldColumns []string, metaColumns []strin
 	}
 }
 
-func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]interface{}, metaColumns []string) *PGSyncRow {
+func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]interface{}, locale string) *PGSyncRow {
 	row := &PGSyncRow{
-		SysID:            item.Sys.ID,
-		FieldColumns:     fieldColumns,
-		FieldValues:      fieldValues,
-		MetaColumns:      metaColumns,
-		Version:          item.Sys.Version,
-		CreatedAt:        item.Sys.CreatedAt,
-		UpdatedAt:        item.Sys.UpdatedAt,
-		PublishedVersion: item.Sys.PublishedVersion,
-		PublishedAt:      item.Sys.PublishedAt,
+		SysID:        item.Sys.ID,
+		FieldColumns: fieldColumns,
+		FieldValues:  fieldValues,
+		Locale:       locale,
+		Version:      item.Sys.Version,
+		CreatedAt:    item.Sys.CreatedAt,
+		UpdatedAt:    item.Sys.UpdatedAt,
 	}
 	if row.Version == 0 {
 		row.Version = item.Sys.Revision
 	}
-	if row.PublishedVersion == 0 {
-		row.PublishedVersion = row.Version
-	}
 	if len(row.UpdatedAt) == 0 {
 		row.UpdatedAt = row.CreatedAt
-	}
-	if len(row.PublishedAt) == 0 {
-		row.PublishedAt = row.UpdatedAt
 	}
 	return row
 }
 
-func (r *PGSyncRow) Fields() []interface{} {
+func (r *PGSyncRow) Fields(addMeta bool) []interface{} {
 	values := []interface{}{
 		r.SysID,
 	}
 	for _, fieldColumn := range r.FieldColumns {
 		values = append(values, r.FieldValues[fieldColumn])
 	}
-	for _, metaColumn := range r.MetaColumns {
-		switch metaColumn {
-		case "_locale":
-			values = append(values, r.Locale)
-		case "_version":
-			values = append(values, r.Version)
-		case "_created_at":
-			values = append(values, r.CreatedAt)
-		case "_created_by":
-			values = append(values, "sync")
-		case "_updated_at":
-			values = append(values, r.UpdatedAt)
-		case "_updated_by":
-			values = append(values, "sync")
-			// case "published_at":
-			// 	values = append(values, r.PublishedAt)
-			// case "published_by":
-			// 	values = append(values, "sync")
-		}
+	if addMeta {
+		values = append(values, r.Locale, r.Version, r.CreatedAt, "sync", r.UpdatedAt, "sync")
 	}
 	return values
 }
 
 func (r *PGSyncRow) GetFieldValue(fieldColumn string) string {
-	switch fieldColumn {
-	case "version":
-		return fmt.Sprintf("%d", r.Version)
-	case "created_at":
-		if r.CreatedAt != "" {
-			return fmt.Sprintf("to_timestamp('%s','YYYY-MM-DDThh24:mi:ss.mssZ')", r.CreatedAt)
-		}
-		return "now()"
-	case "created_by":
-		return "'sync'"
-	case "updated_at":
-		if r.UpdatedAt != "" {
-			return fmt.Sprintf("to_timestamp('%s','YYYY-MM-DDThh24:mi:ss.mssZ')", r.UpdatedAt)
-		}
-		return "now()"
-	case "updated_by":
-		return "'sync'"
-	case "published_at":
-		if r.PublishedAt != "" {
-			return fmt.Sprintf("to_timestamp('%s','YYYY-MM-DDThh24:mi:ss.mssZ')", r.PublishedAt)
-		}
-		return "now()"
-	case "published_by":
-		return "'sync'"
-	}
-
 	if r.FieldValues[fieldColumn] != nil {
 		return fmt.Sprintf("%v", r.FieldValues[fieldColumn])
 	}
-
 	return "NULL"
 }
 
@@ -242,14 +199,12 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 		if len(tbl.Rows) == 0 {
 			continue
 		}
-
 		stmt, err := txn.Preparex(pq.CopyIn(tbl.TableName, tbl.Columns...))
 		if err != nil {
 			return err
 		}
-
 		for _, row := range tbl.Rows {
-			_, err = stmt.Exec(row.Fields()...)
+			_, err = stmt.Exec(row.Fields(tbl.TableName != entriesTableName)...)
 			if err != nil {
 				return err
 			}
@@ -265,7 +220,6 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 			return err
 		}
 	}
-
 	for _, tbl := range s.ConTables {
 		if len(tbl.Rows) == 0 {
 			continue

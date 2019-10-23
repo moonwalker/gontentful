@@ -43,10 +43,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS name ON _models(name);
 --
 CREATE TABLE IF NOT EXISTS _entries (
 	id serial primary key,
-	sys_id text not null unique,
+	_sys_id text not null unique,
 	table_name text not null
 );
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON _entries(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS _sys_id ON _entries(_sys_id);
 --
 {{ range $locidx, $loc := $.Locales }}
 INSERT INTO _locales (
