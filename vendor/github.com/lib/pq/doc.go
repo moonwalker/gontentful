@@ -174,7 +174,7 @@ explicit transaction in pq.
 
 Usage example:
 
-	txn, err := db. Beginx()
+	txn, err := db.Begin()
 	if err != nil {
 		log.Fatal(err)
 	}

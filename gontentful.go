@@ -8,6 +8,9 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/gregjones/httpcache"
+	"github.com/gregjones/httpcache/diskcache"
 )
 
 const (
@@ -54,23 +57,31 @@ type service struct {
 }
 
 type ClientOptions struct {
-	OrgID        string
-	SpaceID      string
-	CdnToken     string
-	PreviewToken string
-	CmaToken     string
-	CdnURL       string
-	PreviewURL   string
-	CmaURL       string
-	UsePreview   bool
+	OrgID          string
+	SpaceID        string
+	CdnToken       string
+	PreviewToken   string
+	CmaToken       string
+	CdnURL         string
+	PreviewURL     string
+	CmaURL         string
+	UsePreview     bool
+	CacheResponses bool
 }
 
 func NewClient(options *ClientOptions) *Client {
+	httpClient := &http.Client{
+		Timeout: timeout,
+	}
+
+	if options.CacheResponses {
+		dc := diskcache.New("/tmp")
+		httpClient.Transport = httpcache.NewTransport(dc)
+	}
+
 	client := &Client{
 		Options: options,
-		client: &http.Client{
-			Timeout: timeout,
-		},
+		client:  httpClient,
 		headers: getHeadersMap(options.OrgID),
 	}
 

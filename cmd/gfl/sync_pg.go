@@ -9,11 +9,12 @@ import (
 )
 
 var (
-	initSync bool
+	initSync, cacheResp bool
 )
 
 func init() {
 	pgSyncCmd.PersistentFlags().BoolVarP(&initSync, "init", "i", false, "init sync")
+	pgSyncCmd.PersistentFlags().BoolVarP(&cacheResp, "cache", "e", false, "cache response")
 	syncCmd.AddCommand(pgSyncCmd)
 }
 
@@ -23,9 +24,10 @@ var pgSyncCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		client := gontentful.NewClient(&gontentful.ClientOptions{
-			CdnURL:   apiURL,
-			SpaceID:  spaceID,
-			CdnToken: cdnToken,
+			CdnURL:         apiURL,
+			SpaceID:        spaceID,
+			CdnToken:       cdnToken,
+			CacheResponses: cacheResp,
 		})
 
 		var err error
