@@ -55,14 +55,12 @@ type PGSQLReference struct {
 }
 
 type PGSQLSchema struct {
-	SchemaName    string
-	Drop          bool
-	Space         *Space
-	Tables        []*PGSQLTable
-	ConTables     []*PGSQLTable
-	References    []*PGSQLReference
-	DefaultLocale string
-	AssetColumns  []string
+	SchemaName   string
+	Locales      []*Locale
+	Tables       []*PGSQLTable
+	ConTables    []*PGSQLTable
+	References   []*PGSQLReference
+	AssetColumns []string
 }
 
 var schemaFuncMap = template.FuncMap{
@@ -70,35 +68,20 @@ var schemaFuncMap = template.FuncMap{
 }
 
 func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType) *PGSQLSchema {
-	defaultLocale := ""
-	for _, loc := range space.Locales {
-		if loc.Default {
-			defaultLocale = fmtLocale(loc.Code)
-			break
-		}
-	}
-	if defaultLocale == "" {
-		if len(space.Locales) > 0 {
-			defaultLocale = fmtLocale(space.Locales[0].Code)
-		} else {
-			defaultLocale = "en"
-		}
-	}
 	schema := &PGSQLSchema{
-		SchemaName:    schemaName,
-		Space:         space,
-		Tables:        make([]*PGSQLTable, 0),
-		ConTables:     make([]*PGSQLTable, 0),
-		References:    make([]*PGSQLReference, 0),
-		DefaultLocale: defaultLocale,
-		AssetColumns:  assetColumns,
+		SchemaName:   schemaName,
+		Locales:      space.Locales,
+		Tables:       make([]*PGSQLTable, 0),
+		ConTables:    make([]*PGSQLTable, 0),
+		References:   make([]*PGSQLReference, 0),
+		AssetColumns: assetColumns,
 	}
 
 	for _, item := range items {
 		table := NewPGSQLTable(item)
 		schema.Tables = append(schema.Tables, table)
 
-		conTables, references := createReferences(item, table, space.Locales, defaultLocale)
+		conTables, references := createReferences(item, table)
 		schema.ConTables = append(schema.ConTables, conTables...)
 		schema.References = append(schema.References, references...)
 	}
@@ -304,30 +287,30 @@ func makeMeta(field *ContentTypeField) *PGSQLMeta {
 	return meta
 }
 
-func createReferences(item *ContentType, table *PGSQLTable, locales []*Locale, defaultLocale string) ([]*PGSQLTable, []*PGSQLReference) {
+func createReferences(item *ContentType, table *PGSQLTable) ([]*PGSQLTable, []*PGSQLReference) {
 	conTables := make([]*PGSQLTable, 0)
 	references := make([]*PGSQLReference, 0)
 	for _, field := range item.Fields {
 		if !field.Omitted {
 			if field.LinkType != "" {
-				references = addOneTOne(references, table.TableName, field, locales, defaultLocale)
+				references = addOneTOne(references, table.TableName, field)
 			} else if field.Items != nil {
-				conTables, references = addManyToMany(conTables, references, table.TableName, field, locales, defaultLocale)
+				conTables, references = addManyToMany(conTables, references, table.TableName, field)
 			}
 		}
 	}
 	return conTables, references
 }
 
-func NewPGSQLCon(tableName string, reference string, locale string) *PGSQLTable {
+func NewPGSQLCon(tableName string, reference string) *PGSQLTable {
 	return &PGSQLTable{
-		TableName: getConTableName(tableName, reference, locale),
+		TableName: getConTableName(tableName, reference),
 		Columns:   getConTableColumns(tableName, reference),
 	}
 }
 
-func getConTableName(tableName string, reference string, locale string) string {
-	return fmt.Sprintf("%s$%s$%s$con", tableName, reference, fmtLocale(locale))
+func getConTableName(tableName string, reference string) string {
+	return fmt.Sprintf("%s__%s", tableName, reference)
 }
 func getConTableColumns(tableName string, reference string) []*PGSQLColumn {
 	return []*PGSQLColumn{
@@ -337,50 +320,36 @@ func getConTableColumns(tableName string, reference string) []*PGSQLColumn {
 		&PGSQLColumn{
 			ColumnName: reference,
 		},
+		&PGSQLColumn{
+			ColumnName: "_locale",
+		},
 	}
 }
 
-func addReference(references []*PGSQLReference, tableName string, reference string, foreignKey string, locale string) []*PGSQLReference {
+func addReference(references []*PGSQLReference, tableName string, reference string, foreignKey string) []*PGSQLReference {
 	return append(references, &PGSQLReference{
 		TableName:  tableName,
-		Reference:  fmt.Sprintf("%s$%s", reference, fmtLocale(locale)),
+		Reference:  reference,
 		ForeignKey: foreignKey,
 	})
 }
 
-func addOneTOne(references []*PGSQLReference, tableName string, field *ContentTypeField, locales []*Locale, defaultLocale string) []*PGSQLReference {
+func addOneTOne(references []*PGSQLReference, tableName string, field *ContentTypeField) []*PGSQLReference {
 	linkType := getFieldLinkType(field.LinkType, field.Validations)
 	if linkType != "" && linkType != ENTRY {
 		foreignKey := toSnakeCase(field.ID)
-		if field.Localized {
-			for _, loc := range locales {
-				locale := fmtLocale(loc.Code)
-				references = addReference(references, fmt.Sprintf("%s$%s", tableName, locale), linkType, foreignKey, locale)
-			}
-		} else {
-			references = addReference(references, fmt.Sprintf("%s$%s", tableName, defaultLocale), linkType, foreignKey, defaultLocale)
-		}
+		references = addReference(references, tableName, linkType, foreignKey)
 	}
 	return references
 }
 
-func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, tableName string, field *ContentTypeField, locales []*Locale, defaultLocale string) ([]*PGSQLTable, []*PGSQLReference) {
+func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, tableName string, field *ContentTypeField) ([]*PGSQLTable, []*PGSQLReference) {
 	linkType := getFieldLinkType(field.Items.LinkType, field.Items.Validations)
 	if linkType != "" && linkType != ENTRY {
-		if field.Localized {
-			for _, loc := range locales {
-				locale := fmtLocale(loc.Code)
-				conTable := NewPGSQLCon(tableName, linkType, locale)
-				conTables = append(conTables, conTable)
-				references = addReference(references, conTable.TableName, tableName, tableName, locale)
-				references = addReference(references, conTable.TableName, linkType, linkType, locale)
-			}
-		} else {
-			conTable := NewPGSQLCon(tableName, linkType, defaultLocale)
-			conTables = append(conTables, conTable)
-			references = addReference(references, conTable.TableName, tableName, tableName, defaultLocale)
-			references = addReference(references, conTable.TableName, linkType, linkType, defaultLocale)
-		}
+		conTable := NewPGSQLCon(tableName, linkType)
+		conTables = append(conTables, conTable)
+		references = addReference(references, conTable.TableName, tableName, tableName)
+		references = addReference(references, conTable.TableName, linkType, linkType)
 	}
 	return conTables, references
 }

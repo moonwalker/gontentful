@@ -12,12 +12,12 @@ CREATE TABLE IF NOT EXISTS {{ .TableName }} (
 {{ end -}}
 --
 {{ range $idx, $ref := $.Schema.References }}
-ALTER TABLE IF EXISTS {{ .TableName }} DROP CONSTRAINT IF EXISTS {{ .TableName }}_{{ .ForeignKey }}_fkey;
+ALTER TABLE IF EXISTS {{ .TableName }} DROP CONSTRAINT IF EXISTS {{ .ForeignKey }}_fkey;
 --
 ALTER TABLE IF EXISTS {{ .TableName }}
-  ADD CONSTRAINT {{ .TableName }}_{{ .ForeignKey }}_fkey
-  FOREIGN KEY ({{ .ForeignKey }})
-  REFERENCES {{ .Reference }} (sys_id)
+  ADD CONSTRAINT {{ .ForeignKey }}_fkey
+  FOREIGN KEY ({{ .ForeignKey }},_locale)
+  REFERENCES {{ .Reference }} (_sys_id,_locale)
   ON DELETE CASCADE;
 --
 {{- end -}}

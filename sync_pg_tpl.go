@@ -4,7 +4,7 @@ const pgSyncTemplate = `
 {{ range $tblidx, $tbl := .Tables }}
 {{ range $itemidx, $item := .Rows }}
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
-	sys_id
+	_sys_id
 	{{- range $k, $v := .FieldColumns }}
 	,{{ $v }}
 	{{- end }}
@@ -29,21 +29,18 @@ SET
 	,{{ $v }} = EXCLUDED.{{ $v }}
 	{{- end }}
 ;
-{{ end -}}
+{{- end -}}
+{{- end -}}
 {{ range $idx, $sys_id := $.Deleted }}
-{{ range $locidx, $loc := $.Locales }}
 DO $$
 DECLARE tn TEXT;
 BEGIN
-  SELECT table_name INTO tn FROM content._entries WHERE sys_id = '{{ $sys_id }}';
+  SELECT table_name INTO tn FROM content._entries WHERE _sys_id = '{{ $sys_id }}';
   IF tn IS NOT NULL THEN
-	  EXECUTE 'DELETE FROM content.' || tn || '${{$loc}} WHERE sys_id = ''{{ $sys_id }}''';
+	  EXECUTE 'DELETE FROM content.' || tn || ' WHERE _sys_id = ''{{ $sys_id }}''';
   END IF;
 END $$;
-{{ end -}}
-{{ end -}}
-{{ end -}}
---
+{{- end -}}
 {{ range $tblidx, $tbl := .ConTables }}
 {{ range $rowidx, $row := .Rows }}
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
@@ -55,6 +52,5 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	{{- if $k -}},{{- end -}}{{ $v }}
 )
 ;
-{{ end -}}
-{{ end -}}
-`
+{{- end -}}
+{{- end -}}`

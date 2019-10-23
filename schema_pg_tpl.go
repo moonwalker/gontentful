@@ -4,7 +4,7 @@ const pgTemplate = `
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
 CREATE TABLE IF NOT EXISTS _space (
-	_id serial primary key,
+	id serial primary key,
 	spaceid text not null unique,
 	name text not null,
 	created_at timestamp without time zone default now(),
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS _space (
 CREATE UNIQUE INDEX IF NOT EXISTS spaceid ON _space(spaceid);
 --
 CREATE TABLE IF NOT EXISTS _locales (
-	_id serial primary key,
+	id serial primary key,
 	code text not null unique,
 	name text not null,
 	is_default boolean,
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS _locales (
 CREATE UNIQUE INDEX IF NOT EXISTS code ON _locales(code);
 --
 CREATE TABLE IF NOT EXISTS _models (
-	_id serial primary key,
+	id serial primary key,
 	name text not null unique,
 	label text not null,
 	description text,
@@ -42,14 +42,13 @@ CREATE TABLE IF NOT EXISTS _models (
 CREATE UNIQUE INDEX IF NOT EXISTS name ON _models(name);
 --
 CREATE TABLE IF NOT EXISTS _entries (
-	_id serial primary key,
+	id serial primary key,
 	sys_id text not null unique,
 	table_name text not null
 );
 CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON _entries(sys_id);
 --
-{{ range $locidx, $loc := $.Space.Locales }}
-{{$locale:=(fmtLocale $loc.Code)}}
+{{ range $locidx, $loc := $.Locales }}
 INSERT INTO _locales (
 	code,
 	name,
@@ -73,9 +72,10 @@ SET
 	updated_at = EXCLUDED.updated_at,
 	updated_by = EXCLUDED.updated_by
 ;
+{{- end -}}
 --
-CREATE TABLE IF NOT EXISTS _asset$meta (
-	_id serial primary key,
+CREATE TABLE IF NOT EXISTS _asset__meta (
+	id serial primary key,
 	name text not null unique,
 	label text not null,
 	type text not null,
@@ -92,10 +92,10 @@ CREATE TABLE IF NOT EXISTS _asset$meta (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS name ON _asset$meta(name);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON _asset__meta(name);
 --
 {{ range $aidx, $col := $.AssetColumns }}
-INSERT INTO _asset$meta (
+INSERT INTO _asset__meta (
 	name,
 	label,
 	type,
@@ -109,27 +109,24 @@ INSERT INTO _asset$meta (
 	'system'
 )
 ON CONFLICT (name) DO NOTHING;
-{{ end -}}
+{{- end -}}
 --
-CREATE TABLE IF NOT EXISTS _asset${{ $locale }} (
-	_id serial primary key,
-	sys_id text not null unique,
+CREATE TABLE IF NOT EXISTS _asset (
+	primary key (_sys_id,_locale),
+	_sys_id text not null,
 	title text not null,
 	description text,
 	file_name text,
 	content_type text,
 	url text,
-	version integer not null default 0,
-	created_at timestamp without time zone default now(),
-	created_by text not null,
-	updated_at timestamp without time zone default now(),
-	updated_by text not null
+	_locale text not null,
+	_version integer not null default 0,
+	_created_at timestamp without time zone default now(),
+	_created_by text not null,
+	_updated_at timestamp without time zone default now(),
+	_updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON _asset${{ $locale }}(sys_id);
---
-{{ end -}}
-----
 {{ range $tblidx, $tbl := $.Tables }}
 INSERT INTO _models (
 	name,
@@ -161,8 +158,8 @@ SET
 	updated_by = EXCLUDED.updated_by
 ;
 --
-CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}$meta (
-	_id serial primary key,
+CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}__meta (
+	id serial primary key,
 	name text not null unique,
 	label text not null,
 	type text not null,
@@ -179,10 +176,10 @@ CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}$meta (
 	updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $tbl.TableName }}$meta(name);
+CREATE UNIQUE INDEX IF NOT EXISTS name ON {{ $tbl.TableName }}__meta(name);
 --
 {{ range $fieldsidx, $fields := $tbl.Data.Metas }}
-INSERT INTO {{ $tbl.TableName }}$meta (
+INSERT INTO {{ $tbl.TableName }}__meta (
 	name,
 	label,
 	type,
@@ -223,25 +220,23 @@ SET
 	updated_at = now(),
 	updated_by = EXCLUDED.updated_by
 ;
-{{ end }}
+{{- end -}}
 --
-{{ range $locidx, $loc := $.Space.Locales }}
-{{$locale:=(fmtLocale $loc.Code)}}
-CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }}${{ $locale }} (
-	_id serial primary key,
-	sys_id text not null unique,
+CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }} (
+	primary key (_sys_id,_locale),
+	_sys_id text not null,
 	{{- range $colidx, $col := $tbl.Columns }}
 	"{{ .ColumnName }}" {{ .ColumnType }},
 	{{- end }}
-	version integer not null default 0,
-	created_at timestamp without time zone not null default now(),
-	created_by text not null,
-	updated_at timestamp without time zone not null default now(),
-	updated_by text not null
+	_locale text not null,
+	_version integer not null default 0,
+	_created_at timestamp without time zone not null default now(),
+	_created_by text not null,
+	_updated_at timestamp without time zone not null default now(),
+	_updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS sys_id ON {{ $tbl.TableName }}${{ $locale }}(sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS _sys_id_locale ON {{ $tbl.TableName }}(_sys_id,_locale);
 --
-{{ end -}}
-{{ end -}}
+{{- end -}}
 `

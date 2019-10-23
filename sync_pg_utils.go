@@ -15,10 +15,10 @@ type rowField struct {
 	fieldValue interface{}
 }
 
-func appendTables(tablesByName map[string]*PGSyncTable, conTablesByName map[string]*PGSyncConTable, item *Entry, baseName string, fieldColumns []string, refColumns map[string]string, templateFormat bool) {
+func appendTables(tablesByName map[string]*PGSyncTable, conTablesByName map[string]*PGSyncConTable, item *Entry, tableName string, fieldColumns []string, refColumns map[string]string, templateFormat bool) {
 	fieldsByLocale := make(map[string][]*rowField, 0)
 
-	tblMetaColumns := []string{"version", "created_at", "created_by", "updated_at", "updated_by"}
+	tblMetaColumns := []string{"_locale", "_version", "_created_at", "_created_by", "_updated_at", "_updated_by"}
 	//pubMetaColumns := []string{"version", "published_at", "published_by"}
 
 	// iterate over fields
@@ -34,7 +34,6 @@ func appendTables(tablesByName map[string]*PGSyncTable, conTablesByName map[stri
 		// iterate over locale fields
 		for locale, fieldValue := range locFields {
 			// create table
-			tableName := fmtTableName(baseName, locale)
 			tbl := tablesByName[tableName]
 			if tbl == nil {
 				tbl = newPGSyncTable(tableName, fieldColumns, tblMetaColumns)
@@ -57,10 +56,9 @@ func appendTables(tablesByName map[string]*PGSyncTable, conTablesByName map[stri
 	// append rows with fields to tables
 	for locale, rowFields := range fieldsByLocale {
 		// table
-		tableName := fmtTableName(baseName, locale)
 		tbl := tablesByName[tableName]
 		if tbl != nil {
-			appendRowsToTable(item, tbl, rowFields, fieldColumns, tblMetaColumns, templateFormat, conTablesByName, refColumns, baseName, locale)
+			appendRowsToTable(item, tbl, rowFields, fieldColumns, tblMetaColumns, templateFormat, conTablesByName, refColumns, tableName, locale)
 		}
 
 		// publish table
@@ -106,7 +104,7 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 						}
 					}
 				}
-				conTableName := getConTableName(baseName, refColumns[rowField.fieldName], locale)
+				conTableName := getConTableName(baseName, refColumns[rowField.fieldName])
 				conTables[conTableName] = &PGSyncConTable{
 					TableName: conTableName,
 					Columns:   []string{baseName, refColumns[rowField.fieldName]},

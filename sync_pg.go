@@ -9,13 +9,12 @@ import (
 	"github.com/lib/pq"
 )
 
-const localesQueryFormat = `SELECT code FROM %s._locales`
-
 type PGSyncRow struct {
 	SysID            string
 	FieldColumns     []string
 	FieldValues      map[string]interface{}
 	MetaColumns      []string
+	Locale           string
 	Version          int
 	PublishedVersion int
 	CreatedAt        string
@@ -35,7 +34,6 @@ type PGSyncSchema struct {
 	ConTables  map[string]*PGSyncConTable
 	Deleted    []string
 	InitSync   bool
-	Locales    []string
 }
 
 type PGSyncField struct {
@@ -80,16 +78,15 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, 
 		case ENTRY:
 			contentType := item.Sys.ContentType.Sys.ID
 			fieldColumns, refColumns := getFieldColumns(types, contentType)
-			baseName := toSnakeCase(contentType)
-			appendTables(schema.Tables, schema.ConTables, item, baseName, fieldColumns, refColumns, !initSync)
+			tableName := toSnakeCase(contentType)
+			appendTables(schema.Tables, schema.ConTables, item, tableName, fieldColumns, refColumns, !initSync)
 			// append to "global" entries table
-			appendToEntries(baseName, item.Sys.ID, !initSync)
+			appendToEntries(tableName, item.Sys.ID, !initSync)
 			break
 		case ASSET:
-			baseName := assetTableName
-			appendTables(schema.Tables, schema.ConTables, item, baseName, assetColumns, nil, !initSync)
+			appendTables(schema.Tables, schema.ConTables, item, assetTableName, assetColumns, nil, !initSync)
 			// append to "global" entries table
-			appendToEntries(baseName, item.Sys.ID, !initSync)
+			appendToEntries(assetTableName, item.Sys.ID, !initSync)
 			break
 		case DELETED_ENTRY, DELETED_ASSET:
 			schema.Deleted = append(schema.Deleted, item.Sys.ID)
@@ -104,7 +101,7 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, 
 }
 
 func newPGSyncTable(tableName string, fieldColumns []string, metaColumns []string) *PGSyncTable {
-	columns := []string{"sys_id"}
+	columns := []string{"_sys_id"}
 	columns = append(columns, fieldColumns...)
 	columns = append(columns, metaColumns...)
 
@@ -151,20 +148,22 @@ func (r *PGSyncRow) Fields() []interface{} {
 	}
 	for _, metaColumn := range r.MetaColumns {
 		switch metaColumn {
-		case "version":
+		case "_locale":
+			values = append(values, r.Locale)
+		case "_version":
 			values = append(values, r.Version)
-		case "created_at":
+		case "_created_at":
 			values = append(values, r.CreatedAt)
-		case "created_by":
+		case "_created_by":
 			values = append(values, "sync")
-		case "updated_at":
+		case "_updated_at":
 			values = append(values, r.UpdatedAt)
-		case "updated_by":
+		case "_updated_by":
 			values = append(values, "sync")
-		case "published_at":
-			values = append(values, r.PublishedAt)
-		case "published_by":
-			values = append(values, "sync")
+			// case "published_at":
+			// 	values = append(values, r.PublishedAt)
+			// case "published_by":
+			// 	values = append(values, "sync")
 		}
 	}
 	return values
@@ -232,21 +231,6 @@ func (s *PGSyncSchema) Exec(databaseURL string) error {
 
 		// bulk insert
 		return s.bulkInsert(txn)
-	}
-
-	rows, err := txn.Query(fmt.Sprintf(localesQueryFormat, s.SchemaName))
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	s.Locales = make([]string, 0)
-	for rows.Next() {
-		code := ""
-		err := rows.Scan(&code)
-		if err != nil {
-			return err
-		}
-		s.Locales = append(s.Locales, fmtLocale(code))
 	}
 
 	// insert and/or delete changes
