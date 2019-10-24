@@ -302,15 +302,15 @@ func createReferences(item *ContentType, table *PGSQLTable) ([]*PGSQLTable, []*P
 	return conTables, references
 }
 
-func NewPGSQLCon(tableName string, reference string) *PGSQLTable {
+func NewPGSQLCon(tableName string, fieldName string, reference string) *PGSQLTable {
 	return &PGSQLTable{
-		TableName: getConTableName(tableName, reference),
+		TableName: getConTableName(tableName, fieldName),
 		Columns:   getConTableColumns(tableName, reference),
 	}
 }
 
-func getConTableName(tableName string, reference string) string {
-	return fmt.Sprintf("%s__%s", tableName, reference)
+func getConTableName(tableName string, fieldName string) string {
+	return fmt.Sprintf("%s__%s", tableName, fieldName)
 }
 func getConTableColumns(tableName string, reference string) []*PGSQLColumn {
 	return []*PGSQLColumn{
@@ -346,7 +346,7 @@ func addOneTOne(references []*PGSQLReference, tableName string, field *ContentTy
 func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, tableName string, field *ContentTypeField) ([]*PGSQLTable, []*PGSQLReference) {
 	linkType := getFieldLinkType(field.Items.LinkType, field.Items.Validations)
 	if linkType != "" && linkType != ENTRY {
-		conTable := NewPGSQLCon(tableName, linkType)
+		conTable := NewPGSQLCon(tableName, toSnakeCase(field.ID), linkType)
 		conTables = append(conTables, conTable)
 		references = addReference(references, conTable.TableName, tableName, tableName)
 		references = addReference(references, conTable.TableName, linkType, linkType)

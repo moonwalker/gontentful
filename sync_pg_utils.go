@@ -78,24 +78,29 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 		// append con tables with Array Links
 		if refColumns[rowField.fieldName] != "" {
 			links, ok := rowField.fieldValue.([]interface{})
+			addedRefs := make(map[string]bool)
 			if ok {
-				conRows := make([][]interface{}, 0)
 				sysID := item.Sys.ID
+				conTableName := getConTableName(tableName, rowField.fieldName)
+				if conTables[conTableName] == nil {
+					conTables[conTableName] = &PGSyncConTable{
+						TableName: conTableName,
+						Columns:   []string{tableName, refColumns[rowField.fieldName], "_locale"},
+						Rows:      make([][]interface{}, 0),
+					}
+				}
 				for _, e := range links {
 					f, ok := e.(map[string]interface{})
 					if ok {
 						id := convertSys(f, templateFormat)
-						if id != "" {
-							row := []interface{}{sysID, id, locale}
-							conRows = append(conRows, row)
+						if id != "" && !addedRefs[id+locale] {
+							conRow := []interface{}{sysID, id, locale}
+							conTables[conTableName].Rows = append(conTables[conTableName].Rows, conRow)
+							addedRefs[id+locale] = true
+						} else if addedRefs[id+locale] {
+							fmt.Println(tbl.TableName, sysID, rowField.fieldName, id, locale)
 						}
 					}
-				}
-				conTableName := getConTableName(tableName, refColumns[rowField.fieldName])
-				conTables[conTableName] = &PGSyncConTable{
-					TableName: conTableName,
-					Columns:   []string{tableName, refColumns[rowField.fieldName], "_locale"},
-					Rows:      conRows,
 				}
 			}
 		}
