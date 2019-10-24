@@ -310,8 +310,9 @@ func NewPGSQLCon(tableName string, fieldName string, reference string) *PGSQLTab
 }
 
 func getConTableName(tableName string, fieldName string) string {
-	return fmt.Sprintf("%s__%s", tableName, fieldName)
+	return fmt.Sprintf("%.58s__con", fmt.Sprintf("%s__%s", tableName, fieldName))
 }
+
 func getConTableColumns(tableName string, reference string) []*PGSQLColumn {
 	return []*PGSQLColumn{
 		&PGSQLColumn{
