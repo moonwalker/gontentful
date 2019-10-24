@@ -14,7 +14,7 @@ var (
 
 func init() {
 	pgSyncCmd.PersistentFlags().BoolVarP(&initSync, "init", "i", false, "init sync")
-	pgSyncCmd.PersistentFlags().BoolVarP(&cacheResp, "cache", "e", false, "cache response")
+	pgSyncCmd.PersistentFlags().BoolVarP(&cacheResp, "cache", "", false, "cache response")
 	syncCmd.AddCommand(pgSyncCmd)
 }
 
