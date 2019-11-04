@@ -3,6 +3,16 @@ package gontentful
 const pgTemplate = `
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
+{{ if $.WithEntries }}
+CREATE TABLE IF NOT EXISTS _entries (
+	id serial primary key,
+	_sys_id text not null unique,
+	table_name text not null
+);
+CREATE UNIQUE INDEX IF NOT EXISTS _sys_id ON _entries(_sys_id);
+--
+{{- end -}}
+{{ if $.WithMetaData }}
 CREATE TABLE IF NOT EXISTS _space (
 	id serial primary key,
 	spaceid text not null unique,
@@ -40,13 +50,6 @@ CREATE TABLE IF NOT EXISTS _models (
 	updated_by text not null
 );
 CREATE UNIQUE INDEX IF NOT EXISTS name ON _models(name);
---
-CREATE TABLE IF NOT EXISTS _entries (
-	id serial primary key,
-	_sys_id text not null unique,
-	table_name text not null
-);
-CREATE UNIQUE INDEX IF NOT EXISTS _sys_id ON _entries(_sys_id);
 --
 {{ range $locidx, $loc := $.Locales }}
 INSERT INTO _locales (
@@ -110,7 +113,8 @@ INSERT INTO _asset__meta (
 )
 ON CONFLICT (name) DO NOTHING;
 {{- end -}}
---
+-- withMetaData
+{{- end -}}
 CREATE TABLE IF NOT EXISTS _asset (
 	primary key (_sys_id,_locale),
 	_sys_id text not null,
@@ -128,6 +132,7 @@ CREATE TABLE IF NOT EXISTS _asset (
 );
 --
 {{ range $tblidx, $tbl := $.Tables }}
+{{ if $.WithMetaData }}
 INSERT INTO _models (
 	name,
 	label,
@@ -221,7 +226,8 @@ SET
 	updated_by = EXCLUDED.updated_by
 ;
 {{- end -}}
---
+-- withMetaData
+{{- end -}}
 CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }} (
 	primary key (_sys_id,_locale),
 	_sys_id text not null,

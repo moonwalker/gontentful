@@ -260,10 +260,12 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 	}
 	defer db.Close()
 
-	// set schema in use
-	_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
-	if err != nil {
-		return 0, "", err
+	if s.SchemaName != "" {
+		// set schema in use
+		_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+		if err != nil {
+			return 0, "", err
+		}
 	}
 
 	tmpl, err := template.New("").Parse(queryTemplate)

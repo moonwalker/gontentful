@@ -17,13 +17,13 @@ var pgDropCmd = &cobra.Command{
 	Short: "Drop [content] postgres schema",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Printf("dropping %s schema...", dropSchema)
+		log.Printf("dropping %s schema...", schemaName)
 		query := gontentful.NewPGDrop(schemaName)
 		err := query.Exec(databaseURL)
 		if err != nil {
 			log.Fatal(err)
 			return
 		}
-		log.Printf("%s schema dropped successfully", dropSchema)
+		log.Printf("%s schema dropped successfully", schemaName)
 	},
 }

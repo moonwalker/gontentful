@@ -61,13 +61,15 @@ type PGSQLSchema struct {
 	ConTables    []*PGSQLTable
 	References   []*PGSQLReference
 	AssetColumns []string
+	WithMetaData bool
+	WithEntries  bool
 }
 
 var schemaFuncMap = template.FuncMap{
 	"fmtLocale": fmtLocale,
 }
 
-func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType) *PGSQLSchema {
+func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, withMetaData bool, withEntries bool) *PGSQLSchema {
 	schema := &PGSQLSchema{
 		SchemaName:   schemaName,
 		Locales:      space.Locales,
@@ -75,6 +77,8 @@ func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType) *PGSQ
 		ConTables:    make([]*PGSQLTable, 0),
 		References:   make([]*PGSQLReference, 0),
 		AssetColumns: assetColumns,
+		WithMetaData: withMetaData,
+		WithEntries:  withEntries,
 	}
 
 	for _, item := range items {
@@ -105,11 +109,12 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 	if err != nil {
 		return err
 	}
-
-	// set schema in use
-	_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
-	if err != nil {
-		return err
+	if s.SchemaName != "" {
+		// set schema in use
+		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+		if err != nil {
+			return err
+		}
 	}
 
 	_, err = txn.Exec(str)

@@ -5,6 +5,7 @@ import (
 )
 
 func init() {
+	syncCmd.PersistentFlags().BoolVarP(&withEntries, "entries", "e", false, "create _entries table")
 	rootCmd.AddCommand(syncCmd)
 }
 

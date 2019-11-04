@@ -4,15 +4,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	dropSchema      string
-)
-
 func init() {
-	dropCmd.PersistentFlags().StringVarP(&dropSchema, "drop", "d", "", "schema to drop")
-	if dropSchema == "" {
-		dropSchema = schemaName
-	}
+	dropCmd.MarkFlagRequired("schema")
 	rootCmd.AddCommand(dropCmd)
 }
 

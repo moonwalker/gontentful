@@ -41,13 +41,13 @@ func (s *PGFunctions) Exec(databaseURL string) error {
 	if err != nil {
 		return err
 	}
-
-	// set schema in use
-	_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
-	if err != nil {
-		return err
+	if s.SchemaName != "" {
+		// set schema in use
+		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+		if err != nil {
+			return err
+		}
 	}
-
 	_, err = txn.Exec(buff.String())
 	if err != nil {
 		return err

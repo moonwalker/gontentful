@@ -3,6 +3,7 @@ package gontentful
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
@@ -53,7 +54,7 @@ type PGSyncConTable struct {
 	Rows      [][]interface{}
 }
 
-func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, initSync bool) *PGSyncSchema {
+func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, initSync bool, withMetaData bool) *PGSyncSchema {
 	schema := &PGSyncSchema{
 		SchemaName: schemaName,
 		Tables:     make(map[string]*PGSyncTable, 0),
@@ -62,25 +63,15 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, 
 		InitSync:   initSync,
 	}
 
-	// create a "global" entries table to store all entries with sys_id for later delete
-	entriesTable := newPGSyncTable(entriesTableName, []string{"table_name"})
-	appendToEntries := func(tableName string, sysID string, templateFormat bool) {
-		fieldValue := tableName
-		if templateFormat {
-			fieldValue = fmt.Sprintf("'%s'", tableName)
-		}
-		enrtiesRow := &PGSyncRow{
-			SysID:        sysID,
-			FieldColumns: []string{"table_name"},
-			FieldValues: map[string]interface{}{
-				"table_name": fieldValue,
-			},
-		}
-		entriesTable.Rows = append(entriesTable.Rows, enrtiesRow)
-	}
+	var entriesTable *PGSyncTable
 
-	// append the "global" entries table to the tables
-	schema.Tables[entriesTableName] = entriesTable
+	if withMetaData {
+		// create a "global" entries table to store all entries with sys_id for later delete
+		entriesTable = newPGSyncTable(entriesTableName, []string{"table_name"})
+
+		// append the "global" entries table to the tables
+		schema.Tables[entriesTableName] = entriesTable
+	}
 
 	columnsByContentType := getColumnsByContentType(types)
 
@@ -90,13 +81,17 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, 
 			contentType := item.Sys.ContentType.Sys.ID
 			tableName := toSnakeCase(contentType)
 			appendTables(schema.Tables, schema.ConTables, item, tableName, columnsByContentType[contentType].fieldColumns, columnsByContentType[contentType].columnReferences, !initSync)
-			// append to "global" entries table
-			appendToEntries(tableName, item.Sys.ID, !initSync)
+			if withMetaData {
+				// append to "global" entries table
+				appendToEntries(entriesTable, tableName, item.Sys.ID, !initSync)
+			}
 			break
 		case ASSET:
 			appendTables(schema.Tables, schema.ConTables, item, assetTableName, assetColumns, nil, !initSync)
-			// append to "global" entries table
-			appendToEntries(assetTableName, item.Sys.ID, !initSync)
+			if withMetaData {
+				// append to "global" entries table
+				appendToEntries(entriesTable, assetTableName, item.Sys.ID, !initSync)
+			}
 			break
 		case DELETED_ENTRY, DELETED_ASSET:
 			schema.Deleted = append(schema.Deleted, item.Sys.ID)
@@ -105,6 +100,21 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, 
 	}
 
 	return schema
+}
+
+func appendToEntries(entriesTable *PGSyncTable, tableName string, sysID string, templateFormat bool) {
+	fieldValue := tableName
+	if templateFormat {
+		fieldValue = fmt.Sprintf("'%s'", tableName)
+	}
+	enrtiesRow := &PGSyncRow{
+		SysID:        sysID,
+		FieldColumns: []string{"table_name"},
+		FieldValues: map[string]interface{}{
+			"table_name": fieldValue,
+		},
+	}
+	entriesTable.Rows = append(entriesTable.Rows, enrtiesRow)
 }
 
 func newPGSyncTable(tableName string, fieldColumns []string) *PGSyncTable {
@@ -172,10 +182,12 @@ func (s *PGSyncSchema) Exec(databaseURL string) error {
 		return err
 	}
 
-	// set schema name
-	_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
-	if err != nil {
-		return err
+	if s.SchemaName != "" {
+		// set schema name
+		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+		if err != nil {
+			return err
+		}
 	}
 
 	// init sync
@@ -201,17 +213,20 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 		}
 		stmt, err := txn.Preparex(pq.CopyIn(tbl.TableName, tbl.Columns...))
 		if err != nil {
+			fmt.Println("txn.Preparex error", tbl.TableName, tbl.Rows)
 			return err
 		}
 		for _, row := range tbl.Rows {
 			_, err = stmt.Exec(row.Fields(tbl.TableName != entriesTableName)...)
 			if err != nil {
+				fmt.Println("stmt.Exec error", tbl.TableName, tbl.Rows)
 				return err
 			}
 		}
 
 		_, err = stmt.Exec()
 		if err != nil {
+			fmt.Println("stmt.Exec error", tbl.TableName)
 			return err
 		}
 
@@ -227,18 +242,36 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 
 		stmt, err := txn.Preparex(pq.CopyIn(tbl.TableName, tbl.Columns...))
 		if err != nil {
+			fmt.Println("txn.Preparex error", tbl.TableName, tbl.Rows)
 			return err
 		}
 
 		for _, row := range tbl.Rows {
 			_, err = stmt.Exec(row...)
 			if err != nil {
+				fmt.Println("stmt.Exec error", tbl.TableName, tbl.Rows)
 				return err
 			}
 		}
 
 		_, err = stmt.Exec()
 		if err != nil {
+			fmt.Println("stmt.Exec", tbl.TableName)
+			a := make(map[string]map[string]string)
+			for _, r := range tbl.Rows {
+				sys := r[0].(string)
+				id := r[1].(string)
+				loc := r[2].(string)
+				if a[sys] == nil {
+					a[sys] = make(map[string]string)
+				} else if a[sys][id] == "" {
+					a[sys][id] = loc
+				} else {
+					fmt.Println(tbl.TableName, sys, id, loc)
+					break
+				}
+			}
+			ioutil.WriteFile("/tmp/"+tbl.TableName, []byte(fmt.Sprintf("%+v", tbl.Rows)), 0644)
 			return err
 		}
 
@@ -262,6 +295,8 @@ func (s *PGSyncSchema) deltaSync(txn *sqlx.Tx) error {
 	if err != nil {
 		return err
 	}
+
+	ioutil.WriteFile("/tmp/deltaSync", buff.Bytes(), 0644)
 
 	_, err = txn.Exec(buff.String())
 	if err != nil {

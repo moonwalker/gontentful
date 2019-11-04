@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 
 	"github.com/moonwalker/gontentful"
@@ -19,9 +17,7 @@ var pgSchemaCmd = &cobra.Command{
 	Short: "Creates postgres schema",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		if len(databaseURL) > 0 {
-			log.Println("creating postgres schema...")
-		}
+		log.Println("creating postgres schema...")
 
 		client := gontentful.NewClient(&gontentful.ClientOptions{
 			CdnURL:   apiURL,
@@ -36,71 +32,34 @@ var pgSchemaCmd = &cobra.Command{
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Println("get space done")
 
 		log.Println("get cma types...")
 		cmaTypes, err := client.ContentTypes.GetCMATypes()
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Println("get cma done")
-
-		schema := gontentful.NewPGSQLSchema(schemaName, space, cmaTypes.Items)
-		str, err := schema.Render()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// ioutil.WriteFile("/tmp/schema", []byte(str), 0644)
-
-		if len(databaseURL) == 0 {
-			fmt.Println(str)
-			return
-		} else {
-			log.Println("postgres schema successfully created")
-		}
 
 		log.Println("executing postgres schema...")
-
-		db, _ := sqlx.Connect("postgres", databaseURL)
-		txn, err := db.Beginx()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// set schema in use
-		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", schemaName))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// ioutil.WriteFile("/tmp/schema", []byte(str), 0644)
-
-		_, err = txn.Exec(str)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		err = txn.Commit()
+		schema := gontentful.NewPGSQLSchema(schemaName, space, cmaTypes.Items, withMetaData, withEntries)
+		err = schema.Exec(databaseURL)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		log.Println("creating references...")
-
 		refs := gontentful.NewPGReferences(schema)
 		err = refs.Exec(databaseURL)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		log.Println("creating postgres functions...")
+		// log.Println("creating postgres functions...")
 
-		funcs := gontentful.NewPGFunctions(schemaName)
-		err = funcs.Exec(databaseURL)
-		if err != nil {
-			log.Fatal(err)
-		}
+		// funcs := gontentful.NewPGFunctions(schemaName)
+		// err = funcs.Exec(databaseURL)
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
 
 		log.Println("postgres schema successfully executed")
 	},

@@ -41,11 +41,12 @@ func (s *PGReferences) Exec(databaseURL string) error {
 	if err != nil {
 		return err
 	}
-
-	// set schema in use
-	_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.Schema.SchemaName))
-	if err != nil {
-		return err
+	if s.Schema.SchemaName != "" {
+		// set schema in use
+		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.Schema.SchemaName))
+		if err != nil {
+			return err
+		}
 	}
 	// ioutil.WriteFile("/tmp/refs", []byte(buff.String()), 0644)
 	_, err = txn.Exec(buff.String())

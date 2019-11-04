@@ -5,6 +5,8 @@ import (
 )
 
 func init() {
+	schemaCmd.PersistentFlags().BoolVarP(&withMetaData, "meta", "m", false, "create meta tables")
+	schemaCmd.PersistentFlags().BoolVarP(&withEntries, "entries", "e", false, "create _entries table")
 	rootCmd.AddCommand(schemaCmd)
 }
 

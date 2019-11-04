@@ -21,14 +21,14 @@ func MigratePGSQL(databaseURL string, schemaName string,
 	oldSchemaName := fmt.Sprintf(oldSchemaNameTpl, schemaName)
 
 	// 1) re-create schema
-	schema := NewPGSQLSchema(newSchemaName, space, cmaTypes)
+	schema := NewPGSQLSchema(newSchemaName, space, cmaTypes, false, false)
 	err := schema.Exec(databaseURL)
 	if err != nil {
 		return err
 	}
 
 	// 2) sync data & save token
-	sync := NewPGSyncSchema(newSchemaName, types, entries, true)
+	sync := NewPGSyncSchema(newSchemaName, types, entries, true, false)
 	err = sync.Exec(databaseURL)
 	if err != nil {
 		return err
