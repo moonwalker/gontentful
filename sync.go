@@ -3,7 +3,6 @@ package gontentful
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 )
 
@@ -57,32 +56,16 @@ func (s *SpacesService) SyncPaged(token string, callback SyncCallback) (string, 
 
 func (s *SpacesService) getSyncPage(query url.Values) (*SyncResponse, error) {
 	path := fmt.Sprintf(pathSync, s.client.Options.SpaceID)
-	key := query.Get("sync_token")
-	if key == "" {
-		key = "initial"
-	} else {
-		key = string(key[len(key)-100:])
-	}
-	dat, err := ioutil.ReadFile("/tmp/sync/" + key)
-	if err == nil {
-		res := &SyncResponse{}
-		err = json.Unmarshal(dat, &res)
-		if err != nil {
-			return nil, err
-		}
-		return res, nil
-	}
 	body, err := s.client.get(path, query)
 	if err != nil {
 		return nil, err
 	}
+
 	res := &SyncResponse{}
 	err = json.Unmarshal(body, &res)
 	if err != nil {
 		return nil, err
 	}
-
-	ioutil.WriteFile("/tmp/sync/"+key, body, 0644)
 
 	return res, nil
 }
