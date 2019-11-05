@@ -85,7 +85,7 @@ var pgQueryCmd = &cobra.Command{
 				fmt.Println(err)
 				os.Exit(1)
 			}
-			query := gontentful.ParsePGQuery(schemaName, defaultLocale, q)
+			query := gontentful.ParsePGQuery(schemaName, "", q)
 
 			log.Println("executing query...")
 			total, items, err := query.Exec(databaseURL)

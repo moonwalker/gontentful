@@ -15,7 +15,7 @@ const (
 )
 
 func MigratePGSQL(databaseURL string, schemaName string,
-	space *Space, types []*ContentType, cmaTypes []*ContentType, entries []*Entry, syncToken string, defaultLocale string) error {
+	space *Space, types []*ContentType, cmaTypes []*ContentType, entries []*Entry, syncToken string) error {
 
 	newSchemaName := fmt.Sprintf(newSchemaNameTpl, schemaName)
 	oldSchemaName := fmt.Sprintf(oldSchemaNameTpl, schemaName)
@@ -28,7 +28,7 @@ func MigratePGSQL(databaseURL string, schemaName string,
 	}
 
 	// 2) sync data & save token
-	sync := NewPGSyncSchema(newSchemaName, space, types, entries, defaultLocale, true, false)
+	sync := NewPGSyncSchema(newSchemaName, space, types, entries, true, false)
 	err = sync.Exec(databaseURL)
 	if err != nil {
 		return err

@@ -19,9 +19,8 @@ var (
 )
 
 const (
-	apiURL        = "cdn.contentful.com"
-	cmaURL        = "api.contentful.com"
-	defaultLocale = "en"
+	apiURL = "cdn.contentful.com"
+	cmaURL = "api.contentful.com"
 )
 
 var rootCmd = &cobra.Command{

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
@@ -36,12 +37,13 @@ type PGSyncTable struct {
 }
 
 type PGSyncSchema struct {
-	SchemaName string
-	Locales    []*Locale
-	Tables     map[string]*PGSyncTable
-	ConTables  map[string]*PGSyncConTable
-	Deleted    []string
-	InitSync   bool
+	SchemaName    string
+	Locales       []*Locale
+	DefaultLocale string
+	Tables        map[string]*PGSyncTable
+	ConTables     map[string]*PGSyncConTable
+	Deleted       []string
+	InitSync      bool
 }
 
 type PGSyncField struct {
@@ -55,14 +57,27 @@ type PGSyncConTable struct {
 	Rows      [][]interface{}
 }
 
-func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entries []*Entry, defaultLocale string, initSync bool, withMetaData bool) *PGSyncSchema {
+func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entries []*Entry, initSync bool, withMetaData bool) *PGSyncSchema {
+
+	var defaultLocale string
+	if len(space.Locales) == 0 {
+		defaultLocale = space.Locales[0].Code
+		for _, loc := range space.Locales {
+			if loc.Default {
+				defaultLocale = strings.ToLower(loc.Code)
+				break
+			}
+		}
+	}
+
 	schema := &PGSyncSchema{
-		SchemaName: schemaName,
-		Locales:    space.Locales,
-		Tables:     make(map[string]*PGSyncTable, 0),
-		ConTables:  make(map[string]*PGSyncConTable, 0),
-		Deleted:    make([]string, 0),
-		InitSync:   initSync,
+		SchemaName:    schemaName,
+		Locales:       space.Locales,
+		DefaultLocale: defaultLocale,
+		Tables:        make(map[string]*PGSyncTable, 0),
+		ConTables:     make(map[string]*PGSyncConTable, 0),
+		Deleted:       make([]string, 0),
+		InitSync:      initSync,
 	}
 
 	var entriesTable *PGSyncTable
@@ -82,14 +97,14 @@ func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entr
 		case ENTRY:
 			contentType := item.Sys.ContentType.Sys.ID
 			tableName := toSnakeCase(contentType)
-			appendTables(schema, item, tableName, columnsByContentType[contentType].fieldColumns, columnsByContentType[contentType].columnReferences, defaultLocale, !initSync)
+			appendTables(schema, item, tableName, columnsByContentType[contentType].fieldColumns, columnsByContentType[contentType].columnReferences, !initSync)
 			if withMetaData {
 				// append to "global" entries table
 				appendToEntries(entriesTable, tableName, item.Sys.ID, !initSync)
 			}
 			break
 		case ASSET:
-			appendTables(schema, item, assetTableName, assetColumns, nil, defaultLocale, !initSync)
+			appendTables(schema, item, assetTableName, assetColumns, nil, !initSync)
 			if withMetaData {
 				// append to "global" entries table
 				appendToEntries(entriesTable, assetTableName, item.Sys.ID, !initSync)
