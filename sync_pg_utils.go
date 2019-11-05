@@ -20,8 +20,11 @@ type columnData struct {
 	columnReferences map[string]string
 }
 
-func appendTables(tablesByName map[string]*PGSyncTable, conTablesByName map[string]*PGSyncConTable, item *Entry, tableName string, fieldColumns []string, refColumns map[string]string, templateFormat bool) {
+func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColumns []string, refColumns map[string]string, defaultLocale string, templateFormat bool) {
 	fieldsByLocale := make(map[string][]*rowField, 0)
+	tablesByName := schema.Tables
+	conTablesByName := schema.ConTables
+	locales := schema.Locales
 
 	// iterate over fields
 	for fieldName, f := range item.Fields {
@@ -34,12 +37,17 @@ func appendTables(tablesByName map[string]*PGSyncTable, conTablesByName map[stri
 		columnName := toSnakeCase(fieldName)
 
 		// iterate over locale fields
-		for locale, fieldValue := range locFields {
+		for _, loc := range locales {
 			// create table
 			tbl := tablesByName[tableName]
 			if tbl == nil {
 				tbl = newPGSyncTable(tableName, fieldColumns)
 				tablesByName[tableName] = tbl
+			}
+			locale := strings.ToLower(loc.Code)
+			fieldValue := locFields[locale]
+			if fieldValue == nil {
+				fieldValue = locFields[defaultLocale]
 			}
 
 			// collect row fields by locale

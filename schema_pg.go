@@ -133,11 +133,11 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 		return err
 	}
 
-	funcs := NewPGFunctions(s.SchemaName)
-	err = funcs.Exec(databaseURL)
-	if err != nil {
-		return err
-	}
+	// funcs := NewPGFunctions(s.SchemaName)
+	// err = funcs.Exec(databaseURL)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
@@ -315,7 +315,7 @@ func NewPGSQLCon(tableName string, fieldName string, reference string) *PGSQLTab
 }
 
 func getConTableName(tableName string, fieldName string) string {
-	return fmt.Sprintf("%.58s__con", fmt.Sprintf("%s__%s", tableName, fieldName))
+	return fmt.Sprintf("%.63s", fmt.Sprintf("%s__%s", tableName, fieldName))
 }
 
 func getConTableColumns(tableName string, reference string) []*PGSQLColumn {

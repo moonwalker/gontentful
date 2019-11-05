@@ -37,6 +37,7 @@ type PGSyncTable struct {
 
 type PGSyncSchema struct {
 	SchemaName string
+	Locales    []*Locale
 	Tables     map[string]*PGSyncTable
 	ConTables  map[string]*PGSyncConTable
 	Deleted    []string
@@ -54,9 +55,10 @@ type PGSyncConTable struct {
 	Rows      [][]interface{}
 }
 
-func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, initSync bool, withMetaData bool) *PGSyncSchema {
+func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entries []*Entry, defaultLocale string, initSync bool, withMetaData bool) *PGSyncSchema {
 	schema := &PGSyncSchema{
 		SchemaName: schemaName,
+		Locales:    space.Locales,
 		Tables:     make(map[string]*PGSyncTable, 0),
 		ConTables:  make(map[string]*PGSyncConTable, 0),
 		Deleted:    make([]string, 0),
@@ -80,14 +82,14 @@ func NewPGSyncSchema(schemaName string, types []*ContentType, entries []*Entry, 
 		case ENTRY:
 			contentType := item.Sys.ContentType.Sys.ID
 			tableName := toSnakeCase(contentType)
-			appendTables(schema.Tables, schema.ConTables, item, tableName, columnsByContentType[contentType].fieldColumns, columnsByContentType[contentType].columnReferences, !initSync)
+			appendTables(schema, item, tableName, columnsByContentType[contentType].fieldColumns, columnsByContentType[contentType].columnReferences, defaultLocale, !initSync)
 			if withMetaData {
 				// append to "global" entries table
 				appendToEntries(entriesTable, tableName, item.Sys.ID, !initSync)
 			}
 			break
 		case ASSET:
-			appendTables(schema.Tables, schema.ConTables, item, assetTableName, assetColumns, nil, !initSync)
+			appendTables(schema, item, assetTableName, assetColumns, nil, defaultLocale, !initSync)
 			if withMetaData {
 				// append to "global" entries table
 				appendToEntries(entriesTable, assetTableName, item.Sys.ID, !initSync)
