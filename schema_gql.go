@@ -24,6 +24,8 @@ type Query {
   {{- end }}
 }
 
+scalar Map
+
 interface Sys {
   id: ID!
   createdAt: String!
@@ -300,7 +302,7 @@ func getFieldType(schema *GraphQLSchema, field *ContentTypeField) string {
 	case "Link":
 		return getLinkType(schema, field)
 	case "Object":
-		return "String"
+		return "Map" // scalar Map
 	default:
 		return "String"
 	}
