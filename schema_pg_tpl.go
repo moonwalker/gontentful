@@ -1,8 +1,10 @@
 package gontentful
 
 const pgTemplate = `
+{{ if $.SchemaName }}
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
+{{- end -}}
 {{ if $.WithEntries }}
 CREATE TABLE IF NOT EXISTS _entries (
 	id serial primary key,
@@ -115,6 +117,7 @@ ON CONFLICT (name) DO NOTHING;
 {{- end -}}
 -- withMetaData
 {{- end -}}
+--
 CREATE TABLE IF NOT EXISTS _asset (
 	primary key (_sys_id,_locale),
 	_sys_id text not null,
@@ -228,6 +231,7 @@ SET
 {{- end -}}
 -- withMetaData
 {{- end -}}
+--
 CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }} (
 	primary key (_sys_id,_locale),
 	_sys_id text not null,
