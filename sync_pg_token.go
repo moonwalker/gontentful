@@ -29,21 +29,25 @@ func GetSyncToken(databaseURL string, schemaName string) (string, error) {
 func SaveSyncToken(databaseURL string, schemaName string, token string) error {
 	var err error
 	db, _ := sql.Open("postgres", databaseURL)
+
 	schemaPrefix := ""
-	if schemaName != "" {
+	if len(schemaName) > 0 {
 		_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", schemaName))
 		if err != nil {
 			return err
 		}
 		schemaPrefix = fmt.Sprintf("%s.", schemaName)
 	}
+
 	_, err = db.Exec(fmt.Sprintf(createSyncTable, schemaPrefix))
 	if err != nil {
 		return err
 	}
+
 	_, err = db.Exec(fmt.Sprintf(insertSyncToken, schemaPrefix, token))
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
