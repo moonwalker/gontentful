@@ -139,6 +139,7 @@ type GraphQLSchema struct {
 func init() {
 	inflection.AddPlural("(bonu)s$", "${1}ses")
 	inflection.AddPlural("(hero)$", "${1}es")
+	inflection.AddSingular("(preference)s$", "${1}")
 }
 
 func NewGraphQLSchema(items []*ContentType) *GraphQLSchema {
