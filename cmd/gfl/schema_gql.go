@@ -35,6 +35,8 @@ var gqlSchemaCmd = &cobra.Command{
 			log.Fatal(err)
 		}
 
-		fmt.Println(str)
+		if len(str) > 0 {
+			fmt.Println(str)
+		}
 	},
 }

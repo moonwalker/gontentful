@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
-
-	"github.com/jinzhu/inflection"
 )
 
 const gqlTemplate = `schema {
@@ -136,12 +134,6 @@ type GraphQLSchema struct {
 	TypeDefs []*GraphQLType
 }
 
-func init() {
-	inflection.AddPlural("(bonu)s$", "${1}ses")
-	inflection.AddPlural("(hero)$", "${1}es")
-	inflection.AddSingular("(preference)s$", "${1}")
-}
-
 func NewGraphQLSchema(items []*ContentType) *GraphQLSchema {
 	schema := &GraphQLSchema{
 		Items:    items,
@@ -149,8 +141,7 @@ func NewGraphQLSchema(items []*ContentType) *GraphQLSchema {
 	}
 
 	for _, item := range items {
-		typeName := inflection.Singular(item.Sys.ID)
-		typeDef := NewGraphQLTypeDef(schema, typeName, item.Fields)
+		typeDef := NewGraphQLTypeDef(schema, item.Sys.ID, item.Fields)
 		schema.TypeDefs = append(schema.TypeDefs, typeDef)
 	}
 
@@ -180,15 +171,10 @@ func NewGraphQLTypeDef(schema *GraphQLSchema, typeName string, fields []*Content
 	}
 
 	// single
-	args := getResolverArgs(false, fields)
-	typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(false, typeName, args, typeDef.TypeName))
+	typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(false, typeName, getResolverArgs(false, fields), typeDef.TypeName))
 
 	// collection
-	pluralName := inflection.Plural(typeName)
-	if pluralName != typeName {
-		args = getResolverArgs(true, fields)
-		typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(true, pluralName, args, typeDef.TypeName))
-	}
+	typeDef.Resolvers = append(typeDef.Resolvers, NewGraphQLResolver(true, pluralName(typeName), getResolverArgs(true, fields), typeDef.TypeName))
 
 	for _, f := range fields {
 		if f.Disabled || f.Omitted {
@@ -333,4 +319,23 @@ func getValidationContentType(schema *GraphQLSchema, t string, validations []*Fi
 		}
 	}
 	return strings.Title(t)
+}
+
+func pluralName(typeName string) string {
+	// s -> ses
+	// y -> ies
+	// o -> oes
+
+	lastChar := typeName[len(typeName)-1:]
+	if lastChar == "s" {
+		typeName = strings.TrimSuffix(typeName, lastChar) + "ses"
+	} else if lastChar == "y" {
+		typeName = strings.TrimSuffix(typeName, lastChar) + "ies"
+	} else if lastChar == "o" {
+		typeName = strings.TrimSuffix(typeName, lastChar) + "oes"
+	} else {
+		typeName += "s"
+	}
+
+	return typeName
 }
