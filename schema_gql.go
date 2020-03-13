@@ -139,6 +139,7 @@ type GraphQLSchema struct {
 func init() {
 	inflection.AddPlural("(bonu)s$", "${1}ses")
 	inflection.AddPlural("(hero)$", "${1}es")
+	inflection.AddSingular("(preference)s$", "${1}")
 }
 
 func NewGraphQLSchema(items []*ContentType) *GraphQLSchema {
@@ -148,7 +149,8 @@ func NewGraphQLSchema(items []*ContentType) *GraphQLSchema {
 	}
 
 	for _, item := range items {
-		typeDef := NewGraphQLTypeDef(schema, item.Sys.ID, item.Fields)
+		typeName := inflection.Singular(item.Sys.ID)
+		typeDef := NewGraphQLTypeDef(schema, typeName, item.Fields)
 		schema.TypeDefs = append(schema.TypeDefs, typeDef)
 	}
 
