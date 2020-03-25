@@ -7,7 +7,9 @@ import (
 	"text/template"
 )
 
-const gqlTemplate = `schema {
+const gqlTemplate = `# Code generated, DO NOT EDIT
+
+schema {
   query: Query
 }
 
