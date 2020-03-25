@@ -13,6 +13,27 @@ schema {
   query: Query
 }
 
+input ContentFilter {
+  id: Int,
+  locale: String,
+  include: String,
+  select: String,
+  slug: String,
+  code: String,
+  name: String,
+  key: String
+}
+
+input ContentCollectionFilter {
+  locale: String,
+  skip: Int,
+  limit: Int,
+  include: String,
+  select: String,
+  order: String,
+  q: String
+}
+
 type Query {
   {{- range $_ := .TypeDefs }}
   {{- range $_ := .Resolvers }}
@@ -82,31 +103,8 @@ type Asset {
   description: String
   url: String
   file: File
-}`
-
-var (
-	singleArgs = []*GraphQLResolverArg{
-		&GraphQLResolverArg{"_id", "ID"},
-		&GraphQLResolverArg{"_locale", "String"},
-		&GraphQLResolverArg{"_include", "Int"},
-		&GraphQLResolverArg{"_select", "String"},
-	}
-	singleIdentityFields = []*GraphQLResolverArg{
-		&GraphQLResolverArg{"slug", "String"},
-		&GraphQLResolverArg{"code", "String"},
-		&GraphQLResolverArg{"name", "String"},
-		&GraphQLResolverArg{"key", "String"},
-	}
-	collectionArgs = []*GraphQLResolverArg{
-		&GraphQLResolverArg{"_locale", "String"},
-		&GraphQLResolverArg{"_skip", "Int"},
-		&GraphQLResolverArg{"_limit", "Int"},
-		&GraphQLResolverArg{"_include", "Int"},
-		&GraphQLResolverArg{"_select", "String"},
-		&GraphQLResolverArg{"_order", "String"},
-		&GraphQLResolverArg{"_q", "String"},
-	}
-)
+}
+`
 
 type GraphQLResolver struct {
 	Name   string
@@ -209,17 +207,15 @@ func getResolverArgs(collection bool, fields []*ContentTypeField) []*GraphQLReso
 }
 
 func getSingleArgs(fields []*ContentTypeField) []*GraphQLResolverArg {
-	args := singleArgs
-	for _, a := range singleIdentityFields {
-		if hasField(fields, a.ArgName) {
-			args = append(args, a)
-		}
+	return []*GraphQLResolverArg{
+		&GraphQLResolverArg{"f", "ContentFilter"},
 	}
-	return args
 }
 
 func getCollectionArgs(fields []*ContentTypeField) []*GraphQLResolverArg {
-	args := collectionArgs
+	args := []*GraphQLResolverArg{
+		&GraphQLResolverArg{"f", "ContentCollectionFilter"},
+	}
 	for _, f := range fields {
 		t := isOwnField(f)
 		if len(t) > 0 {
