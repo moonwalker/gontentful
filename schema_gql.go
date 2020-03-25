@@ -13,27 +13,6 @@ schema {
   query: Query
 }
 
-input ContentFilter {
-  id: ID,
-  locale: String,
-  include: Int,
-  select: String,
-  slug: String,
-  code: String,
-  name: String,
-  key: String
-}
-
-input ContentCollectionFilter {
-  locale: String,
-  skip: Int,
-  limit: Int,
-  include: Int,
-  select: String,
-  order: String,
-  q: String
-}
-
 type Query {
   {{- range $_ := .TypeDefs }}
   {{- range $_ := .Resolvers }}
@@ -103,8 +82,31 @@ type Asset {
   description: String
   url: String
   file: File
-}
-`
+}`
+
+var (
+	singleArgs = []*GraphQLResolverArg{
+		&GraphQLResolverArg{"idArg", "ID"},
+		&GraphQLResolverArg{"localeArg", "String"},
+		&GraphQLResolverArg{"includeArg", "Int"},
+		&GraphQLResolverArg{"selectArg", "String"},
+	}
+	singleIdentityFields = []*GraphQLResolverArg{
+		&GraphQLResolverArg{"slug", "String"},
+		&GraphQLResolverArg{"code", "String"},
+		&GraphQLResolverArg{"name", "String"},
+		&GraphQLResolverArg{"key", "String"},
+	}
+	collectionArgs = []*GraphQLResolverArg{
+		&GraphQLResolverArg{"localeArg", "String"},
+		&GraphQLResolverArg{"skipArg", "Int"},
+		&GraphQLResolverArg{"limitArg", "Int"},
+		&GraphQLResolverArg{"includeArg", "Int"},
+		&GraphQLResolverArg{"selectArg", "String"},
+		&GraphQLResolverArg{"orderArg", "String"},
+		&GraphQLResolverArg{"qArg", "String"},
+	}
+)
 
 type GraphQLResolver struct {
 	Name   string
@@ -207,15 +209,17 @@ func getResolverArgs(collection bool, fields []*ContentTypeField) []*GraphQLReso
 }
 
 func getSingleArgs(fields []*ContentTypeField) []*GraphQLResolverArg {
-	return []*GraphQLResolverArg{
-		&GraphQLResolverArg{"f", "ContentFilter"},
+	args := singleArgs
+	for _, a := range singleIdentityFields {
+		if hasField(fields, a.ArgName) {
+			args = append(args, a)
+		}
 	}
+	return args
 }
 
 func getCollectionArgs(fields []*ContentTypeField) []*GraphQLResolverArg {
-	args := []*GraphQLResolverArg{
-		&GraphQLResolverArg{"f", "ContentCollectionFilter"},
-	}
+	args := collectionArgs
 	for _, f := range fields {
 		t := isOwnField(f)
 		if len(t) > 0 {
