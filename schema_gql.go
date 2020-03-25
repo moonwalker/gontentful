@@ -14,9 +14,9 @@ schema {
 }
 
 input ContentFilter {
-  id: Int,
+  id: ID,
   locale: String,
-  include: String,
+  include: Int,
   select: String,
   slug: String,
   code: String,
@@ -28,7 +28,7 @@ input ContentCollectionFilter {
   locale: String,
   skip: Int,
   limit: Int,
-  include: String,
+  include: Int,
   select: String,
   order: String,
   q: String
