@@ -15,7 +15,6 @@ type PGGames struct {
 }
 
 func NewPGGames(schemaName string) *PGGames {
-
 	return &PGGames{
 		SchemaName: schemaName,
 	}
@@ -26,7 +25,6 @@ func (s *PGGames) Exec(databaseURL string) error {
 	if err != nil {
 		return err
 	}
-
 	defer db.Close()
 
 	if s.SchemaName != "" {
