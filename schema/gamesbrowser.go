@@ -3,8 +3,7 @@ package schema
 const Gamesbrowser = `
 {{ if $.SchemaName }}
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
---
-{{- end -}}
+{{ end }}
 CREATE TABLE IF NOT EXISTS gamesbrowser_meta (
 	slug text primary key,
 	provider text not null,
