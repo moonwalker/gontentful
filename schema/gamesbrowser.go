@@ -47,7 +47,7 @@ ALTER TABLE gamesbrowser_meta DROP CONSTRAINT IF EXISTS gamesbrowser_content_fke
 
 ALTER TABLE gamesbrowser_meta
   ADD CONSTRAINT gamesbrowser_content_fkey
-  FOREIGN KEY content
+  FOREIGN KEY (content)
   REFERENCES gamesbrowser_content (slug)
   ON DELETE CASCADE;
 `
