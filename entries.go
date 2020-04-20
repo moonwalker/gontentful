@@ -20,7 +20,7 @@ func (s *EntriesService) Get(query url.Values) ([]byte, error) {
 }
 
 func (s *EntriesService) GetEntries(query url.Values) (*Entries, error) {
-	data, err := s.Get(nil)
+	data, err := s.Get(query)
 	if err != nil {
 		return nil, err
 	}
