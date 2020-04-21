@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS gamesbrowser_content (
 	updated timestamp without time zone default now(),
 	updated_by text not null default 'system',
 	deleted timestamp without time zone,
-	deleted_by text not
+	deleted_by text
 );
 
 ALTER TABLE gamesbrowser_meta DROP CONSTRAINT IF EXISTS gamesbrowser_content_fkey;
