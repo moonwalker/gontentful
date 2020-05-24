@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS gamesbrowser_meta (
 	themes text[] not null default '{}',
 	win_features text[] not null default '{}',
 	wild_features text[] not null default '{}',
-	payout_properties text,
+	payout_properties jsonb not null default '{}'::jsonb,
 	screens text[] not null default '{}',
 	settings text[] not null default '{}', 
 	provider_ids jsonb not null default '{}'::jsonb,	
