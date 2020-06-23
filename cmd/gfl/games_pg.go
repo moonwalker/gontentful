@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/moonwalker/gontentful"
+	"github.com/moonwalker/gontentful/operations"
 )
 
 func init() {
@@ -18,7 +18,7 @@ var pgGamesCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Printf("creating %s games schema...", schemaName)
-		query := gontentful.NewPGGames(schemaName)
+		query := operations.NewPGGames(schemaName)
 		err := query.Exec(databaseURL)
 		if err != nil {
 			log.Fatal(err)

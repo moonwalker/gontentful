@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS game_meta (
 );
 
 CREATE TABLE IF NOT EXISTS game_content (
-	slug text primary key,
+	sys_id text primary key,
 	content jsonb not null default '{}',
 	created timestamp without time zone default now(),
 	created_by text not null default 'system',
@@ -49,6 +49,6 @@ ALTER TABLE game_meta DROP CONSTRAINT IF EXISTS gamesbrowser_content_fkey;
 ALTER TABLE game_meta
   ADD CONSTRAINT gamesbrowser_content_fkey
   FOREIGN KEY (content)
-  REFERENCES game_content (slug)
+  REFERENCES game_content (sys_id)
   ON DELETE CASCADE;
 `
