@@ -53,4 +53,4 @@ ALTER TABLE game_meta
   REFERENCES game_content (sys_id)
   ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON game_meta;`
+CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON game_meta (sys_id);`
