@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS game_meta (
 	priority integer not null default 0,
 	excluded_markets text[] not null default '{}',
 	content text not null unique,
+	sys_id text not null unique,
 	created timestamp without time zone default now(),
 	created_by text not null default 'system',
 	updated timestamp without time zone default now(),
@@ -51,4 +52,5 @@ ALTER TABLE game_meta
   FOREIGN KEY (content)
   REFERENCES game_content (sys_id)
   ON DELETE CASCADE;
-`
+
+CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON game_meta;`
