@@ -8,6 +8,8 @@ type Sys struct {
 	CreatedBy        *Entry       `json:"createdBy,omitempty"`
 	UpdatedAt        string       `json:"updatedAt,omitempty"`
 	UpdatedBy        *Entry       `json:"updatedBy,omitempty"`
+	DeletedAt        string       `json:"deletedAt,omitempty"`
+	DeletedBy        *Entry       `json:"deletedBy,omitempty"`
 	Version          int          `json:"version,omitempty"`
 	Revision         int          `json:"revision,omitempty"`
 	ContentType      *ContentType `json:"contentType,omitempty"`
