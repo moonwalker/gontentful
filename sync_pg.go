@@ -230,21 +230,15 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 		}
 		stmt, err := txn.Preparex(pq.CopyIn(tbl.TableName, tbl.Columns...))
 		if err != nil {
-			fmt.Println("txn.Preparex error", tbl.TableName, tbl.Rows)
+			fmt.Println("txn.Preparex error", tbl.TableName)
 			return err
 		}
 		for _, row := range tbl.Rows {
 			_, err = stmt.Exec(row.Fields(tbl.TableName != entriesTableName)...)
 			if err != nil {
-				fmt.Println("stmt.Exec error", tbl.TableName, tbl.Rows)
+				fmt.Println("stmt.Exec error", tbl.TableName, row)
 				return err
 			}
-		}
-
-		_, err = stmt.Exec()
-		if err != nil {
-			fmt.Println("stmt.Exec error", tbl.TableName)
-			return err
 		}
 
 		err = stmt.Close()
@@ -259,14 +253,14 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 
 		stmt, err := txn.Preparex(pq.CopyIn(tbl.TableName, tbl.Columns...))
 		if err != nil {
-			fmt.Println("txn.Preparex error", tbl.TableName, tbl.Rows)
+			fmt.Println("txn.Preparex error", tbl.TableName)
 			return err
 		}
 
 		for _, row := range tbl.Rows {
 			_, err = stmt.Exec(row...)
 			if err != nil {
-				fmt.Println("stmt.Exec error", tbl.TableName, tbl.Rows)
+				fmt.Println("stmt.Exec error", tbl.TableName, row)
 				return err
 			}
 		}
