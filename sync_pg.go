@@ -3,7 +3,6 @@ package gontentful
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"strings"
 	"text/template"
 
@@ -282,7 +281,7 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 					break
 				}
 			}
-			ioutil.WriteFile("/tmp/"+tbl.TableName, []byte(fmt.Sprintf("%+v", tbl.Rows)), 0644)
+			// ioutil.WriteFile("/tmp/"+tbl.TableName, []byte(fmt.Sprintf("%+v", tbl.Rows)), 0644)
 			return err
 		}
 
@@ -307,7 +306,7 @@ func (s *PGSyncSchema) deltaSync(txn *sqlx.Tx) error {
 		return err
 	}
 
-	ioutil.WriteFile("/tmp/deltaSync", buff.Bytes(), 0644)
+	// ioutil.WriteFile("/tmp/deltaSync", buff.Bytes(), 0644)
 
 	_, err = txn.Exec(buff.String())
 	if err != nil {

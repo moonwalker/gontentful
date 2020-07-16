@@ -4,7 +4,7 @@ const Gamesbrowser = `
 {{ if $.SchemaName }}
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 {{ end }}
-CREATE TABLE IF NOT EXISTS game_meta (
+CREATE TABLE IF NOT EXISTS _game_meta (
 	slug text primary key,
 	provider text,
 	studio text,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS game_meta (
 	deleted_by text
 );
 
-CREATE TABLE IF NOT EXISTS game_content (
+CREATE TABLE IF NOT EXISTS _game_content (
 	sys_id text primary key,
 	content jsonb not null default '{}',
 	created timestamp without time zone default now(),
@@ -45,12 +45,12 @@ CREATE TABLE IF NOT EXISTS game_content (
 	deleted_by text
 );
 
-ALTER TABLE game_meta DROP CONSTRAINT IF EXISTS gamesbrowser_content_fkey;
+ALTER TABLE _game_meta DROP CONSTRAINT IF EXISTS gamesbrowser_content_fkey;
 
-ALTER TABLE game_meta
+ALTER TABLE _game_meta
   ADD CONSTRAINT gamesbrowser_content_fkey
   FOREIGN KEY (content)
-  REFERENCES game_content (sys_id)
+  REFERENCES _game_content (sys_id)
   ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON game_meta (sys_id);`
+CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON _game_meta (sys_id);`
