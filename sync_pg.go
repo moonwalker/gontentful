@@ -12,6 +12,7 @@ import (
 
 const (
 	entriesTableName = "_entries"
+	defaultLocale    = "en"
 )
 
 var (
@@ -58,12 +59,12 @@ type PGSyncConTable struct {
 
 func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entries []*Entry, initSync bool, withMetaData bool) *PGSyncSchema {
 
-	var defaultLocale string
-	if len(space.Locales) == 0 {
-		defaultLocale = space.Locales[0].Code
+	defLocale := defaultLocale
+	if len(space.Locales) > 0 {
+		defLocale = space.Locales[0].Code
 		for _, loc := range space.Locales {
 			if loc.Default {
-				defaultLocale = strings.ToLower(loc.Code)
+				defLocale = strings.ToLower(loc.Code)
 				break
 			}
 		}
@@ -72,7 +73,7 @@ func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entr
 	schema := &PGSyncSchema{
 		SchemaName:    schemaName,
 		Locales:       space.Locales,
-		DefaultLocale: defaultLocale,
+		DefaultLocale: defLocale,
 		Tables:        make(map[string]*PGSyncTable, 0),
 		ConTables:     make(map[string]*PGSyncConTable, 0),
 		Deleted:       make([]string, 0),
