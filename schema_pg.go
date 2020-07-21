@@ -21,6 +21,7 @@ type PGSQLJoin struct {
 	Reference  string
 	ForeignKey string
 	Columns    []*PGSQLQueryColumn
+	Alias      string
 }
 
 type PGSQLColumn struct {
