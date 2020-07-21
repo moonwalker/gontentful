@@ -19,27 +19,15 @@ CREATE OR REPLACE FUNCTION _get_sys_ids(tableName text, locale TEXT, filters _fi
 RETURNS SETOF text AS $$
 DECLARE
 	qs text := '';
-	isFirst boolean := true;
 	filter _filter;
 BEGIN
-	qs:= 'SELECT _sys_id FROM ' || tableName;
+	qs:= 'SELECT _sys_id FROM ' || tableName || ' WHERE (' || tableName || '._locale=''' || locale || ''')';
 
 	IF filters IS NOT NULL THEN
 		FOREACH filter IN ARRAY filters LOOP
-			IF isFirst THEN
-				isFirst := false;
-				qs := qs || ' WHERE (';
-			ELSE
-				qs := qs || ') AND (';
-			END IF;
-			qs := qs || tableName || '.' || filter.field || filter.comparer || filter.value;
+			qs := qs || ' AND (' || tableName || '.' || filter.field || filter.comparer || filter.value || ')';
 		END LOOP;
-		qs := qs || ') AND (';
-	ELSE
-		qs := qs || ' WHERE (';
-	END IF; 
-
-	qs := qs || tableName || '._locale=''' || locale || ''')';
+	END IF;
 
 	IF orderBy <> '' THEN
 	qs:= qs || ' ORDER BY ' || orderBy;
@@ -70,9 +58,39 @@ BEGIN
 			{{- if $colidx -}},{{- end }}
 			{{ if .IsReference -}}_included_{{ .ColumnName }}.res
 			{{- else -}}{{ .ColumnName }}
-			{{- end }} AS {{ .Alias }}
+			{{- end }} AS "{{ .Alias }}"
+			{{- end }}
+			{{ range .Joins -}}
+				json_build_object('sys', 
+					json_build_object('id', {{ .Reference }}.{{ .ForeignKey }})
+					{{- range $colidx, $col := .Columns }}
+						,
+						'{{ .Alias }}', {{ .Reference }}.{{ .ColumnName }}
+					{{- end }}) as {{ .Alias }}
+			{{- end }}
+			{{ range .LateralJoins -}}
+				,
+				_included_{{ .ColumnName }}.res.res AS "{{ .ColumnName }}"
 			{{- end }}
 		FROM {{ .TableName }}
+		{{ range .Joins -}}
+			LEFT JOIN {{ .Reference }} ON {{ .Reference }}.{{ .ForeignKey }} = {{ .TableName }}.{{ .Reference }} AND {{ .Reference }}._locale = locale
+		{{- end }}
+		{{ range .LateralJoins -}}
+			LEFT JOIN LATERAL (
+				SELECT json_agg(l) AS res FROM (
+					SELECT
+						json_build_object('id', {{ .Reference }}.{{ .ForeignKey }}) AS sys,
+						{{- range $colidx, $col := .Columns }}
+							,
+							{{ .Reference }}.{{ .ColumnName }} AS "{{ .Alias }}"
+						{{- end }}
+					FROM {{ .ConTableName }}
+					JOIN {{ .Reference }} on {{ .Reference }}.{{ .ForeignKey }} = {{ .ConTableName }}.{{ .Reference }} AND {{ .Reference }}._locale = locale
+					WHERE {{ .ConTableName }}.{{ .TableName }} = {{ .TableName }}.{{ .ForeignKey }} AND {{ .ConTableName }}._locale = locale
+				) l
+			) _included_{{ .ColumnName }} ON true
+		{{- end }}
 		{{ range .References -}}
 			LEFT JOIN {{ .Reference }} ON {{ .Reference }}.{{ .TableName }} = {{ .TableName }}.{{ .ForeignKey }} AND {{ .Reference }}._locale = locale
 			LEFT JOIN LATERAL (SELECT )
