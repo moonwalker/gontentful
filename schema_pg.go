@@ -10,6 +10,19 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+type PGSQLQueryColumn struct {
+	ColumnName  string
+	Alias       string
+	IsReference bool
+}
+
+type PGSQLJoin struct {
+	TableName  string
+	Reference  string
+	ForeignKey string
+	Columns    []*PGSQLQueryColumn
+}
+
 type PGSQLColumn struct {
 	ColumnName string
 	ColumnType string
@@ -43,9 +56,11 @@ type PGSQLMeta struct {
 }
 
 type PGSQLTable struct {
-	TableName string
-	Data      *PGSQLData
-	Columns   []*PGSQLColumn
+	TableName    string
+	Data         *PGSQLData
+	Columns      []*PGSQLColumn
+	Joins        []*PGSQLJoin
+	LateralJoins []*PGSQLJoin
 }
 
 type PGSQLReference struct {
@@ -82,10 +97,9 @@ func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, withM
 	}
 
 	for _, item := range items {
-		table := NewPGSQLTable(item)
-		schema.Tables = append(schema.Tables, table)
+		table, conTables, references := NewPGSQLTable(item, withMetaData)
 
-		conTables, references := createReferences(item, table)
+		schema.Tables = append(schema.Tables, table)
 		schema.ConTables = append(schema.ConTables, conTables...)
 		schema.References = append(schema.References, references...)
 	}
@@ -157,25 +171,34 @@ func (s *PGSQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewPGSQLTable(item *ContentType) *PGSQLTable {
+func NewPGSQLTable(item *ContentType, withMetaData bool) (*PGSQLTable, []*PGSQLTable, []*PGSQLReference) {
 	table := &PGSQLTable{
 		TableName: toSnakeCase(item.Sys.ID),
 		Columns:   make([]*PGSQLColumn, 0),
 		Data:      makeModelData(item),
 	}
+	conTables := make([]*PGSQLTable, 0)
+	references := make([]*PGSQLReference, 0)
 
 	for _, field := range item.Fields {
 		if !field.Omitted {
 			column := NewPGSQLColumn(field)
 			table.Columns = append(table.Columns, column)
-			meta := makeMeta(field)
-			table.Data.Metas = append(table.Data.Metas, meta)
+			if withMetaData {
+				meta := makeMeta(field)
+				table.Data.Metas = append(table.Data.Metas, meta)
+			}
+			if field.LinkType != "" {
+				references = addOneTOne(references, table.TableName, field)
+			} else if field.Items != nil {
+				conTables, references = addManyToMany(conTables, references, table.TableName, field)
+			}
 			// } else {
 			// 	fmt.Println("Ignoring omitted field", field.ID, "in", table.TableName)
 		}
 	}
 
-	return table
+	return table, conTables, references
 }
 
 func NewPGSQLColumn(field *ContentTypeField) *PGSQLColumn {
@@ -290,21 +313,6 @@ func makeMeta(field *ContentTypeField) *PGSQLMeta {
 	}
 
 	return meta
-}
-
-func createReferences(item *ContentType, table *PGSQLTable) ([]*PGSQLTable, []*PGSQLReference) {
-	conTables := make([]*PGSQLTable, 0)
-	references := make([]*PGSQLReference, 0)
-	for _, field := range item.Fields {
-		if !field.Omitted {
-			if field.LinkType != "" {
-				references = addOneTOne(references, table.TableName, field)
-			} else if field.Items != nil {
-				conTables, references = addManyToMany(conTables, references, table.TableName, field)
-			}
-		}
-	}
-	return conTables, references
 }
 
 func NewPGSQLCon(tableName string, fieldName string, reference string) *PGSQLTable {
