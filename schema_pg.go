@@ -17,11 +17,12 @@ type PGSQLQueryColumn struct {
 }
 
 type PGSQLJoin struct {
-	TableName  string
-	Reference  string
-	ForeignKey string
-	Columns    []*PGSQLQueryColumn
-	Alias      string
+	TableName    string
+	ConTableName string
+	Reference    string
+	ForeignKey   string
+	Columns      []*PGSQLQueryColumn
+	Alias        string
 }
 
 type PGSQLColumn struct {
@@ -57,11 +58,9 @@ type PGSQLMeta struct {
 }
 
 type PGSQLTable struct {
-	TableName    string
-	Data         *PGSQLData
-	Columns      []*PGSQLColumn
-	Joins        []*PGSQLJoin
-	LateralJoins []*PGSQLJoin
+	TableName string
+	Data      *PGSQLData
+	Columns   []*PGSQLColumn
 }
 
 type PGSQLReference struct {
@@ -70,12 +69,20 @@ type PGSQLReference struct {
 	Reference  string
 }
 
+type PGSQLQuery struct {
+	TableName    string
+	Columns      []*PGSQLQueryColumn
+	Joins        []*PGSQLJoin
+	LateralJoins []*PGSQLJoin
+}
+
 type PGSQLSchema struct {
 	SchemaName   string
 	Locales      []*Locale
 	Tables       []*PGSQLTable
 	ConTables    []*PGSQLTable
 	References   []*PGSQLReference
+	Functions    []*PGSQLQuery
 	AssetColumns []string
 	WithMetaData bool
 	WithEntries  bool
@@ -92,17 +99,19 @@ func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, withM
 		Tables:       make([]*PGSQLTable, 0),
 		ConTables:    make([]*PGSQLTable, 0),
 		References:   make([]*PGSQLReference, 0),
+		Functions:    make([]*PGSQLQuery, 0),
 		AssetColumns: assetColumns,
 		WithMetaData: withMetaData,
 		WithEntries:  withEntries,
 	}
 
 	for _, item := range items {
-		table, conTables, references := NewPGSQLTable(item, withMetaData)
+		table, conTables, references, functions := NewPGSQLTable(item, withMetaData)
 
 		schema.Tables = append(schema.Tables, table)
 		schema.ConTables = append(schema.ConTables, conTables...)
 		schema.References = append(schema.References, references...)
+		schema.Functions = append(schema.Functions, functions...)
 	}
 
 	return schema
@@ -172,7 +181,7 @@ func (s *PGSQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewPGSQLTable(item *ContentType, withMetaData bool) (*PGSQLTable, []*PGSQLTable, []*PGSQLReference) {
+func NewPGSQLTable(item *ContentType, withMetaData bool) (*PGSQLTable, []*PGSQLTable, []*PGSQLReference, []*PGSQLQuery) {
 	table := &PGSQLTable{
 		TableName: toSnakeCase(item.Sys.ID),
 		Columns:   make([]*PGSQLColumn, 0),
@@ -180,6 +189,7 @@ func NewPGSQLTable(item *ContentType, withMetaData bool) (*PGSQLTable, []*PGSQLT
 	}
 	conTables := make([]*PGSQLTable, 0)
 	references := make([]*PGSQLReference, 0)
+	functions := make([]*PGSQLFunction, 0)
 
 	for _, field := range item.Fields {
 		if !field.Omitted {
