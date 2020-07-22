@@ -47,42 +47,69 @@ $$ LANGUAGE 'plpgsql';
 --
 {{- define "asset" -}}
 json_build_object(
-	'title', {{ .ColumnName }}__asset.title,
-	'description', {{ .ColumnName }}__asset.description,
-	'file', json_build_object(
-		'contentType', {{ .ColumnName }}__asset.content_type,
-		'fileName', {{ .ColumnName }}__asset.file_name,
-		'url', {{ .ColumnName }}__asset.url
-	)
-)
+						'title', {{ .ColumnName }}__asset.title,
+						'description', {{ .ColumnName }}__asset.description,
+						'file', json_build_object(
+							'contentType', {{ .ColumnName }}__asset.content_type,
+							'fileName', {{ .ColumnName }}__asset.file_name,
+							'url', {{ .ColumnName }}__asset.url
+						)
+					)
 {{- end -}}
 {{- define "refColumn" -}}
-	json_build_object(
-		'sys', json_build_object('id', {{ .TableName }}._sys_id),
-	{{- range $i, $c:= .Columns }}
-		{{- if $i -}},{{- end }}
-		'{{ .Alias }}',
+json_build_object(
+					'sys', json_build_object('id', {{ .TableName }}._sys_id),
+					{{- range $i, $c:= .Columns }}
+					{{- if $i -}},{{- end }}
+					'{{ .Alias }}',
+					{{- if .IsAsset -}}
+						{{ template "asset" . }}
+					{{- else if .ConTableName -}}
+						_included_{{ .ConTableName }}.res
+					{{- else if .Reference -}}
+						{{ template "refColumn" .Reference }}
+					{{- else -}}
+						{{ .TableName }}.{{ .ColumnName }}
+					{{- end -}}
+					{{- end -}})
+{{- end -}}
+{{- define "join" -}}
 		{{- if .IsAsset -}}
-			{{ template "asset" . }}
-		{{- else if .ConTableName -}}
-			_included_{{ .ConTableName }}.res
+			LEFT JOIN {{ .Reference.TableName }} {{ .ColumnName }}_{{ .Reference.TableName }} ON {{ .ColumnName }}_{{ .Reference.TableName }}._sys_id = {{ .TableName }}.{{ .ColumnName }} AND {{ .ColumnName }}_{{ .Reference.TableName }}._locale = localeArg
+		{{- /* {{- else if .ConTableName -}}
+			{{- $ref:= .Reference -}}
+			LEFT JOIN LATERAL (
+				SELECT json_agg(l) AS res FROM (
+					SELECT
+						json_build_object('id', {{ $ref.Reference }}._sys_id) AS sys,
+						{{- range $ref.Columns }}
+							,
+							{{ $ref.Reference }}.{{ $ref.ColumnName }} AS "{{ $ref.Alias }}"
+						{{- end }}
+					FROM {{ .ConTableName }}
+					JOIN {{ $ref.Reference }} on {{ $ref.Reference }}._sys_id = {{ .ConTableName }}.{{ $ref.ForeignKey }} AND {{ $ref.Reference }}._locale = localeArg
+					WHERE {{ .ConTableName }}.{{ $ref.Reference }} = {{ .TableName }}._sys_id AND {{ .ConTableName }}._locale = localeArg
+				) l
+			) _included_{{ .ConTableName }} ON true */ -}}
 		{{- else if .Reference -}}
-			{{ template "refColumn" .Reference }}
-		{{- else -}}
-			{{ .TableName }}.{{ .ColumnName }}
-		{{- end -}}
-	{{- end -}})
+			{{- $ref:= .Reference -}}
+			LEFT JOIN {{ $ref.TableName }} ON {{ $ref.TableName }}._sys_id = {{ .TableName }}.{{ $ref.ForeignKey }} AND {{ $ref.TableName }}._locale = localeArg
+			{{ range $i, $c:= $ref.Columns -}}
+			{{- template "join" . -}}
+			{{- end }}
+		{{- end }}
 {{- end -}}
 {{ range $i, $t := $.Functions }}
-CREATE OR REPLACE FUNCTION _{{ .TableName }}_items(locale TEXT, filters _filter[], orderBy TEXT, skip INTEGER, take INTEGER)
+CREATE OR REPLACE FUNCTION _{{ .TableName }}_items(localeArg TEXT, filters _filter[], orderBy TEXT, skip INTEGER, take INTEGER)
 RETURNS json AS $$
 BEGIN
-	WITH filtered AS (
-		SELECT _get_sys_ids('{{ .TableName }}', locale, filters, orderBy, skip, take) AS _sys_id
-	)
-	SELECT json_agg(t) AS res FROM (
-		SELECT
-			{{ range $i, $c := .Columns }}
+	RETURN (
+		WITH filtered AS (
+			SELECT _get_sys_ids('{{ .TableName }}', localeArg, filters, orderBy, skip, take) AS _sys_id
+		)
+		SELECT json_agg(t) AS res FROM (
+			SELECT
+			{{- range $i, $c := .Columns }}
 				{{- if $i -}},{{- end }}
 				{{ if .IsAsset -}}
 					{{ template "asset" . }}
@@ -94,44 +121,25 @@ BEGIN
 					{{ .TableName }}.{{ .ColumnName }}
 				{{- end }} AS "{{ .Alias }}"
 			{{- end }}
-		FROM {{ .TableName }}
-		{{ range $i, $c := .Columns }}
-			{{ if .IsAsset -}}
-				LEFT JOIN {{ .Reference.TableName }} ON {{ .Reference.TableName }}._sys_id = {{ .TableName }}.{{ .ColumnName }} AND {{ .Reference.TableName }}._locale = locale
-			{{- /* {{- else if .ConTableName -}}
-				{{- $ref:= .Reference -}}
-				LEFT JOIN LATERAL (
-					SELECT json_agg(l) AS res FROM (
-						SELECT
-							json_build_object('id', {{ $ref.Reference }}._sys_id) AS sys,
-							{{- range $ref.Columns }}
-								,
-								{{ $ref.Reference }}.{{ $ref.ColumnName }} AS "{{ $ref.Alias }}"
-							{{- end }}
-						FROM {{ .ConTableName }}
-						JOIN {{ $ref.Reference }} on {{ $ref.Reference }}._sys_id = {{ .ConTableName }}.{{ $ref.ForeignKey }} AND {{ $ref.Reference }}._locale = locale
-						WHERE {{ .ConTableName }}.{{ $ref.Reference }} = {{ .TableName }}._sys_id AND {{ .ConTableName }}._locale = locale
-					) l
-				) _included_{{ .ConTableName }} ON true */ -}}
-			{{- else if .Reference -}}
-				{{- $ref:= .Reference -}}
-				LEFT JOIN {{ $ref.TableName }} ON {{ $ref.TableName }}._sys_id = {{ .TableName }}.{{ $ref.ForeignKey }} AND {{ $ref.TableName }}._locale = locale
+			FROM {{ .TableName }}
+			{{ range $i, $c := .Columns }}
+				{{- template "join" . }}
 			{{- end }}
-		{{- end }}
-		WHERE {{ .TableName }}._locale = locale AND {{ .TableName }}._sys_id IN (SELECT _sys_id FROM filtered)
-	) t;
+			WHERE {{ .TableName }}._locale = localeArg AND {{ .TableName }}._sys_id IN (SELECT _sys_id FROM filtered)
+		) t
+	);
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION _{{ .TableName }}_query(locale TEXT, filters _filter[], orderBy TEXT, skip INTEGER, take INTEGER)
+CREATE OR REPLACE FUNCTION _{{ .TableName }}_query(localeArg TEXT, filters _filter[], orderBy TEXT, skip INTEGER, take INTEGER)
 RETURNS _result AS $$
 DECLARE
 	count integer;
 	items json;
 	res _result;
 BEGIN
-	SELECT COUNT(f) FROM (SELECT _get_sys_ids('{{ .TableName }}', locale, filters, '', 0, 0)) AS f INTO count;
-	SELECT _{{ .TableName }}_items(locale, filters, orderBy, skip, take) INTO items;
+	SELECT COUNT(f) FROM (SELECT _get_sys_ids('{{ .TableName }}', localeArg, filters, '', 0, 0)) AS f INTO count;
+	SELECT _{{ .TableName }}_items(localeArg, filters, orderBy, skip, take) INTO items;
 	IF items IS NULL THEN
 		items:= '[]'::JSON;
 	END IF;
