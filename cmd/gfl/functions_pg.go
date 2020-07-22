@@ -11,11 +11,13 @@ import (
 )
 
 var (
-	storeToFile bool
+	storeToFile  bool
+	includeDepth int64
 )
 
 func init() {
 	funcCmd.PersistentFlags().BoolVarP(&storeToFile, "file", "f", false, "store to file")
+	funcCmd.PersistentFlags().Int64VarP(&includeDepth, "include", "i", 3, "include depth")
 	funcCmd.AddCommand(pgFuncCmd)
 }
 
@@ -61,7 +63,7 @@ var pgFuncCmd = &cobra.Command{
 		}
 
 		log.Println("creating postgres schema...")
-		schema := gontentful.NewPGSQLSchema(schemaName, space, cmaTypes.Items, withMetaData, withEntries)
+		schema := gontentful.NewPGSQLSchema(schemaName, space, cmaTypes.Items, withMetaData, withEntries, includeDepth)
 
 		if storeToFile {
 			s, err := json.Marshal(schema)

@@ -40,7 +40,7 @@ var pgSchemaCmd = &cobra.Command{
 		}
 
 		log.Println("executing postgres schema...")
-		schema := gontentful.NewPGSQLSchema(schemaName, space, cmaTypes.Items, withMetaData, withEntries)
+		schema := gontentful.NewPGSQLSchema(schemaName, space, cmaTypes.Items, withMetaData, withEntries, 0)
 		err = schema.Exec(databaseURL)
 		if err != nil {
 			log.Fatal(err)

@@ -47,57 +47,53 @@ $$ LANGUAGE 'plpgsql';
 --
 {{- define "asset" -}}
 json_build_object(
-						'title', {{ .ColumnName }}__asset.title,
-						'description', {{ .ColumnName }}__asset.description,
+						'title', {{ .JoinAlias }}.title,
+						'description', {{ .JoinAlias }}.description,
 						'file', json_build_object(
-							'contentType', {{ .ColumnName }}__asset.content_type,
-							'fileName', {{ .ColumnName }}__asset.file_name,
-							'url', {{ .ColumnName }}__asset.url
+							'contentType', {{ .JoinAlias }}.content_type,
+							'fileName', {{ .JoinAlias }}.file_name,
+							'url', {{ .JoinAlias }}.url
 						)
 					)
 {{- end -}}
 {{- define "refColumn" -}}
 json_build_object(
-					'sys', json_build_object('id', {{ .TableName }}._sys_id),
+					'sys', json_build_object('id', {{ .JoinAlias }}._sys_id),
 					{{- range $i, $c:= .Columns }}
 					{{- if $i -}},{{- end }}
 					'{{ .Alias }}',
 					{{- if .IsAsset -}}
-						{{ template "asset" . }}
+						{{ template "asset" .Reference }}
 					{{- else if .ConTableName -}}
-						_included_{{ .ConTableName }}.res
+						_included_{{ .JoinAlias }}.res
 					{{- else if .Reference -}}
 						{{ template "refColumn" .Reference }}
 					{{- else -}}
-						{{ .TableName }}.{{ .ColumnName }}
+						{{ .JoinAlias }}.{{ .ColumnName }}
 					{{- end -}}
 					{{- end -}})
 {{- end -}}
 {{- define "join" -}}
-		{{- if .IsAsset -}}
-			LEFT JOIN {{ .Reference.TableName }} {{ .ColumnName }}_{{ .Reference.TableName }} ON {{ .ColumnName }}_{{ .Reference.TableName }}._sys_id = {{ .TableName }}.{{ .ColumnName }} AND {{ .ColumnName }}_{{ .Reference.TableName }}._locale = localeArg
-		{{- /* {{- else if .ConTableName -}}
-			{{- $ref:= .Reference -}}
+		{{- if .ConTableName }}
 			LEFT JOIN LATERAL (
 				SELECT json_agg(l) AS res FROM (
 					SELECT
-						json_build_object('id', {{ $ref.Reference }}._sys_id) AS sys,
-						{{- range $ref.Columns }}
+						json_build_object('id', {{ .Reference.JoinAlias }}._sys_id) AS sys
+						{{- range $i, $c:= .Reference.Columns -}}
 							,
-							{{ $ref.Reference }}.{{ $ref.ColumnName }} AS "{{ $ref.Alias }}"
+							{{ .JoinAlias }}.{{ .ColumnName }} AS "{{ .Alias }}"
 						{{- end }}
 					FROM {{ .ConTableName }}
-					JOIN {{ $ref.Reference }} on {{ $ref.Reference }}._sys_id = {{ .ConTableName }}.{{ $ref.ForeignKey }} AND {{ $ref.Reference }}._locale = localeArg
-					WHERE {{ .ConTableName }}.{{ $ref.Reference }} = {{ .TableName }}._sys_id AND {{ .ConTableName }}._locale = localeArg
+					JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.TableName }}._sys_id = {{ .ConTableName }}.{{ .Reference.ForeignKey }} AND {{ .Reference.TableName }}._locale = localeArg
+					WHERE {{ .ConTableName }}.{{ .Reference.ForeignKey }} = {{ .TableName }}._sys_id AND {{ .ConTableName }}._locale = localeArg
 				) l
-			) _included_{{ .ConTableName }} ON true */ -}}
-		{{- else if .Reference -}}
-			{{- $ref:= .Reference -}}
-			LEFT JOIN {{ $ref.TableName }} ON {{ $ref.TableName }}._sys_id = {{ .TableName }}.{{ $ref.ForeignKey }} AND {{ $ref.TableName }}._locale = localeArg
-			{{ range $i, $c:= $ref.Columns -}}
-			{{- template "join" . -}}
-			{{- end }}
-		{{- end }}
+			) _included_{{ .Reference.JoinAlias }} ON true
+		{{- else if .Reference }}
+			LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.TableName }}._sys_id = {{ .TableName }}.{{ .Reference.ForeignKey }} AND {{ .Reference.TableName }}._locale = localeArg
+			{{- range .Reference.Columns }}
+			{{ template "join" . }}
+			{{- end -}}
+		{{- end -}}
 {{- end -}}
 {{ range $i, $t := $.Functions }}
 CREATE OR REPLACE FUNCTION _{{ .TableName }}_items(localeArg TEXT, filters _filter[], orderBy TEXT, skip INTEGER, take INTEGER)
@@ -113,17 +109,17 @@ BEGIN
 				{{- if $i -}},{{- end }}
 				{{ if .IsAsset -}}
 					{{ template "asset" . }}
+				{{- else if .ConTableName -}}
+					_included_{{ .Reference.JoinAlias }}.res
 				{{- else if .Reference -}}
 					{{ template "refColumn" .Reference }}
-				{{- else if .ConTableName -}}
-					_included_{{ .ConTableName }}.res
 				{{- else -}}
 					{{ .TableName }}.{{ .ColumnName }}
 				{{- end }} AS "{{ .Alias }}"
 			{{- end }}
 			FROM {{ .TableName }}
-			{{ range $i, $c := .Columns }}
-				{{- template "join" . }}
+			{{- range .Columns -}}
+				{{ template "join" . }}
 			{{- end }}
 			WHERE {{ .TableName }}._locale = localeArg AND {{ .TableName }}._sys_id IN (SELECT _sys_id FROM filtered)
 		) t
