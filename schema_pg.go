@@ -10,19 +10,26 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type PGSQLQueryColumn struct {
-	ColumnName  string
-	Alias       string
-	IsReference bool
+type PGSQLProcedureColumn struct {
+	TableName    string
+	ColumnName   string
+	Alias        string
+	ConTableName string
+	IsAsset      bool
+	Reference    *PGSQLProcedureReference
 }
 
-type PGSQLJoin struct {
-	TableName    string
-	ConTableName string
-	Reference    string
-	ForeignKey   string
-	Columns      []*PGSQLQueryColumn
-	Alias        string
+type PGSQLProcedureReference struct {
+	TableName  string
+	Reference  string
+	ForeignKey string
+	Columns    []*PGSQLProcedureColumn
+	Alias      string
+}
+
+type PGSQLProcedure struct {
+	TableName string
+	Columns   []*PGSQLProcedureColumn
 }
 
 type PGSQLColumn struct {
@@ -69,23 +76,17 @@ type PGSQLReference struct {
 	Reference  string
 }
 
-type PGSQLQuery struct {
-	TableName    string
-	Columns      []*PGSQLQueryColumn
-	Joins        []*PGSQLJoin
-	LateralJoins []*PGSQLJoin
-}
-
 type PGSQLSchema struct {
-	SchemaName   string
-	Locales      []*Locale
-	Tables       []*PGSQLTable
-	ConTables    []*PGSQLTable
-	References   []*PGSQLReference
-	Functions    []*PGSQLQuery
-	AssetColumns []string
-	WithMetaData bool
-	WithEntries  bool
+	SchemaName     string
+	Locales        []*Locale
+	Tables         []*PGSQLTable
+	ConTables      []*PGSQLTable
+	References     []*PGSQLReference
+	Functions      []*PGSQLProcedure
+	AssetTableName string
+	AssetColumns   []string
+	WithMetaData   bool
+	WithEntries    bool
 }
 
 var schemaFuncMap = template.FuncMap{
@@ -99,19 +100,24 @@ func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, withM
 		Tables:       make([]*PGSQLTable, 0),
 		ConTables:    make([]*PGSQLTable, 0),
 		References:   make([]*PGSQLReference, 0),
-		Functions:    make([]*PGSQLQuery, 0),
+		Functions:    make([]*PGSQLProcedure, 0),
 		AssetColumns: assetColumns,
 		WithMetaData: withMetaData,
 		WithEntries:  withEntries,
 	}
 
+	itemsMap := make(map[string]*ContentType)
 	for _, item := range items {
-		table, conTables, references, functions := NewPGSQLTable(item, withMetaData)
+		itemsMap[item.Sys.ID] = item
+	}
+
+	for _, item := range items {
+		table, conTables, references, proc := NewPGSQLTable(item, itemsMap, withMetaData)
 
 		schema.Tables = append(schema.Tables, table)
 		schema.ConTables = append(schema.ConTables, conTables...)
 		schema.References = append(schema.References, references...)
-		schema.Functions = append(schema.Functions, functions...)
+		schema.Functions = append(schema.Functions, proc)
 	}
 
 	return schema
@@ -157,7 +163,7 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 		return err
 	}
 
-	// funcs := NewPGFunctions(s.SchemaName)
+	// funcs := NewPGFunctions(s)
 	// err = funcs.Exec(databaseURL)
 	// if err != nil {
 	// 	return err
@@ -181,7 +187,7 @@ func (s *PGSQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewPGSQLTable(item *ContentType, withMetaData bool) (*PGSQLTable, []*PGSQLTable, []*PGSQLReference, []*PGSQLQuery) {
+func NewPGSQLTable(item *ContentType, items map[string]*ContentType, withMetaData bool) (*PGSQLTable, []*PGSQLTable, []*PGSQLReference, *PGSQLProcedure) {
 	table := &PGSQLTable{
 		TableName: toSnakeCase(item.Sys.ID),
 		Columns:   make([]*PGSQLColumn, 0),
@@ -189,12 +195,17 @@ func NewPGSQLTable(item *ContentType, withMetaData bool) (*PGSQLTable, []*PGSQLT
 	}
 	conTables := make([]*PGSQLTable, 0)
 	references := make([]*PGSQLReference, 0)
-	functions := make([]*PGSQLFunction, 0)
+	proc := &PGSQLProcedure{
+		TableName: table.TableName,
+		Columns:   make([]*PGSQLProcedureColumn, 0),
+	}
 
 	for _, field := range item.Fields {
 		if !field.Omitted {
 			column := NewPGSQLColumn(field)
 			table.Columns = append(table.Columns, column)
+			procColumn := NewPGSQLProcedureColumn(column.ColumnName, field, items, table.TableName)
+
 			if withMetaData {
 				meta := makeMeta(field)
 				table.Data.Metas = append(table.Data.Metas, meta)
@@ -204,12 +215,14 @@ func NewPGSQLTable(item *ContentType, withMetaData bool) (*PGSQLTable, []*PGSQLT
 			} else if field.Items != nil {
 				conTables, references = addManyToMany(conTables, references, table.TableName, field)
 			}
+			proc.Columns = append(proc.Columns, procColumn)
+
 			// } else {
 			// 	fmt.Println("Ignoring omitted field", field.ID, "in", table.TableName)
 		}
 	}
 
-	return table, conTables, references
+	return table, conTables, references, proc
 }
 
 func NewPGSQLColumn(field *ContentTypeField) *PGSQLColumn {
@@ -270,15 +283,23 @@ func isUnique(validations []*FieldValidation) bool {
 	return false
 }
 
+func getFieldLinkContentType(validations []*FieldValidation) string {
+	for _, v := range validations {
+		if v.LinkContentType != nil {
+			return v.LinkContentType[0]
+		}
+	}
+	return ""
+}
+
 func getFieldLinkType(linkType string, validations []*FieldValidation) string {
 	if linkType == ASSET {
 		return assetTableName
 	}
 	if linkType == ENTRY {
-		for _, v := range validations {
-			if v.LinkContentType != nil {
-				return toSnakeCase(v.LinkContentType[0])
-			}
+		lct := getFieldLinkContentType(validations)
+		if lct != "" {
+			return toSnakeCase(lct)
 		}
 	}
 	return linkType
@@ -351,19 +372,15 @@ func getConTableColumns(tableName string, reference string) []*PGSQLColumn {
 	}
 }
 
-func addReference(references []*PGSQLReference, tableName string, reference string, foreignKey string) []*PGSQLReference {
-	return append(references, &PGSQLReference{
-		TableName:  tableName,
-		Reference:  reference,
-		ForeignKey: foreignKey,
-	})
-}
-
 func addOneTOne(references []*PGSQLReference, tableName string, field *ContentTypeField) []*PGSQLReference {
 	linkType := getFieldLinkType(field.LinkType, field.Validations)
 	if linkType != "" && linkType != ENTRY {
 		foreignKey := toSnakeCase(field.ID)
-		references = addReference(references, tableName, linkType, foreignKey)
+		references = append(references, &PGSQLReference{
+			TableName:  tableName,
+			Reference:  linkType,
+			ForeignKey: foreignKey,
+		})
 	}
 	return references
 }
@@ -373,8 +390,78 @@ func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, tableN
 	if linkType != "" && linkType != ENTRY {
 		conTable := NewPGSQLCon(tableName, toSnakeCase(field.ID), linkType)
 		conTables = append(conTables, conTable)
-		references = addReference(references, conTable.TableName, tableName, tableName)
-		references = addReference(references, conTable.TableName, linkType, linkType)
+		references = append(references, &PGSQLReference{
+			TableName:  conTable.TableName,
+			Reference:  tableName,
+			ForeignKey: tableName,
+		}, &PGSQLReference{
+			TableName:  conTable.TableName,
+			Reference:  linkType,
+			ForeignKey: linkType,
+		})
 	}
 	return conTables, references
+}
+
+func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items map[string]*ContentType, tableName string) *PGSQLProcedureColumn {
+	col := &PGSQLProcedureColumn{
+		TableName:  tableName,
+		ColumnName: columnName,
+		Alias:      field.ID,
+	}
+
+	if field.LinkType == ASSET {
+		col.IsAsset = true
+		col.Reference = &PGSQLProcedureReference{
+			TableName: assetTableName,
+		}
+	} else if field.LinkType != "" {
+		linkType := getFieldLinkContentType(field.Validations)
+		linkTableName := toSnakeCase(field.ID)
+		if linkType != "" && linkType != ENTRY {
+			col.Reference = &PGSQLProcedureReference{
+				TableName:  linkTableName,
+				Reference:  linkType,
+				ForeignKey: toSnakeCase(field.ID),
+				Columns:    make([]*PGSQLProcedureColumn, 0),
+			}
+			if items[linkType] != nil {
+				itemTableName := toSnakeCase(items[linkType].Sys.ID)
+				for _, f := range items[linkType].Fields {
+					if !f.Omitted {
+						fieldColumnName := toSnakeCase(f.ID)
+						procColumn := NewPGSQLProcedureColumn(fieldColumnName, f, items, itemTableName)
+						col.Reference.Columns = append(col.Reference.Columns, procColumn)
+					}
+				}
+			}
+		}
+	} else if field.Items != nil {
+		linkType := getFieldLinkContentType(field.Items.Validations)
+		if linkType != "" && linkType != ENTRY {
+			col.ConTableName = getConTableName(tableName, toSnakeCase(field.ID))
+			// conLinkType := getFieldLinkContentType(field.Items.Validations)
+			// conLinkTableName := toSnakeCase(field.ID)
+			// if linkType != "" && linkType != ENTRY {
+			// 	col.Reference = &PGSQLProcedureReference{
+			// 		TableName:  conLinkTableName,
+			// 		Reference:  conLinkType,
+			// 		ForeignKey: toSnakeCase(field.ID),
+			// 		Columns:    make([]*PGSQLProcedureColumn, 0),
+			// 	}
+			// 	if items[linkType] != nil {
+			// 		itemTableName := toSnakeCase(items[linkType].Sys.ID)
+			// 		for _, f := range items[linkType].Fields {
+			// 			if !f.Omitted {
+			// 				fieldColumnName := toSnakeCase(f.ID)
+			// 				procColumn := NewPGSQLProcedureColumn(fieldColumnName, f, items, itemTableName)
+			// 				col.Reference.Columns = append(col.Reference.Columns, procColumn)
+			// 			}
+			// 		}
+			// 	}
+			// }
+		}
+	}
+
+	return col
 }

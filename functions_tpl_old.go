@@ -1,6 +1,6 @@
 package gontentful
 
-const pgFuncTemplate = `
+const pgFuncTemplateOld = `
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
 DROP TYPE IF EXISTS _meta CASCADE;

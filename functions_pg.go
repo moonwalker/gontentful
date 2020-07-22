@@ -3,18 +3,19 @@ package gontentful
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
 )
 
 type PGFunctions struct {
-	SchemaName string
+	Schema *PGSQLSchema
 }
 
-func NewPGFunctions(schemaName string) *PGFunctions {
+func NewPGFunctions(schema *PGSQLSchema) *PGFunctions {
 	return &PGFunctions{
-		SchemaName: schemaName,
+		Schema: schema,
 	}
 }
 
@@ -26,7 +27,7 @@ func (s *PGFunctions) Exec(databaseURL string) error {
 	}
 
 	var buff bytes.Buffer
-	err = tmpl.Execute(&buff, s)
+	err = tmpl.Execute(&buff, s.Schema)
 	if err != nil {
 		return err
 	}
@@ -41,13 +42,16 @@ func (s *PGFunctions) Exec(databaseURL string) error {
 	if err != nil {
 		return err
 	}
-	if s.SchemaName != "" {
+	if s.Schema.SchemaName != "" {
 		// set schema in use
-		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.Schema.SchemaName))
 		if err != nil {
 			return err
 		}
 	}
+
+	ioutil.WriteFile("/tmp/func", buff.Bytes(), 0644)
+
 	_, err = txn.Exec(buff.String())
 	if err != nil {
 		return err
