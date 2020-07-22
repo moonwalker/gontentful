@@ -417,20 +417,18 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 		}
 	} else if field.LinkType != "" {
 		linkType := getFieldLinkContentType(field.Validations)
-		linkTableName := toSnakeCase(field.ID)
 		if linkType != "" && linkType != ENTRY {
 			col.Reference = &PGSQLProcedureReference{
-				TableName:  linkTableName,
+				TableName:  linkType,
 				Reference:  linkType,
 				ForeignKey: toSnakeCase(field.ID),
 				Columns:    make([]*PGSQLProcedureColumn, 0),
 			}
 			if items[linkType] != nil {
-				itemTableName := toSnakeCase(items[linkType].Sys.ID)
 				for _, f := range items[linkType].Fields {
 					if !f.Omitted {
 						fieldColumnName := toSnakeCase(f.ID)
-						procColumn := NewPGSQLProcedureColumn(fieldColumnName, f, items, itemTableName)
+						procColumn := NewPGSQLProcedureColumn(fieldColumnName, f, items, linkType)
 						col.Reference.Columns = append(col.Reference.Columns, procColumn)
 					}
 				}
