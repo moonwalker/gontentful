@@ -208,7 +208,7 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, withMetaDat
 		if !field.Omitted {
 			column := NewPGSQLColumn(field)
 			table.Columns = append(table.Columns, column)
-			procColumn := NewPGSQLProcedureColumn("", column.ColumnName, field, items, table.TableName, includeDepth, 0)
+			procColumn := NewPGSQLProcedureColumn(column.ColumnName, field, items, table.TableName, includeDepth, 0, "")
 
 			if withMetaData {
 				meta := makeMeta(field)
@@ -407,7 +407,7 @@ func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, tableN
 	return conTables, references
 }
 
-func NewPGSQLProcedureColumn(path string, columnName string, field *ContentTypeField, items map[string]*ContentType, tableName string, maxIncludeDepth int64, includeDepth int64) *PGSQLProcedureColumn {
+func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items map[string]*ContentType, tableName string, maxIncludeDepth int64, includeDepth int64, path string) *PGSQLProcedureColumn {
 	col := &PGSQLProcedureColumn{
 		TableName:  tableName,
 		ColumnName: columnName,
@@ -428,7 +428,11 @@ func NewPGSQLProcedureColumn(path string, columnName string, field *ContentTypeF
 		linkTableName := toSnakeCase(linkType)
 		if linkType != "" && linkType != ENTRY {
 			joinAlias := getJoinAlias(path, columnName, linkTableName)
-			col.JoinAlias = joinAlias
+			if path == "" {
+				col.JoinAlias = tableName
+			} else {
+				col.JoinAlias = joinAlias
+			}
 			col.Reference = &PGSQLProcedureReference{
 				TableName:  linkTableName,
 				ForeignKey: toSnakeCase(field.ID),
@@ -441,7 +445,7 @@ func NewPGSQLProcedureColumn(path string, columnName string, field *ContentTypeF
 				for _, f := range items[linkType].Fields {
 					if !f.Omitted {
 						fieldColumnName := toSnakeCase(f.ID)
-						procColumn := NewPGSQLProcedureColumn(getPath(path, columnName), fieldColumnName, f, items, itemTableName, maxIncludeDepth, includeDepth+1)
+						procColumn := NewPGSQLProcedureColumn(fieldColumnName, f, items, itemTableName, maxIncludeDepth, includeDepth+1, getPath(path, columnName))
 						procColumn.JoinAlias = joinAlias
 						col.Reference.Columns = append(col.Reference.Columns, procColumn)
 					}
@@ -454,7 +458,11 @@ func NewPGSQLProcedureColumn(path string, columnName string, field *ContentTypeF
 			col.ConTableName = getConTableName(tableName, toSnakeCase(field.ID))
 			conLinkTableName := toSnakeCase(conLinkType)
 			conJoinAlias := getJoinAlias(path, columnName, conLinkTableName)
-			col.JoinAlias = conJoinAlias
+			if path == "" {
+				col.JoinAlias = tableName
+			} else {
+				col.JoinAlias = conJoinAlias
+			}
 			col.Reference = &PGSQLProcedureReference{
 				TableName:  conLinkTableName,
 				ForeignKey: toSnakeCase(field.ID),
@@ -466,7 +474,7 @@ func NewPGSQLProcedureColumn(path string, columnName string, field *ContentTypeF
 				for _, f := range items[conLinkType].Fields {
 					if !f.Omitted {
 						fieldColumnName := toSnakeCase(f.ID)
-						procColumn := NewPGSQLProcedureColumn(getPath(path, columnName), fieldColumnName, f, items, itemTableName, maxIncludeDepth, includeDepth+1)
+						procColumn := NewPGSQLProcedureColumn(fieldColumnName, f, items, itemTableName, maxIncludeDepth, includeDepth+1, getPath(path, columnName))
 						procColumn.JoinAlias = conJoinAlias
 						col.Reference.Columns = append(col.Reference.Columns, procColumn)
 					}

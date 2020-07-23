@@ -86,12 +86,10 @@ json_build_object(
 					FROM {{ .ConTableName }}
 					JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ .ConTableName }}.{{ .Reference.TableName }} AND {{ .Reference.JoinAlias }}._locale = localeArg
 					WHERE {{ .ConTableName }}.{{ .TableName }} = {{ .JoinAlias }}._sys_id AND {{ .ConTableName }}._locale = localeArg
-					-- {{ .JoinAlias }} {{ .TableName }}
 				) l
 			) _included_{{ .Reference.JoinAlias }} ON true
 		{{- else if .Reference }}
 			LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}._locale = localeArg
-			-- {{ .JoinAlias }} {{ .TableName }}
 			{{- range .Reference.Columns }}
 			{{ template "join" . }}
 			{{- end -}}
