@@ -56,7 +56,7 @@ json_build_object(
 						)
 					)
 {{- end -}}
-{{- define "refColumn" -}}
+{{- define "refColumn" -}} 
 json_build_object(
 					'sys', json_build_object('id', {{ .JoinAlias }}._sys_id),
 					{{- range $i, $c:= .Columns }}
@@ -65,7 +65,7 @@ json_build_object(
 					{{- if .IsAsset -}}
 						{{ template "asset" .Reference }}
 					{{- else if .ConTableName -}}
-						_included_{{ .JoinAlias }}.res
+						_included_{{ .Reference.JoinAlias }}.res
 					{{- else if .Reference -}}
 						{{ template "refColumn" .Reference }}
 					{{- else -}}
@@ -84,12 +84,14 @@ json_build_object(
 							{{ .JoinAlias }}.{{ .ColumnName }} AS "{{ .Alias }}"
 						{{- end }}
 					FROM {{ .ConTableName }}
-					JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.TableName }}._sys_id = {{ .ConTableName }}.{{ .Reference.ForeignKey }} AND {{ .Reference.TableName }}._locale = localeArg
-					WHERE {{ .ConTableName }}.{{ .Reference.ForeignKey }} = {{ .TableName }}._sys_id AND {{ .ConTableName }}._locale = localeArg
+					JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ .ConTableName }}.{{ .Reference.TableName }} AND {{ .Reference.JoinAlias }}._locale = localeArg
+					WHERE {{ .ConTableName }}.{{ .TableName }} = {{ if .Depth -}}{{ .JoinAlias }}{{- else -}}{{ .TableName }}{{- end -}}._sys_id AND {{ .ConTableName }}._locale = localeArg
+					-- {{ .JoinAlias }} {{ .TableName }}
 				) l
 			) _included_{{ .Reference.JoinAlias }} ON true
 		{{- else if .Reference }}
-			LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.TableName }}._sys_id = {{ .TableName }}.{{ .Reference.ForeignKey }} AND {{ .Reference.TableName }}._locale = localeArg
+			LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ if .Depth -}}{{ .JoinAlias }}{{- else -}}{{ .TableName }}{{- end -}}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}._locale = localeArg
+			-- {{ .JoinAlias }} {{ .TableName }}
 			{{- range .Reference.Columns }}
 			{{ template "join" . }}
 			{{- end -}}

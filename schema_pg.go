@@ -22,6 +22,7 @@ type PGSQLProcedureColumn struct {
 	Reference    *PGSQLProcedureReference
 	JoinAlias    string
 	IsAsset      bool
+	Depth        int64
 }
 
 type PGSQLProcedureReference struct {
@@ -208,7 +209,7 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, withMetaDat
 		if !field.Omitted {
 			column := NewPGSQLColumn(field)
 			table.Columns = append(table.Columns, column)
-			procColumn := NewPGSQLProcedureColumn(column.ColumnName, field, items, table.TableName, includeDepth, 0)
+			procColumn := NewPGSQLProcedureColumn("", column.ColumnName, field, items, table.TableName, includeDepth, 0)
 
 			if withMetaData {
 				meta := makeMeta(field)
@@ -407,16 +408,17 @@ func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, tableN
 	return conTables, references
 }
 
-func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items map[string]*ContentType, tableName string, maxIncludeDepth int64, includeDepth int64) *PGSQLProcedureColumn {
+func NewPGSQLProcedureColumn(path string, columnName string, field *ContentTypeField, items map[string]*ContentType, tableName string, maxIncludeDepth int64, includeDepth int64) *PGSQLProcedureColumn {
 	col := &PGSQLProcedureColumn{
 		TableName:  tableName,
 		ColumnName: columnName,
 		Alias:      field.ID,
+		Depth:      includeDepth,
 	}
 
 	if field.LinkType == ASSET {
 		col.IsAsset = true
-		assetJoinAlias := fmt.Sprintf("%s__%s", columnName, assetTableName)
+		assetJoinAlias := getJoinAlias(path, columnName, assetTableName)
 		col.JoinAlias = assetJoinAlias
 		col.Reference = &PGSQLProcedureReference{
 			TableName:  assetTableName,
@@ -427,7 +429,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 		linkType := getFieldLinkContentType(field.Validations)
 		linkTableName := toSnakeCase(linkType)
 		if linkType != "" && linkType != ENTRY {
-			joinAlias := fmt.Sprintf("%s__%s", columnName, linkTableName)
+			joinAlias := getJoinAlias(path, columnName, linkTableName)
 			col.JoinAlias = joinAlias
 			col.Reference = &PGSQLProcedureReference{
 				TableName:  linkTableName,
@@ -441,7 +443,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 				for _, f := range items[linkType].Fields {
 					if !f.Omitted {
 						fieldColumnName := toSnakeCase(f.ID)
-						procColumn := NewPGSQLProcedureColumn(fieldColumnName, f, items, itemTableName, maxIncludeDepth, includeDepth+1)
+						procColumn := NewPGSQLProcedureColumn(getPath(path, columnName), fieldColumnName, f, items, itemTableName, maxIncludeDepth, includeDepth+1)
 						procColumn.JoinAlias = joinAlias
 						col.Reference.Columns = append(col.Reference.Columns, procColumn)
 					}
@@ -453,7 +455,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 		if conLinkType != "" && conLinkType != ENTRY {
 			col.ConTableName = getConTableName(tableName, toSnakeCase(field.ID))
 			conLinkTableName := toSnakeCase(conLinkType)
-			conJoinAlias := fmt.Sprintf("%s__%s", columnName, conLinkTableName)
+			conJoinAlias := getJoinAlias(path, columnName, conLinkTableName)
 			col.JoinAlias = conJoinAlias
 			col.Reference = &PGSQLProcedureReference{
 				TableName:  conLinkTableName,
@@ -466,7 +468,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 				for _, f := range items[conLinkType].Fields {
 					if !f.Omitted {
 						fieldColumnName := toSnakeCase(f.ID)
-						procColumn := NewPGSQLProcedureColumn(fieldColumnName, f, items, itemTableName, maxIncludeDepth, includeDepth+1)
+						procColumn := NewPGSQLProcedureColumn(getPath(path, columnName), fieldColumnName, f, items, itemTableName, maxIncludeDepth, includeDepth+1)
 						procColumn.JoinAlias = conJoinAlias
 						col.Reference.Columns = append(col.Reference.Columns, procColumn)
 					}
@@ -476,4 +478,20 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 	}
 
 	return col
+}
+
+func getJoinAlias(path string, columnName, tableName string) string {
+	if len(path) == 0 {
+		return fmt.Sprintf("%s__%s", columnName, tableName)
+	} else {
+		return fmt.Sprintf("%s__%s__%s", path, columnName, tableName)
+	}
+}
+
+func getPath(path string, columnName string) string {
+	if len(path) == 0 {
+		return columnName
+	} else {
+		return fmt.Sprintf("%s__%s", path, columnName)
+	}
 }
