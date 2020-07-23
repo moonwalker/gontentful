@@ -22,7 +22,6 @@ type PGSQLProcedureColumn struct {
 	Reference    *PGSQLProcedureReference
 	JoinAlias    string
 	IsAsset      bool
-	Depth        int64
 }
 
 type PGSQLProcedureReference struct {
@@ -413,7 +412,6 @@ func NewPGSQLProcedureColumn(path string, columnName string, field *ContentTypeF
 		TableName:  tableName,
 		ColumnName: columnName,
 		Alias:      field.ID,
-		Depth:      includeDepth,
 	}
 
 	if field.LinkType == ASSET {
