@@ -118,7 +118,7 @@ BEGIN
 				{{- end }} AS "{{ .Alias }}"
 			{{- end }}
 			FROM {{ .TableName }}
-			{{- range .Columns -}}
+			{{- range .Columns }}
 				{{ template "join" . }}
 			{{- end }}
 			WHERE {{ .TableName }}._locale = localeArg AND {{ .TableName }}._sys_id IN (SELECT _sys_id FROM filtered)
