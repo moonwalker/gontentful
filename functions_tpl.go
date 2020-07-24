@@ -71,7 +71,6 @@ json_build_object(
 					{{- else -}}
 						{{ .JoinAlias }}.{{ .ColumnName }}
 					{{- end -}}
-					{{- end -}})
 					{{- end }})
 {{- end -}}
 {{- define "join" -}}
