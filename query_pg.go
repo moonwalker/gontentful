@@ -14,23 +14,16 @@ import (
 )
 
 const queryTemplate = `
-SELECT * FROM _run_query(
-{{- if $.Args }}{{- range $idx, $arg := $.Args -}}{{ $arg }},{{- end -}}{{- end -}}
-'{{ $.TableName }}','{{ $.Locale }}','{{ $.DefaultLocale }}',
-{{- if $.Fields }}ARRAY[
-{{- range $idx, $field := $.Fields -}}
-{{- if $idx -}},{{- end -}}'{{ $field }}'
-{{- end -}}
-]{{- else }}NULL{{ end -}},
+SELECT * FROM {{ .TableName }}_query(
+'{{ .Locale }}',
 {{- if $.Filters }}ARRAY[
 {{- range $idx, $filter := $.Filters -}}
-{{- if $idx -}},{{- end -}}({{ $filter }})::_filter
+{{- if $idx -}},{{- end -}}'{{ $filter }}'
 {{- end -}}]
 {{- else -}}NULL{{- end -}},
 '{{- $.Order -}}',
 {{- $.Skip -}},
-{{- $.Limit -}},
-{{- $.Include -}}
+{{- $.Limit -}}
 )
 `
 
@@ -43,29 +36,16 @@ var (
 const (
 	LINK  = "Link"
 	ARRAY = "Array"
-
-	DEFAULT_INCLUDE = 3
-	MAX_INCLUDE     = 10
 )
 
-type PQQueryJoin struct {
-	TableName string
-	Localized bool
-	Columns   map[string]*PGSQLMeta
-}
-
 type PGQuery struct {
-	SchemaName    string
-	TableName     string
-	Locale        string
-	DefaultLocale string
-	Fields        *[]string
-	Filters       *[]string
-	Args          *[]string
-	Order         string
-	Limit         int
-	Skip          int
-	Include       int
+	SchemaName string
+	TableName  string
+	Locale     string
+	Filters    *[]string
+	Order      string
+	Limit      int
+	Skip       int
 }
 
 func ParsePGQuery(schemaName string, defaultLocale string, q url.Values) *PGQuery {
@@ -76,15 +56,6 @@ func ParsePGQuery(schemaName string, defaultLocale string, q url.Values) *PGQuer
 	q.Del("locale")
 	if locale == "" {
 		locale = defaultLocale
-	}
-
-	include := 0
-	includeQ := q.Get("include")
-	q.Del("include")
-	if len(includeQ) > 0 {
-		include, _ = strconv.Atoi(includeQ)
-	} else {
-		include = DEFAULT_INCLUDE
 	}
 
 	skip := 0
@@ -101,48 +72,23 @@ func ParsePGQuery(schemaName string, defaultLocale string, q url.Values) *PGQuer
 		limit, _ = strconv.Atoi(limitQ)
 	}
 
-	var fields *[]string
-	fieldsQ := q.Get("select")
-	q.Del("select")
-	if fieldsQ != "" {
-		fs := strings.Split(fieldsQ, ",")
-		fields = &fs
-	}
-
 	order := q.Get("order")
 	q.Del("order")
 
-	return NewPGQuery(schemaName, contentType, locale, defaultLocale, fields, q, order, skip, limit, include)
+	q.Del("include")
+	q.Del("select")
+
+	return NewPGQuery(schemaName, contentType, locale, q, order, skip, limit)
 }
-func NewPGQuery(schemaName string, tableName string, locale string, defaultLocale string, fields *[]string, filters url.Values, order string, skip int, limit int, include int) *PGQuery {
-	incl := include
-	if incl > MAX_INCLUDE {
-		incl = MAX_INCLUDE
-	}
-
+func NewPGQuery(schemaName string, contentType string, locale string, filters url.Values, order string, skip int, limit int) *PGQuery {
+	tableName := toSnakeCase(contentType)
 	q := PGQuery{
-		SchemaName:    schemaName,
-		TableName:     toSnakeCase(tableName),
-		Locale:        fmtLocale(locale),
-		DefaultLocale: fmtLocale(defaultLocale),
-		//Fields:        formatFields(fields), // query ignores the fields for now and returns eveything
-		Order:   formatOrder(order, tableName, defaultLocale),
-		Skip:    skip,
-		Limit:   limit,
-		Include: incl,
-	}
-
-	if tableName == "game" {
-		marketCode := filters.Get("fields.marketCode")
-		device := filters.Get("fields.device")
-		if marketCode != "" && device != "" {
-			q.Args = &[]string{
-				fmt.Sprintf("'%s'", marketCode),
-				fmt.Sprintf("'%s'", device),
-			}
-			filters.Del("fields.marketCode")
-			filters.Del("fields.device")
-		}
+		SchemaName: schemaName,
+		TableName:  tableName,
+		Locale:     fmtLocale(locale),
+		Order:      formatOrder(order, tableName),
+		Skip:       skip,
+		Limit:      limit,
 	}
 
 	q.Filters = createFilters(filters)
@@ -154,18 +100,18 @@ func createFilters(filters url.Values) *[]string {
 	if len(filters) > 0 {
 		filterFields := make([]string, 0)
 		for key, values := range filters {
-			f, c := getFilter(key)
-			if f != "" {
-				vals := ""
-				for _, val := range values {
-					for i, v := range strings.Split(val, ",") {
-						if i > 0 {
-							vals = vals + ","
-						}
-						vals = vals + fmt.Sprintf("'%s'", v)
+			vals := ""
+			for _, val := range values {
+				for i, v := range strings.Split(val, ",") {
+					if i > 0 {
+						vals = vals + ","
 					}
+					vals = vals + fmt.Sprintf("''%s''", v)
 				}
-				filterFields = append(filterFields, fmt.Sprintf("'%s','%s',ARRAY[%s]", f, c, vals))
+			}
+			f := getFilterFormat(key, vals)
+			if f != "" {
+				filterFields = append(filterFields, f)
 			}
 		}
 		if len(filterFields) > 0 {
@@ -175,7 +121,7 @@ func createFilters(filters url.Values) *[]string {
 	return nil
 }
 
-func getFilter(key string) (string, string) {
+func getFilterFormat(key string, value string) string {
 	f := key
 	c := ""
 
@@ -186,46 +132,61 @@ func getFilter(key string) (string, string) {
 	}
 
 	f = formatField(f)
-	colName := toSnakeCase(f)
-
-	if strings.Contains(colName, ".") {
-		// content.fields.name%5Bmatch%5D=jack&content.sys.contentType.sys.id=gameInfo
-		// content.sys.contentType.sys.id=gameId&deviceConfigurations.sys.id=1yyHAve4aE6AQgkIyYG4im
-		fkeysMatch := foreignKeyRegex.FindStringSubmatch(colName)
-		if len(fkeysMatch) > 0 {
-			if fkeysMatch[2] != "sys.id" && strings.HasPrefix(fkeysMatch[2], "sys.") {
-				// ignore sys fields
-				return "", ""
-			}
-			colName = fmt.Sprintf("%s.%s", fkeysMatch[1], fkeysMatch[2])
-		}
+	if f == "" {
+		return f
 	}
 
-	return colName, c
-}
+	// if strings.Contains(colName, ".") {
+	// 	// content.fields.name%5Bmatch%5D=jack&content.sys.contentType.sys.id=gameInfo
+	// 	// content.sys.contentType.sys.id=gameId&deviceConfigurations.sys.id=1yyHAve4aE6AQgkIyYG4im
+	// 	fkeysMatch := foreignKeyRegex.FindStringSubmatch(colName)
+	// 	if len(fkeysMatch) > 0 {
+	// 		if fkeysMatch[2] != "sys.id" && strings.HasPrefix(fkeysMatch[2], "sys.") {
+	// 			// ignore sys fields
+	// 			return "", ""
+	// 		}
+	// 		colName = fmt.Sprintf("%s.%s", fkeysMatch[1], fkeysMatch[2])
+	// 	}
+	// }
 
-func formatFields(fields *[]string) *[]string {
-	if fields != nil {
-		fmtFields := make([]string, 0)
-		for _, f := range *fields {
-			fmt := formatField(f)
-			if fmt != "" {
-				fmtFields = append(fmtFields, fmt)
-			}
-		}
-		return &fmtFields
+	col := toSnakeCase(f)
+	switch c {
+	case "":
+		return fmt.Sprintf("%s IS NOT DISTINCT FROM %s", col, value)
+	case "ne":
+		return fmt.Sprintf("%s IS DISTINCT FROM %s", col, value)
+	case "exists":
+		return fmt.Sprintf("%s IS NOT NULL", col)
+	case "lt":
+		return fmt.Sprintf("%s < %s", col, value)
+	case "lte":
+		return fmt.Sprintf("%s <= %s", col, value)
+	case "gt":
+		return fmt.Sprintf("%s > %s", col, value)
+	case "gte":
+		return fmt.Sprintf("%s >= %s", col, value)
+	case "match":
+		return fmt.Sprintf("%s ILIKE %%%s%%", col, value)
+	case "in":
+		// IF isArray THEN
+		// RETURN 	' && ARRAY[' || fmtVal || ']';
+		return fmt.Sprintf("%s = ANY(ARRAY[%s])", col, value)
+	case "nin":
+		// IF isArray THEN
+		// 			RETURN 	' && ARRAY[' || fmtVal || '] = false';
+		return fmt.Sprintf("%s != ALL(ARRAY[%s])", col, value)
 	}
-	return fields
+	return ""
 }
 
 func formatField(f string) string {
 	if f == "sys.id" {
-		return "sys_id"
+		return "_sys_id"
 	}
 	return strings.TrimPrefix(strings.TrimPrefix(f, "fields."), "sys.")
 }
 
-func formatOrder(order string, tableName string, defaultLocale string) string {
+func formatOrder(order string, tableName string) string {
 	if order == "" {
 		return order
 	}
@@ -235,16 +196,16 @@ func formatOrder(order string, tableName string, defaultLocale string) string {
 		desc := ""
 		if o[:1] == "-" {
 			desc = " DESC"
-			value = o[1:len(o)]
+			value = o[1:]
 		}
 		var field string
 		if value == "sys.id" {
-			field = fmt.Sprintf("%s$%s.sys_id", toSnakeCase(tableName), defaultLocale)
+			field = fmt.Sprintf("%s._sys_id", tableName)
 		} else if strings.HasPrefix(value, "sys.") {
 			field = strings.TrimPrefix(value, "sys.")
-			field = fmt.Sprintf("%s$%s.%s", toSnakeCase(tableName), defaultLocale, toSnakeCase(field))
+			field = fmt.Sprintf("%s._%s", tableName, toSnakeCase(field))
 		} else {
-			field = fmt.Sprintf("\"%s\"", strings.TrimPrefix(value, "fields."))
+			field = fmt.Sprintf("%s.%s", tableName, strings.TrimPrefix(value, "fields."))
 		}
 
 		orders = append(orders, fmt.Sprintf("%s%s NULLS LAST", field, desc))

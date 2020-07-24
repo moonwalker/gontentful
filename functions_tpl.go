@@ -15,17 +15,17 @@ CREATE TYPE _result AS (
 	items JSON
 );
 --
-CREATE OR REPLACE FUNCTION _get_sys_ids(tableName text, locale TEXT, filters _filter[], orderBy TEXT, skip INTEGER, take INTEGER)
+CREATE OR REPLACE FUNCTION _get_sys_ids(tableName text, locale TEXT, filters TEXT[], orderBy TEXT, skip INTEGER, take INTEGER)
 RETURNS SETOF text AS $$
 DECLARE
 	qs text := '';
-	filter _filter;
+	filter text;
 BEGIN
 	qs:= 'SELECT _sys_id FROM ' || tableName || ' WHERE (' || tableName || '._locale=''' || locale || ''')';
 
 	IF filters IS NOT NULL THEN
 		FOREACH filter IN ARRAY filters LOOP
-			qs := qs || ' AND (' || tableName || '.' || filter.field || filter.comparer || filter.value || ')';
+			qs := qs || ' AND (' || tableName || '.' || filter || ')';
 		END LOOP;
 	END IF;
 
@@ -47,12 +47,12 @@ $$ LANGUAGE 'plpgsql';
 --
 {{- define "asset" -}}
 json_build_object(
-						'title', {{ .JoinAlias }}.title,
-						'description', {{ .JoinAlias }}.description,
+						'title', {{ .Reference.JoinAlias }}.title,
+						'description', {{ .Reference.JoinAlias }}.description,
 						'file', json_build_object(
-							'contentType', {{ .JoinAlias }}.content_type,
-							'fileName', {{ .JoinAlias }}.file_name,
-							'url', {{ .JoinAlias }}.url
+							'contentType', {{ .Reference.JoinAlias }}.content_type,
+							'fileName', {{ .Reference.JoinAlias }}.file_name,
+							'url', {{ .Reference.JoinAlias }}.url
 						)
 					)
 {{- end -}}
@@ -63,7 +63,7 @@ json_build_object(
 					{{- if $i -}},{{- end }}
 					'{{ .Alias }}',
 					{{- if .IsAsset -}}
-						{{ template "asset" .Reference }}
+						{{ template "asset" . }}
 					{{- else if .ConTableName -}}
 						_included_{{ .Reference.JoinAlias }}.res
 					{{- else if .Reference -}}
@@ -96,7 +96,7 @@ json_build_object(
 		{{- end -}}
 {{- end -}}
 {{ range $i, $t := $.Functions }}
-CREATE OR REPLACE FUNCTION _{{ .TableName }}_items(localeArg TEXT, filters _filter[], orderBy TEXT, skip INTEGER, take INTEGER)
+CREATE OR REPLACE FUNCTION {{ .TableName }}_items(localeArg TEXT, filters TEXT[], orderBy TEXT, skip INTEGER, take INTEGER)
 RETURNS json AS $$
 BEGIN
 	RETURN (
@@ -105,8 +105,9 @@ BEGIN
 		)
 		SELECT json_agg(t) AS res FROM (
 			SELECT
-			{{- range $i, $c := .Columns }}
-				{{- if $i -}},{{- end }}
+				json_build_object('id', {{ .TableName }}._sys_id) AS sys
+			{{- range .Columns }}
+				,
 				{{ if .IsAsset -}}
 					{{ template "asset" . }}
 				{{- else if .ConTableName -}}
@@ -127,7 +128,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-CREATE OR REPLACE FUNCTION _{{ .TableName }}_query(localeArg TEXT, filters _filter[], orderBy TEXT, skip INTEGER, take INTEGER)
+CREATE OR REPLACE FUNCTION {{ .TableName }}_query(localeArg TEXT, filters TEXT[], orderBy TEXT, skip INTEGER, take INTEGER)
 RETURNS _result AS $$
 DECLARE
 	count integer;
@@ -135,7 +136,7 @@ DECLARE
 	res _result;
 BEGIN
 	SELECT COUNT(f) FROM (SELECT _get_sys_ids('{{ .TableName }}', localeArg, filters, '', 0, 0)) AS f INTO count;
-	SELECT _{{ .TableName }}_items(localeArg, filters, orderBy, skip, take) INTO items;
+	SELECT {{ .TableName }}_items(localeArg, filters, orderBy, skip, take) INTO items;
 	IF items IS NULL THEN
 		items:= '[]'::JSON;
 	END IF;

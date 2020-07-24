@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	maxIncludeDepth = 3
+	defaultMaxIncludeDepth = 3
 )
 
 type PGSQLProcedureColumn struct {
@@ -203,12 +203,16 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, withMetaDat
 		TableName: table.TableName,
 		Columns:   make([]*PGSQLProcedureColumn, 0),
 	}
+	include := includeDepth
+	if include == 0 {
+		include = defaultMaxIncludeDepth
+	}
 
 	for _, field := range item.Fields {
 		if !field.Omitted {
 			column := NewPGSQLColumn(field)
 			table.Columns = append(table.Columns, column)
-			procColumn := NewPGSQLProcedureColumn(column.ColumnName, field, items, table.TableName, includeDepth, 0, "")
+			procColumn := NewPGSQLProcedureColumn(column.ColumnName, field, items, table.TableName, include, 0, "")
 
 			if withMetaData {
 				meta := makeMeta(field)
@@ -417,7 +421,11 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 	if field.LinkType == ASSET {
 		col.IsAsset = true
 		assetJoinAlias := getJoinAlias(path, columnName, assetTableName)
-		col.JoinAlias = assetJoinAlias
+		if path == "" {
+			col.JoinAlias = tableName
+		} else {
+			col.JoinAlias = assetJoinAlias
+		}
 		col.Reference = &PGSQLProcedureReference{
 			TableName:  assetTableName,
 			ForeignKey: toSnakeCase(field.ID),

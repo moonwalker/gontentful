@@ -7,7 +7,7 @@ import (
 )
 
 func fmtLocale(code string) string {
-	return strings.ToLower(strings.ReplaceAll(code, "-", "_"))
+	return strings.ToLower(code)
 }
 
 func fmtTableName(contentType string, locale string) string {
