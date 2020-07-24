@@ -63,15 +63,16 @@ json_build_object(
 					{{- if $i -}},{{- end }}
 					'{{ .Alias }}',
 					{{- if .IsAsset -}}
-						{{ template "asset" . }}
+					(CASE WHEN {{ .JoinAlias }}.{{ .ColumnName }} IS NULL THEN NULL ELSE {{ template "asset" . }} END)
 					{{- else if .ConTableName -}}
 						_included_{{ .Reference.JoinAlias }}.res
 					{{- else if .Reference -}}
-						{{ template "refColumn" .Reference }}
+						(CASE WHEN {{ .JoinAlias }}.{{ .ColumnName }} IS NULL THEN NULL ELSE {{ template "refColumn" .Reference }} END)
 					{{- else -}}
 						{{ .JoinAlias }}.{{ .ColumnName }}
 					{{- end -}}
 					{{- end -}})
+					{{- end }})
 {{- end -}}
 {{- define "join" -}}
 		{{- if .ConTableName }}
@@ -91,7 +92,7 @@ json_build_object(
 		{{- else if .Reference }}
 			LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}._locale = localeArg
 			{{- range .Reference.Columns }}
-			{{ template "join" . }}
+			{{- template "join" . }}
 			{{- end -}}
 		{{- end -}}
 {{- end -}}
@@ -106,20 +107,20 @@ BEGIN
 		SELECT json_agg(t) AS res FROM (
 			SELECT
 				json_build_object('id', {{ .TableName }}._sys_id) AS sys
-			{{- range .Columns }}
+			{{- range .Columns -}}
 				,
 				{{ if .IsAsset -}}
 					{{ template "asset" . }}
 				{{- else if .ConTableName -}}
 					_included_{{ .Reference.JoinAlias }}.res
 				{{- else if .Reference -}}
-					{{ template "refColumn" .Reference }}
+					(CASE WHEN {{ .JoinAlias }}.{{ .ColumnName }} IS NULL THEN NULL ELSE {{ template "refColumn" .Reference }} END)
 				{{- else -}}
 					{{ .TableName }}.{{ .ColumnName }}
 				{{- end }} AS "{{ .Alias }}"
 			{{- end }}
 			FROM {{ .TableName }}
-			{{- range .Columns }}
+			{{- range .Columns -}}
 				{{ template "join" . }}
 			{{- end }}
 			WHERE {{ .TableName }}._locale = localeArg AND {{ .TableName }}._sys_id IN (SELECT _sys_id FROM filtered)

@@ -152,7 +152,7 @@ func getFilterFormat(key string, value string) string {
 	col := toSnakeCase(f)
 	switch c {
 	case "":
-		return fmt.Sprintf("%s IS NOT DISTINCT FROM %s", col, value)
+		return fmt.Sprintf("%s = %s", col, value)
 	case "ne":
 		return fmt.Sprintf("%s IS DISTINCT FROM %s", col, value)
 	case "exists":
