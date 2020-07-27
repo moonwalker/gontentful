@@ -119,7 +119,7 @@ ON CONFLICT (name) DO NOTHING;
 {{- end -}}
 --
 CREATE TABLE IF NOT EXISTS _asset (
-	primary key (_sys_id,_locale),
+	_id text primary key,
 	_sys_id text not null,
 	title text not null,
 	description text,
@@ -233,7 +233,7 @@ SET
 {{- end -}}
 --
 CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }} (
-	primary key (_sys_id,_locale),
+	_id text primary key,
 	_sys_id text not null,
 	{{- range $colidx, $col := $tbl.Columns }}
 	"{{ .ColumnName }}" {{ .ColumnType }},
@@ -246,7 +246,12 @@ CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }} (
 	_updated_by text not null
 );
 --
-CREATE UNIQUE INDEX IF NOT EXISTS _sys_id_locale ON {{ $tbl.TableName }}(_sys_id,_locale);
+CREATE UNIQUE INDEX IF NOT EXISTS {{ $tbl.TableName }}__sys_id ON {{ $tbl.TableName }}(_sys_id,_locale);
+{{- range $tbl.Columns -}}
+{{- if .IsIndex }}
+CREATE UNIQUE INDEX IF NOT EXISTS {{ $tbl.TableName }}_{{ .ColumnName }} ON {{ $tbl.TableName }}({{ .ColumnName }},_locale);
+{{ end -}}
+{{- end }}
 --
 {{- end -}}
 `

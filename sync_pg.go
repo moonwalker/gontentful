@@ -20,6 +20,7 @@ var (
 )
 
 type PGSyncRow struct {
+	ID           string
 	SysID        string
 	FieldColumns []string
 	FieldValues  map[string]interface{}
@@ -135,7 +136,7 @@ func appendToEntries(entriesTable *PGSyncTable, tableName string, sysID string, 
 }
 
 func newPGSyncTable(tableName string, fieldColumns []string) *PGSyncTable {
-	columns := []string{"_sys_id"}
+	columns := []string{"_id", "_sys_id"}
 	columns = append(columns, fieldColumns...)
 	if tableName != entriesTableName {
 		columns = append(columns, metaColumns...)
@@ -150,6 +151,7 @@ func newPGSyncTable(tableName string, fieldColumns []string) *PGSyncTable {
 
 func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]interface{}, locale string) *PGSyncRow {
 	row := &PGSyncRow{
+		ID:           fmt.Sprintf("%s_%s", item.Sys.ID, locale),
 		SysID:        item.Sys.ID,
 		FieldColumns: fieldColumns,
 		FieldValues:  fieldValues,
@@ -169,6 +171,7 @@ func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]int
 
 func (r *PGSyncRow) Fields(addMeta bool) []interface{} {
 	values := []interface{}{
+		fmt.Sprintf("%s_%s", r.SysID, r.Locale),
 		r.SysID,
 	}
 	for _, fieldColumn := range r.FieldColumns {
@@ -268,17 +271,14 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 		_, err = stmt.Exec()
 		if err != nil {
 			fmt.Println("stmt.Exec", tbl.TableName)
-			a := make(map[string]map[string]string)
+			a := make(map[string]string)
 			for _, r := range tbl.Rows {
 				sys := r[0].(string)
 				id := r[1].(string)
-				loc := r[2].(string)
-				if a[sys] == nil {
-					a[sys] = make(map[string]string)
-				} else if a[sys][id] == "" {
-					a[sys][id] = loc
+				if a[sys] == "" {
+					a[sys] = id
 				} else {
-					fmt.Println(tbl.TableName, sys, id, loc)
+					fmt.Println(tbl.TableName, sys, id)
 					break
 				}
 			}
