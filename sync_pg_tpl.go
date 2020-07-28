@@ -4,6 +4,7 @@ const pgSyncTemplate = `
 {{ range $tblidx, $tbl := .Tables }}
 {{ range $itemidx, $item := .Rows }}
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
+	_id,
 	_sys_id,
 	{{- range $k, $v := .FieldColumns }}
 	{{ $v }},
@@ -15,6 +16,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	_updated_at,
 	_updated_by
 ) VALUES (
+	'{{ .ID }}',
 	'{{ .SysID }}',
 	{{- range $k, $v := .FieldColumns }}
 	{{ $item.GetFieldValue $v }},
@@ -26,7 +28,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	to_timestamp('{{ .UpdatedAt }}','YYYY-MM-DDThh24:mi:ss.mssZ'),
 	'sync'
 )
-ON CONFLICT (_sys_id,_locale) DO UPDATE
+ON CONFLICT (_id) DO UPDATE
 SET
 	{{- range $k, $v := .FieldColumns }}
 	{{ $v }} = EXCLUDED.{{ $v }},

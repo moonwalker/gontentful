@@ -46,12 +46,13 @@ func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColu
 			}
 			locale := strings.ToLower(loc.Code)
 			fallback := strings.ToLower(loc.FallbackCode)
-			if fallback == "" {
-				fallback = schema.DefaultLocale
-			}
 			fieldValue := locFields[locale]
 			if fieldValue == nil {
-				fieldValue = locFields[fallback]
+				if locFields[fallback] != nil {
+					fieldValue = locFields[fallback]
+				} else {
+					fieldValue = locFields[schema.DefaultLocale]
+				}
 			}
 
 			// collect row fields by locale
@@ -70,7 +71,9 @@ func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColu
 }
 
 func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fieldColumns []string, templateFormat bool, conTables map[string]*PGSyncConTable, refColumns map[string]string, tableName string, locale string) {
-	fieldValues := make(map[string]interface{}, len(fieldColumns))
+	fieldValues := make(map[string]interface{})
+	id := fmt.Sprintf("%s_%s", item.Sys.ID, locale)
+	fieldValues["_id"] = id
 	for _, rowField := range rowFields {
 		fieldValues[rowField.fieldName] = convertFieldValue(rowField.fieldValue, templateFormat)
 		assetFile, ok := fieldValues[rowField.fieldName].(*AssetFile)
@@ -97,20 +100,20 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 				if conTables[conTableName] == nil {
 					conTables[conTableName] = &PGSyncConTable{
 						TableName: conTableName,
-						Columns:   []string{tableName, refColumns[rowField.fieldName], "_locale"},
+						Columns:   []string{tableName, refColumns[rowField.fieldName]},
 						Rows:      make([][]interface{}, 0),
 					}
 				}
 				for _, e := range links {
 					f, ok := e.(map[string]interface{})
 					if ok {
-						id := convertSys(f, templateFormat)
-						if id != "" && !addedRefs[id+locale] {
-							conRow := []interface{}{sysID, id, locale}
+						conID := fmt.Sprintf("%s_%s", convertSys(f, templateFormat), locale)
+						if id != "" && conID != "" && !addedRefs[conID] {
+							conRow := []interface{}{id, conID}
 							conTables[conTableName].Rows = append(conTables[conTableName].Rows, conRow)
-							addedRefs[id+locale] = true
-						} else if addedRefs[id+locale] {
-							fmt.Println(tbl.TableName, sysID, rowField.fieldName, id, locale)
+							addedRefs[conID] = true
+						} else if addedRefs[conID] {
+							fmt.Println(tbl.TableName, sysID, rowField.fieldName, conID, locale)
 						}
 					}
 				}

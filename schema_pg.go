@@ -41,6 +41,7 @@ type PGSQLColumn struct {
 	ColumnType string
 	ColumnDesc string
 	Required   bool
+	IsIndex    bool
 }
 
 type PGSQLData struct {
@@ -151,6 +152,8 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 		}
 	}
 
+	// ioutil.WriteFile("/tmp/schema", []byte(str), 0644)
+
 	_, err = txn.Exec(str)
 	if err != nil {
 		return err
@@ -236,9 +239,14 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, withMetaDat
 func NewPGSQLColumn(field *ContentTypeField) *PGSQLColumn {
 	column := &PGSQLColumn{
 		ColumnName: toSnakeCase(field.ID),
+		IsIndex:    isIndex(field.ID),
 	}
 	column.getColumnDesc(field)
 	return column
+}
+
+func isIndex(fieldName string) bool {
+	return fieldName == "slug" || fieldName == "code" || fieldName == "key"
 }
 
 func (c *PGSQLColumn) getColumnDesc(field *ContentTypeField) {
@@ -373,9 +381,6 @@ func getConTableColumns(tableName string, reference string) []*PGSQLColumn {
 		},
 		&PGSQLColumn{
 			ColumnName: reference,
-		},
-		&PGSQLColumn{
-			ColumnName: "_locale",
 		},
 	}
 }
