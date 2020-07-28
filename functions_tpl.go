@@ -15,6 +15,52 @@ CREATE TYPE _result AS (
 	items JSON
 );
 --
+{{ range $i, $t := $.Tables }}
+CREATE OR REPLACE FUNCTION _get_{{ .TableName }}_items(tableName text, locale TEXT, filters TEXT[], orderBy TEXT, skip INTEGER, take INTEGER)
+RETURNS TABLE(
+	{{- range $j, $c:= .Columns }}
+	{{- if $j -}},{{- end }}
+	{{- if eq .ColumnName "limit" -}}_{{- end -}}
+	{{- .ColumnName }} {{ .ColumnType }}
+	{{- end -}}
+) AS $$
+DECLARE
+	qs text := '';
+	qs1 text := '';
+	filter text;
+BEGIN
+	qs:= 'SELECT ';
+	
+	qs := qs || '{{- range $j, $c:= .Columns -}}
+	{{- if $j -}},{{- end -}}
+	{{- .ColumnName }} {{ if eq .ColumnName "limit" }} AS _ "{{ .ColumnName }}"{{- end -}}
+	{{- end -}}';
+	
+	qs:= qs || ' FROM ' || tableName || ' WHERE (' || tableName || '._locale=''' || locale || ''')';
+
+	IF filters IS NOT NULL THEN
+		FOREACH filter IN ARRAY filters LOOP
+			qs := qs || ' AND (' || tableName || '.' || filter || ')';
+		END LOOP;
+	END IF;
+
+	IF orderBy <> '' THEN
+	qs:= qs || ' ORDER BY ' || orderBy;
+	END IF;
+
+	IF skip <> 0 THEN
+	qs:= qs || ' OFFSET ' || skip;
+	END IF;
+
+	IF take <> 0 THEN
+	qs:= qs || ' LIMIT ' || take;
+	END IF;
+
+	RETURN QUERY EXECUTE qs;
+END;
+$$ LANGUAGE 'plpgsql';	
+{{ end }}
+--
 CREATE OR REPLACE FUNCTION _get_sys_ids(tableName text, locale TEXT, filters TEXT[], orderBy TEXT, skip INTEGER, take INTEGER)
 RETURNS SETOF text AS $$
 DECLARE
