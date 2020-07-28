@@ -75,7 +75,7 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 	id := fmt.Sprintf("%s_%s", item.Sys.ID, locale)
 	fieldValues["_id"] = id
 	for _, rowField := range rowFields {
-		fieldValues[rowField.fieldName] = convertFieldValue(rowField.fieldValue, templateFormat)
+		fieldValues[rowField.fieldName] = convertFieldValue(rowField.fieldValue, templateFormat, locale)
 		assetFile, ok := fieldValues[rowField.fieldName].(*AssetFile)
 		if ok {
 			url := assetFile.URL
@@ -124,14 +124,14 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 	tbl.Rows = append(tbl.Rows, row)
 }
 
-func convertFieldValue(v interface{}, t bool) interface{} {
+func convertFieldValue(v interface{}, t bool, locale string) interface{} {
 	switch f := v.(type) {
 
 	case map[string]interface{}:
 		if f["sys"] != nil {
 			s := convertSys(f, t)
 			if s != "" {
-				return s
+				return fmt.Sprintf("%s_%s", s, locale)
 			}
 		} else if f["fileName"] != nil {
 			var v *AssetFile
@@ -148,7 +148,7 @@ func convertFieldValue(v interface{}, t bool) interface{} {
 	case []interface{}:
 		arr := make([]string, 0)
 		for i := 0; i < len(f); i++ {
-			fs := convertFieldValue(f[i], t)
+			fs := convertFieldValue(f[i], t, locale)
 			arr = append(arr, fmt.Sprintf("%v", fs))
 		}
 		if t {
@@ -159,7 +159,7 @@ func convertFieldValue(v interface{}, t bool) interface{} {
 	case []string:
 		arr := make([]string, 0)
 		for i := 0; i < len(f); i++ {
-			fs := convertFieldValue(f[i], t)
+			fs := convertFieldValue(f[i], t, locale)
 			arr = append(arr, fmt.Sprintf("%v", fs))
 		}
 		if t {
