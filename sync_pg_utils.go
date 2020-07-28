@@ -93,7 +93,7 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 		// append con tables with Array Links
 		if refColumns[rowField.fieldName] != "" {
 			links, ok := rowField.fieldValue.([]interface{})
-			addedRefs := make(map[string]int)
+			addedRefs := make(map[string]bool)
 			if ok {
 				sysID := item.Sys.ID
 				conTableName := getConTableName(tableName, rowField.fieldName)
@@ -104,18 +104,17 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 						Rows:      make([][]interface{}, 0),
 					}
 				}
-				for _, e := range links {
+				ffor _, e := range links {
 					f, ok := e.(map[string]interface{})
 					if ok {
 						conSys := convertSys(f, templateFormat)
 						conID := fmt.Sprintf("%s_%s", conSys, locale)
-						if id != "" && conID != "" && addedRefs[conSys] == 0 {
+						if id != "" && conID != "" && !addedRefs[conSys] {
 							conRow := []interface{}{id, conID}
 							conTables[conTableName].Rows = append(conTables[conTableName].Rows, conRow)
-							addedRefs[conSys] = 1
-						} else if addedRefs[conSys] == 1 {
-							addedRefs[conSys] = 2
-							fmt.Println(tbl.TableName, sysID, rowField.fieldName, conSys)
+							addedRefs[conSys] = true
+						} else {
+							fmt.Println(tbl.TableName, sysID, rowField.fieldName, conSys, locale)
 						}
 					}
 				}
