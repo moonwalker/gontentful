@@ -16,8 +16,11 @@ CREATE TYPE _result AS (
 );
 --
 {{ range $i, $t := $.Tables }}
-CREATE OR REPLACE FUNCTION _get_{{ .TableName }}_items(tableName text, locale TEXT, filters TEXT[], orderBy TEXT, skip INTEGER, take INTEGER)
+CREATE OR REPLACE FUNCTION _get_{{ .TableName }}_items(locale TEXT, filters TEXT[], orderBy TEXT, skip INTEGER, take INTEGER)
 RETURNS TABLE(
+	_id text,
+	_sys_id text,
+	_locale text,
 	{{- range $j, $c:= .Columns }}
 	{{- if $j -}},{{- end }}
 	{{- if eq .ColumnName "limit" -}}_{{- end -}}
@@ -26,21 +29,20 @@ RETURNS TABLE(
 ) AS $$
 DECLARE
 	qs text := '';
-	qs1 text := '';
 	filter text;
 BEGIN
-	qs:= 'SELECT ';
+	qs:= 'SELECT _id,_sys_id,_locale,';
 	
 	qs := qs || '{{- range $j, $c:= .Columns -}}
 	{{- if $j -}},{{- end -}}
-	{{- .ColumnName }} {{ if eq .ColumnName "limit" }} AS _ "{{ .ColumnName }}"{{- end -}}
+	{{- .ColumnName }} {{- if eq .ColumnName "limit" }} AS _ "{{ .ColumnName }}"{{- end -}}
 	{{- end -}}';
 	
-	qs:= qs || ' FROM ' || tableName || ' WHERE (' || tableName || '._locale=''' || locale || ''')';
+	qs:= qs || ' FROM {{ .TableName }} WHERE ({{ .TableName }}._locale=''' || locale || ''')';
 
 	IF filters IS NOT NULL THEN
 		FOREACH filter IN ARRAY filters LOOP
-			qs := qs || ' AND (' || tableName || '.' || filter || ')';
+			qs := qs || ' AND ({{ .TableName }}.' || filter || ')';
 		END LOOP;
 	END IF;
 
@@ -130,12 +132,12 @@ json_build_object(
 							{{ .JoinAlias }}.{{ .ColumnName }} AS "{{ .Alias }}"
 						{{- end }}
 					FROM {{ .ConTableName }}
-					JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ .ConTableName }}.{{ .Reference.TableName }} AND {{ .Reference.JoinAlias }}._locale = localeArg
-					WHERE {{ .ConTableName }}.{{ .TableName }} = {{ .JoinAlias }}._sys_id AND {{ .ConTableName }}._locale = localeArg
+					JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._id = {{ .ConTableName }}.{{ .Reference.TableName }}
+					WHERE {{ .ConTableName }}.{{ .TableName }} = {{ .JoinAlias }}._id 
 				) l
 			) _included_{{ .Reference.JoinAlias }} ON true
 		{{- else if .Reference }}
-			LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}._locale = localeArg
+			LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} || '_' || localeArg
 			{{- range .Reference.Columns }}
 			{{- template "join" . }}
 			{{- end -}}
@@ -147,7 +149,7 @@ RETURNS json AS $$
 BEGIN
 	RETURN (
 		WITH filtered AS (
-			SELECT _get_sys_ids('{{ .TableName }}', localeArg, filters, orderBy, skip, take) AS _sys_id
+			SELECT * FROM _get_{{- .TableName -}}_items(localeArg, filters, orderBy, skip, take)
 		)
 		SELECT json_agg(t) AS res FROM (
 			SELECT
@@ -164,11 +166,11 @@ BEGIN
 					{{ .TableName }}.{{ .ColumnName }}
 				{{- end }} AS "{{ .Alias }}"
 			{{- end }}
-			FROM {{ .TableName }}
+			FROM filtered {{ .TableName }}
 			{{- range .Columns -}}
 				{{ template "join" . }}
 			{{- end }}
-			WHERE {{ .TableName }}._locale = localeArg AND {{ .TableName }}._sys_id IN (SELECT _sys_id FROM filtered)
+			WHERE {{ .TableName }}._locale = localeArg
 		) t
 	);
 END;

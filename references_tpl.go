@@ -20,5 +20,7 @@ ALTER TABLE IF EXISTS {{ .TableName }}
   REFERENCES {{ .Reference }} (_id)
   ON DELETE CASCADE;
 --
+CREATE INDEX IF NOT EXISTS {{ .TableName }}_{{ .ForeignKey }} ON {{ .TableName }}({{ .ForeignKey }});
+--
 {{- end -}}
 `
