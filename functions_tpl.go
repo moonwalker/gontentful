@@ -137,7 +137,7 @@ json_build_object(
 				) l
 			) _included_{{ .Reference.JoinAlias }} ON true
 		{{- else if .Reference }}
-			LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} || '_' || localeArg
+			LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }}
 			{{- range .Reference.Columns }}
 			{{- template "join" . }}
 			{{- end -}}
