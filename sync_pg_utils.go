@@ -104,7 +104,7 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 						Rows:      make([][]interface{}, 0),
 					}
 				}
-				ffor _, e := range links {
+				for _, e := range links {
 					f, ok := e.(map[string]interface{})
 					if ok {
 						conID := convertSys(f, templateFormat, locale)
