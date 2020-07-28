@@ -109,12 +109,12 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 					if ok {
 						conSys := convertSys(f, templateFormat)
 						conID := fmt.Sprintf("%s_%s", conSys, locale)
-						if id != "" && conID != "" && addedRefs[conID] == 0 {
+						if id != "" && conID != "" && addedRefs[conSys] == 0 {
 							conRow := []interface{}{id, conID}
 							conTables[conTableName].Rows = append(conTables[conTableName].Rows, conRow)
-							addedRefs[conID] = 1
-						} else if addedRefs[conID] == 1 {
-							addedRefs[conID] = 2
+							addedRefs[conSys] = 1
+						} else if addedRefs[conSys] == 1 {
+							addedRefs[conSys] = 2
 							fmt.Println(tbl.TableName, sysID, rowField.fieldName, conSys)
 						}
 					}

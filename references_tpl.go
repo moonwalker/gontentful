@@ -12,13 +12,13 @@ CREATE TABLE IF NOT EXISTS {{ .TableName }} (
 {{ end -}}
 --
 {{ range $idx, $ref := $.Schema.References }}
-ALTER TABLE IF EXISTS {{ .TableName }} DROP CONSTRAINT IF EXISTS {{ .ForeignKey }}_fkey;
+-- ALTER TABLE IF EXISTS {{ .TableName }} DROP CONSTRAINT IF EXISTS {{ .ForeignKey }}_fkey;
 --
-ALTER TABLE IF EXISTS {{ .TableName }}
-  ADD CONSTRAINT {{ .ForeignKey }}_fkey
-  FOREIGN KEY ({{ .ForeignKey }})
-  REFERENCES {{ .Reference }} (_id)
-  ON DELETE CASCADE;
+-- ALTER TABLE IF EXISTS {{ .TableName }}
+--  ADD CONSTRAINT {{ .ForeignKey }}_fkey
+--  FOREIGN KEY ({{ .ForeignKey }})
+--  REFERENCES {{ .Reference }} (_id)
+--  ON DELETE CASCADE;
 --
 CREATE INDEX IF NOT EXISTS {{ .TableName }}_{{ .ForeignKey }} ON {{ .TableName }}({{ .ForeignKey }});
 --
