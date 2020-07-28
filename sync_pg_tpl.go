@@ -62,7 +62,6 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	{{- range $k, $v := $row }}
 	{{- if $k -}},{{- end -}}{{ $v }}
 	{{- end -}}
-)
-;
+);
 {{- end -}}
 {{- end -}}`
