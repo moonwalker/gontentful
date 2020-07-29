@@ -5,6 +5,8 @@ package gontentful
 import (
 	"bytes"
 	"fmt"
+	"regexp"
+	"strings"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
@@ -502,15 +504,23 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 func getJoinAlias(path string, columnName, tableName string) string {
 	if len(path) == 0 {
 		return fmt.Sprintf("%s__%s", columnName, tableName)
-	} else {
-		return fmt.Sprintf("%s__%s__%s", path, columnName, tableName)
 	}
+	return fmt.Sprintf("%s__%s__%s", truncatePath(path), columnName, tableName)
 }
 
 func getPath(path string, columnName string) string {
 	if len(path) == 0 {
 		return columnName
-	} else {
-		return fmt.Sprintf("%s__%s", path, columnName)
 	}
+	return fmt.Sprintf("%s__%s", truncatePath(path), columnName)
+
+}
+
+func truncatePath(path string) string {
+	idx := strings.LastIndex(path, "__")
+	if idx == -1 {
+		return path
+	}
+	re := regexp.MustCompile(`_(\S)[^_]*`)
+	return fmt.Sprintf("%s__%s", path[:idx], re.ReplaceAllString(path[idx+1:], "$1"))
 }

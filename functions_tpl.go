@@ -23,9 +23,9 @@ RETURNS TABLE(
 	_locale text,
 	{{- range $j, $c:= .Columns }}
 	{{- if $j -}},{{- end }}
-	{{- if eq .ColumnName "limit" -}}_{{- end -}}
+	{{ if eq .ColumnName "limit" -}}_{{- end -}}
 	{{- .ColumnName }} {{ .ColumnType }}
-	{{- end -}}
+	{{- end }}
 ) AS $$
 DECLARE
 	qs text := '';
@@ -106,9 +106,9 @@ $$ LANGUAGE 'plpgsql';
 {{- end -}}
 {{- define "refColumn" -}} 
 (CASE WHEN {{ .JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
-					'sys', json_build_object('id', {{ .JoinAlias }}._sys_id),
-					{{- range $i, $c:= .Columns }}
-					{{- if $i -}},{{- end }}
+					'sys', json_build_object('id', {{ .JoinAlias }}._sys_id)
+					{{- range $i, $c:= .Columns -}}
+					,
 					'{{ .Alias }}',
 					{{- if .IsAsset -}}
 					{{ template "asset" . }}
@@ -121,18 +121,32 @@ $$ LANGUAGE 'plpgsql';
 					{{- end -}}
 					{{- end }}) END)
 {{- end -}}
+{{- define "conColumn" -}} 
+json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
+					{{ range $i, $c:= .Columns }}
+					,
+					{{ if .IsAsset -}}
+					{{ template "asset" . }}
+					{{- else if .ConTableName -}}
+						_included_{{ .Reference.JoinAlias }}.res
+					{{- else if .Reference -}}
+						{{ template "refColumn" .Reference }}
+					{{- else -}}
+						{{ .JoinAlias }}.{{ .ColumnName }}
+					{{- end }} AS "{{ .Alias }}"
+					{{- end }}
+{{- end -}}
 {{- define "join" -}}
 		{{- if .ConTableName }}
 			LEFT JOIN LATERAL (
 				SELECT json_agg(l) AS res FROM (
 					SELECT
-						json_build_object('id', {{ .Reference.JoinAlias }}._sys_id) AS sys
-						{{- range $i, $c:= .Reference.Columns -}}
-							,
-							{{ .JoinAlias }}.{{ .ColumnName }} AS "{{ .Alias }}"
-						{{- end }}
+						{{ template "conColumn" .Reference }}
 					FROM {{ .ConTableName }}
 					JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._id = {{ .ConTableName }}.{{ .Reference.TableName }}
+					{{- range .Reference.Columns }}
+					{{- template "join" . }}
+					{{- end }}
 					WHERE {{ .ConTableName }}.{{ .TableName }} = {{ .JoinAlias }}._id 
 				) l
 			) _included_{{ .Reference.JoinAlias }} ON true
