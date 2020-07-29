@@ -33,7 +33,7 @@ DECLARE
 BEGIN
 	qs:= 'SELECT _id,_sys_id,_locale,';
 	
-	qs := qs || '{{- range $j, $c:= .Columns -}}
+	qs:= qs || '{{- range $j, $c:= .Columns -}}
 	{{- if $j -}},{{- end -}}
 	{{- .ColumnName }} {{- if eq .ColumnName "limit" }} AS _ "{{ .ColumnName }}"{{- end -}}
 	{{- end -}}';
@@ -94,7 +94,7 @@ END;
 $$ LANGUAGE 'plpgsql';
 --
 {{- define "asset" -}}
-json_build_object(
+(CASE WHEN {{ .Reference.JoinAlias }}.title IS NULL THEN NULL ELSE json_build_object(
 						'title', {{ .Reference.JoinAlias }}.title,
 						'description', {{ .Reference.JoinAlias }}.description,
 						'file', json_build_object(
@@ -102,24 +102,24 @@ json_build_object(
 							'fileName', {{ .Reference.JoinAlias }}.file_name,
 							'url', {{ .Reference.JoinAlias }}.url
 						)
-					)
+					) END)
 {{- end -}}
 {{- define "refColumn" -}} 
-json_build_object(
+(CASE WHEN {{ .JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
 					'sys', json_build_object('id', {{ .JoinAlias }}._sys_id),
 					{{- range $i, $c:= .Columns }}
 					{{- if $i -}},{{- end }}
 					'{{ .Alias }}',
 					{{- if .IsAsset -}}
-					(CASE WHEN {{ .JoinAlias }}.{{ .ColumnName }} IS NULL THEN NULL ELSE {{ template "asset" . }} END)
+					{{ template "asset" . }}
 					{{- else if .ConTableName -}}
 						_included_{{ .Reference.JoinAlias }}.res
 					{{- else if .Reference -}}
-						(CASE WHEN {{ .JoinAlias }}.{{ .ColumnName }} IS NULL THEN NULL ELSE {{ template "refColumn" .Reference }} END)
+						{{ template "refColumn" .Reference }}
 					{{- else -}}
 						{{ .JoinAlias }}.{{ .ColumnName }}
 					{{- end -}}
-					{{- end }})
+					{{- end }}) END)
 {{- end -}}
 {{- define "join" -}}
 		{{- if .ConTableName }}
@@ -161,7 +161,7 @@ BEGIN
 				{{- else if .ConTableName -}}
 					_included_{{ .Reference.JoinAlias }}.res
 				{{- else if .Reference -}}
-					(CASE WHEN {{ .JoinAlias }}.{{ .ColumnName }} IS NULL THEN NULL ELSE {{ template "refColumn" .Reference }} END)
+					{{ template "refColumn" .Reference }}
 				{{- else -}}
 					{{ .TableName }}.{{ .ColumnName }}
 				{{- end }} AS "{{ .Alias }}"
