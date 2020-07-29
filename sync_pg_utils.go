@@ -72,7 +72,7 @@ func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColu
 
 func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fieldColumns []string, templateFormat bool, conTables map[string]*PGSyncConTable, refColumns map[string]string, tableName string, locale string) {
 	fieldValues := make(map[string]interface{})
-	id := fmt.Sprintf("%s_%s", item.Sys.ID, locale)
+	id := fmtSysID(item.Sys.ID, templateFormat, locale)
 	fieldValues["_id"] = id
 	for _, rowField := range rowFields {
 		fieldValues[rowField.fieldName] = convertFieldValue(rowField.fieldValue, templateFormat, locale)
@@ -95,7 +95,6 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 			links, ok := rowField.fieldValue.([]interface{})
 			addedRefs := make(map[string]bool)
 			if ok {
-				sysID := item.Sys.ID
 				conTableName := getConTableName(tableName, rowField.fieldName)
 				if conTables[conTableName] == nil {
 					conTables[conTableName] = &PGSyncConTable{
@@ -113,7 +112,7 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 							conTables[conTableName].Rows = append(conTables[conTableName].Rows, conRow)
 							addedRefs[conID] = true
 						} else {
-							fmt.Println(tbl.TableName, sysID, rowField.fieldName, conID)
+							fmt.Println(tbl.TableName, id, rowField.fieldName, conID)
 						}
 					}
 				}
@@ -179,13 +178,17 @@ func convertSys(f map[string]interface{}, t bool, locale string) string {
 	s, ok := f["sys"].(map[string]interface{})
 	if ok {
 		if s["type"] == "Link" {
-			if t {
-				return fmt.Sprintf("'%v_%s'", s["id"], locale)
-			}
-			return fmt.Sprintf("%v_%s", s["id"], locale)
+			return fmtSysID(s["id"], t, locale)
 		}
 	}
 	return ""
+}
+
+func fmtSysID(id interface{}, t bool, l string) string {
+	if t {
+		return fmt.Sprintf("'%v_%s'", id, l)
+	}
+	return fmt.Sprintf("%v_%s", id, l)
 }
 
 func getColumnsByContentType(types []*ContentType) map[string]*columnData {
