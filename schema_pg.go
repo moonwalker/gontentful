@@ -284,7 +284,7 @@ func getColumnType(fieldType string, fieldItems *FieldTypeArrayItem) string {
 		}
 		return "text ARRAY"
 	case "Object":
-		return "text"
+		return "jsonb"
 	default:
 		return "text"
 	}
