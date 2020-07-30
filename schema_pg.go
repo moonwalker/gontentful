@@ -468,34 +468,46 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 			}
 		}
 	} else if field.Items != nil {
-
-		conLinkType := getFieldLinkContentType(field.Items.Validations)
-		if conLinkType != "" && conLinkType != ENTRY {
+		if field.Items.LinkType == ASSET {
 			col.ConTableName = getConTableName(tableName, toSnakeCase(field.ID))
-			conLinkTableName := toSnakeCase(conLinkType)
-			conJoinAlias := getJoinAlias(path, columnName, conLinkTableName)
+			col.IsAsset = true
+			assetJoinAlias := getJoinAlias(path, columnName, assetTableName)
 			if path == "" {
 				col.JoinAlias = tableName
 			} else {
-				col.JoinAlias = conJoinAlias
+				col.JoinAlias = assetJoinAlias
 			}
 			col.Reference = &PGSQLProcedureReference{
-				TableName:  conLinkTableName,
+				TableName:  assetTableName,
 				ForeignKey: toSnakeCase(field.ID),
-				Columns:    make([]*PGSQLProcedureColumn, 0),
-				JoinAlias:  conJoinAlias,
+				JoinAlias:  assetJoinAlias,
 			}
-			if field.Items.LinkType == ASSET {
-				col.IsAsset = true
-			}
-			if includeDepth <= maxIncludeDepth && items[conLinkType] != nil {
-				itemTableName := toSnakeCase(items[conLinkType].Sys.ID)
-				for _, f := range items[conLinkType].Fields {
-					if !f.Omitted {
-						fieldColumnName := toSnakeCase(f.ID)
-						procColumn := NewPGSQLProcedureColumn(fieldColumnName, f, items, itemTableName, maxIncludeDepth, includeDepth+1, getPath(path, columnName))
-						procColumn.JoinAlias = conJoinAlias
-						col.Reference.Columns = append(col.Reference.Columns, procColumn)
+		} else if field.Items.LinkType != "" {
+			conLinkType := getFieldLinkContentType(field.Items.Validations)
+			if conLinkType != "" && conLinkType != ENTRY {
+				col.ConTableName = getConTableName(tableName, toSnakeCase(field.ID))
+				conLinkTableName := toSnakeCase(conLinkType)
+				conJoinAlias := getJoinAlias(path, columnName, conLinkTableName)
+				if path == "" {
+					col.JoinAlias = tableName
+				} else {
+					col.JoinAlias = conJoinAlias
+				}
+				col.Reference = &PGSQLProcedureReference{
+					TableName:  conLinkTableName,
+					ForeignKey: toSnakeCase(field.ID),
+					Columns:    make([]*PGSQLProcedureColumn, 0),
+					JoinAlias:  conJoinAlias,
+				}
+				if includeDepth <= maxIncludeDepth && items[conLinkType] != nil {
+					itemTableName := toSnakeCase(items[conLinkType].Sys.ID)
+					for _, f := range items[conLinkType].Fields {
+						if !f.Omitted {
+							fieldColumnName := toSnakeCase(f.ID)
+							procColumn := NewPGSQLProcedureColumn(fieldColumnName, f, items, itemTableName, maxIncludeDepth, includeDepth+1, getPath(path, columnName))
+							procColumn.JoinAlias = conJoinAlias
+							col.Reference.Columns = append(col.Reference.Columns, procColumn)
+						}
 					}
 				}
 			}
