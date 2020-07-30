@@ -145,7 +145,7 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 						{{ template "asset" . }}
 						{{- else -}}
 						{{ template "conColumn" .Reference }}
-						{{- end -}}
+						{{- end }}
 					FROM {{ .ConTableName }}
 					JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._id = {{ .ConTableName }}.{{ .Reference.TableName }}
 					{{- range .Reference.Columns }}

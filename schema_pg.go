@@ -476,7 +476,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 			} else {
 				col.JoinAlias = assetJoinAlias
 			}
-
+			col.IsAsset = true
 			col.Reference = &PGSQLProcedureReference{
 				TableName:  assetTableName,
 				ForeignKey: toSnakeCase(field.ID),
