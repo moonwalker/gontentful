@@ -123,18 +123,18 @@ $$ LANGUAGE 'plpgsql';
 {{- end -}}
 {{- define "conColumn" -}} 
 json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
-					{{ range $i, $c:= .Columns }}
-					,
-					{{ if .IsAsset -}}
-					{{ template "asset" . }}
-					{{- else if .ConTableName -}}
-						_included_{{ .Reference.JoinAlias }}.res
-					{{- else if .Reference -}}
-						{{ template "refColumn" .Reference }}
-					{{- else -}}
-						{{ .JoinAlias }}.{{ .ColumnName }}
-					{{- end }} AS "{{ .Alias }}"
-					{{- end }}
+						{{- range $i, $c:= .Columns -}}
+						,
+						{{ if .IsAsset -}}
+						{{ template "asset" . }}
+						{{- else if .ConTableName -}}
+							_included_{{ .Reference.JoinAlias }}.res
+						{{- else if .Reference -}}
+							{{ template "refColumn" .Reference }}
+						{{- else -}}
+							{{ .JoinAlias }}.{{ .ColumnName }}
+						{{- end }} AS "{{ .Alias }}"
+						{{- end }}
 {{- end -}}
 {{- define "join" -}}
 		{{- if .ConTableName }}
