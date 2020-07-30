@@ -425,7 +425,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 		Alias:      field.ID,
 	}
 
-	if field.LinkType == ASSET {
+	if field.LinkType == ASSET || field.Items != nil && field.Items.LinkType == ASSET {
 		col.IsAsset = true
 		assetJoinAlias := getJoinAlias(path, columnName, assetTableName)
 		if path == "" {
@@ -505,7 +505,7 @@ func getJoinAlias(path string, columnName, tableName string) string {
 	if len(path) == 0 {
 		return fmt.Sprintf("%s__%s", columnName, tableName)
 	}
-	return truncatePath(fmt.Sprintf("%s__%s__%s", truncatePath(path), columnName, tableName))
+	return fmt.Sprintf("%s__%s__%s", truncatePath(path), columnName, tableName)
 }
 
 func getPath(path string, columnName string) string {
