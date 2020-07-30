@@ -476,10 +476,19 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 			} else {
 				col.JoinAlias = assetJoinAlias
 			}
+
 			col.Reference = &PGSQLProcedureReference{
 				TableName:  assetTableName,
 				ForeignKey: toSnakeCase(field.ID),
 				JoinAlias:  assetJoinAlias,
+				Columns: []*PGSQLProcedureColumn{
+					&PGSQLProcedureColumn{
+						IsAsset: true,
+						Reference: &PGSQLProcedureReference{
+							JoinAlias: col.JoinAlias,
+						},
+					},
+				},
 			}
 		} else if field.Items.LinkType != "" {
 			conLinkType := getFieldLinkContentType(field.Items.Validations)
