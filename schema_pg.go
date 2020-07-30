@@ -425,7 +425,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 		Alias:      field.ID,
 	}
 
-	if field.LinkType == ASSET || field.Items != nil && field.Items.LinkType == ASSET {
+	if field.LinkType == ASSET {
 		col.IsAsset = true
 		assetJoinAlias := getJoinAlias(path, columnName, assetTableName)
 		if path == "" {
@@ -468,6 +468,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 			}
 		}
 	} else if field.Items != nil {
+
 		conLinkType := getFieldLinkContentType(field.Items.Validations)
 		if conLinkType != "" && conLinkType != ENTRY {
 			col.ConTableName = getConTableName(tableName, toSnakeCase(field.ID))
@@ -483,6 +484,9 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 				ForeignKey: toSnakeCase(field.ID),
 				Columns:    make([]*PGSQLProcedureColumn, 0),
 				JoinAlias:  conJoinAlias,
+			}
+			if field.Items.LinkType == ASSET {
+				col.IsAsset = true
 			}
 			if includeDepth <= maxIncludeDepth && items[conLinkType] != nil {
 				itemTableName := toSnakeCase(items[conLinkType].Sys.ID)
