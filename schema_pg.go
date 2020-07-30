@@ -470,7 +470,6 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 	} else if field.Items != nil {
 		if field.Items.LinkType == ASSET {
 			col.ConTableName = getConTableName(tableName, toSnakeCase(field.ID))
-			col.IsAsset = true
 			assetJoinAlias := getJoinAlias(path, columnName, assetTableName)
 			if path == "" {
 				col.JoinAlias = tableName
