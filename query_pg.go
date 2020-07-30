@@ -106,7 +106,7 @@ func createFilters(filters url.Values) *[]string {
 					if i > 0 {
 						vals = vals + ","
 					}
-					vals = vals + fmt.Sprintf("''%s''", v)
+					vals = vals + formatValue(v)
 				}
 			}
 			f := getFilterFormat(key, vals)
@@ -179,6 +179,19 @@ func getFilterFormat(key string, value string) string {
 	return ""
 }
 
+func formatValue(s string) string {
+	if s == "true" || s == "false" {
+		return fmt.Sprintf("%s", s)
+	}
+
+	f, err := strconv.ParseFloat(s, 64)
+	if err == nil {
+		return fmt.Sprintf("%f", f)
+	}
+
+	return fmt.Sprintf("''%s''", s)
+}
+
 func formatField(f string) string {
 	if f == "sys.id" {
 		return "_sys_id"
@@ -202,10 +215,9 @@ func formatOrder(order string, tableName string) string {
 		if value == "sys.id" {
 			field = fmt.Sprintf("%s._sys_id", tableName)
 		} else if strings.HasPrefix(value, "sys.") {
-			field = strings.TrimPrefix(value, "sys.")
-			field = fmt.Sprintf("%s._%s", tableName, toSnakeCase(field))
+			field = fmt.Sprintf("%s._%s", tableName, strings.TrimPrefix(toSnakeCase(value), "sys."))
 		} else {
-			field = fmt.Sprintf("%s.%s", tableName, strings.TrimPrefix(value, "fields."))
+			field = fmt.Sprintf("%s.%s", tableName, strings.TrimPrefix(toSnakeCase(value), "fields."))
 		}
 
 		orders = append(orders, fmt.Sprintf("%s%s NULLS LAST", field, desc))
@@ -241,7 +253,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 		return 0, "", err
 	}
 
-	// fmt.Println(buff.String())
+	fmt.Println(buff.String())
 
 	var count int64
 	var items string
