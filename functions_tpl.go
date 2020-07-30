@@ -110,10 +110,10 @@ $$ LANGUAGE 'plpgsql';
 					{{- range $i, $c:= .Columns -}}
 					,
 					'{{ .Alias }}',
-					{{- if .IsAsset -}}
-					{{ template "asset" . }}
-					{{- else if .ConTableName -}}
+					{{- if .ConTableName -}}
 						_included_{{ .Reference.JoinAlias }}.res
+					{{- else if .IsAsset -}}
+						{{ template "asset" . }}	
 					{{- else if .Reference -}}
 						{{ template "refColumn" .Reference }}
 					{{- else -}}
@@ -125,10 +125,10 @@ $$ LANGUAGE 'plpgsql';
 json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 						{{- range $i, $c:= .Columns -}}
 						,
-						{{ if .IsAsset -}}
-						{{ template "asset" . }}
-						{{- else if .ConTableName -}}
+						{{ if .ConTableName -}}
 							_included_{{ .Reference.JoinAlias }}.res
+						{{- else if .IsAsset -}}
+						{{ template "asset" . }}
 						{{- else if .Reference -}}
 							{{ template "refColumn" .Reference }}
 						{{- else -}}
@@ -141,7 +141,11 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 			LEFT JOIN LATERAL (
 				SELECT json_agg(l) AS res FROM (
 					SELECT
+						{{ if .IsAsset -}}
+						{{ template "asset" . }}
+						{{- else -}}
 						{{ template "conColumn" .Reference }}
+						{{- end -}}
 					FROM {{ .ConTableName }}
 					JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._id = {{ .ConTableName }}.{{ .Reference.TableName }}
 					{{- range .Reference.Columns }}
