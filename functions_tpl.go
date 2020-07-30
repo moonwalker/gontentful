@@ -94,7 +94,7 @@ END;
 $$ LANGUAGE 'plpgsql';
 --
 {{- define "asset" -}}
-(CASE WHEN {{ .Reference.JoinAlias }}.title IS NULL THEN NULL ELSE json_build_object(
+(CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
 						'title', {{ .Reference.JoinAlias }}.title,
 						'description', {{ .Reference.JoinAlias }}.description,
 						'file', json_build_object(
