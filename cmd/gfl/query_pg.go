@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -18,7 +19,6 @@ var (
 		"content_type=product&fields.name=dreamz&include=3&limit=1&skip=0",
 		"content_type=webComponent&include=3&limit=1000&skip=0",
 		"content_type=phrase&include=3&limit=1000&locale=en&skip=0",
-		"content_type=routeAlias&include=3&limit=1000&locale=en&skip=0",
 		"content_type=route&include=3&limit=1000&locale=en&skip=0",
 		"content_type=routeAlias&include=3&limit=1000&locale=en&skip=0",
 		"content_type=market&fields.code=ROW&include=2&limit=1&locale=en&skip=0",
@@ -100,28 +100,63 @@ func init() {
 	queryCmd.AddCommand(pgQueryCmd)
 }
 
+func execQuery(q string) int64 {
+	start := time.Now()
+	// log.Println("parsing", q)
+	qv, err := url.ParseQuery(q)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	query := gontentful.ParsePGQuery(schemaName, "en", qv)
+	// log.Println("executing query...")
+	_, _, err = query.Exec(databaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	elapsed := time.Since(start).Milliseconds()
+	// log.Printf("query %s total %d items (%d bytes) successfully in %dms", q, total, len(items), elapsed)
+	return elapsed
+}
+
 var pgQueryCmd = &cobra.Command{
 	Use:   "pg",
 	Short: "Query content database",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		for _, q := range test {
-			start := time.Now()
-			log.Println("parsing", q)
-			q, err := url.ParseQuery(q)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
+		runTimes := make(map[string][]int64)
+		l := len(test)
+		u := 10
+		for i := 0; i < u; i++ {
+			var wg sync.WaitGroup
+			wg.Add(l)
+			log.Printf("executing %d queries async...", l)
+			for _, qs := range test {
+				if runTimes[qs] == nil {
+					runTimes[qs] = []int64{
+						0,
+						0,
+					}
+				}
+				go func(q string) {
+					defer wg.Done()
+					runTimes[q][0] += execQuery(q)
+				}(qs)
 			}
-			query := gontentful.ParsePGQuery(schemaName, "en", q)
-
-			log.Println("executing query...")
-			total, items, err := query.Exec(databaseURL)
-			if err != nil {
-				log.Fatal(err)
+			wg.Wait()
+			log.Printf("executing %d queries sync...", l)
+			for _, q := range test {
+				if runTimes[q] == nil {
+					runTimes[q] = []int64{
+						0,
+						0,
+					}
+				}
+				runTimes[q][1] += execQuery(q)
 			}
-			elapsed := time.Since(start)
-			log.Printf("query total %d items (%d bytes) successfully in %s", total, len(items), elapsed)
+		}
+		for k, v := range runTimes {
+			log.Printf("query %s async %d vs sync %d diff %d", k, v[0]/int64(l), v[1]/int64(l), (v[0]-v[1])/int64(l))
 		}
 	},
 }
