@@ -126,7 +126,7 @@ var pgQueryCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		runTimes := make(map[string][]int64)
 		l := len(test)
-		u := 10
+		u := 1
 		for i := 0; i < u; i++ {
 			var wg sync.WaitGroup
 			wg.Add(l)
@@ -155,8 +155,9 @@ var pgQueryCmd = &cobra.Command{
 				runTimes[q][1] += execQuery(q)
 			}
 		}
+		ui := int64(u)
 		for k, v := range runTimes {
-			log.Printf("query %s async %d vs sync %d diff %d", k, v[0]/int64(l), v[1]/int64(l), (v[0]-v[1])/int64(l))
+			log.Printf("query %s async %d vs sync %d diff %d", k, v[0]/ui, v[1]/ui, (v[0]-v[1])/ui)
 		}
 	},
 }
