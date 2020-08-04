@@ -14,6 +14,9 @@ import (
 )
 
 const queryTemplate = `
+{{- if .SchemaName -}}
+	SET search_path='{{ .SchemaName }}';
+{{- end }}
 SELECT * FROM {{ .TableName }}_query(
 '{{ .Locale }}',
 {{- if $.Filters }}ARRAY[
@@ -233,16 +236,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 	}
 	defer db.Close()
 
-	if s.SchemaName != "" {
-		// set schema in use
-		_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
-		if err != nil {
-			return 0, "", err
-		}
-	}
-
 	tmpl, err := template.New("").Parse(queryTemplate)
-
 	if err != nil {
 		return 0, "", err
 	}
@@ -252,14 +246,12 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 	if err != nil {
 		return 0, "", err
 	}
-
 	// fmt.Println(buff.String())
 
 	var count int64
 	var items string
 	res := db.QueryRow(buff.String())
 	err = res.Scan(&count, &items)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return 0, "[]", nil
