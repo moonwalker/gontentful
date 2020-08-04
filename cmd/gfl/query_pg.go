@@ -1,13 +1,13 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
 	"log"
 	"net/url"
-	"os"
 	"sync"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 
 	"github.com/moonwalker/gontentful"
@@ -105,8 +105,7 @@ func execQuery(q string) int64 {
 	// log.Println("parsing", q)
 	qv, err := url.ParseQuery(q)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 	query := gontentful.ParsePGQuery(schemaName, "en", qv)
 	// log.Println("executing query...")
@@ -116,6 +115,24 @@ func execQuery(q string) int64 {
 	}
 	elapsed := time.Since(start).Milliseconds()
 	// log.Printf("query %s total %d items (%d bytes) successfully in %dms", q, total, len(items), elapsed)
+	return elapsed
+}
+
+func execQueryFake(q string) int64 {
+	start := time.Now()
+	db, err := sqlx.Connect("postgres", databaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	var _id string
+	res := db.QueryRow("SELECT _id from content.currency where _id = '32BGobyvxSA2WgCsQK0Iso_en'")
+	err = res.Scan(&_id)
+	if err != nil && err != sql.ErrNoRows {
+		log.Fatal(err)
+	}
+	elapsed := time.Since(start).Milliseconds()
 	return elapsed
 }
 
