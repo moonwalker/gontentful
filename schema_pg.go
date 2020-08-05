@@ -521,7 +521,7 @@ func getJoinAlias(path string, columnName, tableName string) string {
 	if len(path) == 0 {
 		return fmt.Sprintf("%s__%s", columnName, tableName)
 	}
-	return fmt.Sprintf("%s__%s__%s", truncatePath(path), columnName, tableName)
+	return truncatePath(fmt.Sprintf("%s__%s__%s", truncatePath(path), columnName, tableName))
 }
 
 func getPath(path string, columnName string) string {
