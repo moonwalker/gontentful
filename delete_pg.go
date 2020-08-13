@@ -17,9 +17,15 @@ type PGDelete struct {
 }
 
 func NewPGDelete(schemaName string, sys *Sys) *PGDelete {
+	tableName := ""
+	if sys.Type == DELETED_ENTRY {
+		tableName = toSnakeCase(sys.ContentType.Sys.ID)
+	} else if sys.Type == DELETED_ASSET {
+		tableName = assetTableName
+	}
 	return &PGDelete{
 		SchemaName: schemaName,
-		TableName:  toSnakeCase(sys.ContentType.Sys.ID),
+		TableName:  tableName,
 		SysID:      sys.ID,
 	}
 }
