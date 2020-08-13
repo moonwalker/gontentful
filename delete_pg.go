@@ -16,11 +16,11 @@ type PGDelete struct {
 	SysID      string
 }
 
-func NewPGDelete(schemaName string, tableName string, sysID string) *PGDelete {
+func NewPGDelete(schemaName string, sys *Sys) *PGDelete {
 	return &PGDelete{
 		SchemaName: schemaName,
-		TableName:  tableName,
-		SysID:      sysID,
+		TableName:  toSnakeCase(sys.ContentType.Sys.ID),
+		SysID:      sys.ID,
 	}
 }
 

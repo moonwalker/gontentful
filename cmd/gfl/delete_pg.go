@@ -24,7 +24,14 @@ var pgDeleteCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		log.Printf("deleting %s from %s.%s...", sysID, schemaName, tableName)
-		query := gontentful.NewPGDelete(schemaName, tableName, sysID)
+		query := gontentful.NewPGDelete(schemaName, &gontentful.Sys{
+			ID: sysID,
+			ContentType: &gontentful.ContentType{
+				Sys: &gontentful.Sys{
+					ID: tableName,
+				},
+			},
+		})
 		err := query.Exec(databaseURL)
 		if err != nil {
 			log.Fatal(err)

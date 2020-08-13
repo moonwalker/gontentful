@@ -76,7 +76,6 @@ func (s *SpacesService) getSyncPage(query url.Values) (*SyncResponse, error) {
 		return nil, err
 	}
 	res := &SyncResponse{}
-	fmt.Println(string(body))
 	err = json.Unmarshal(body, &res)
 	if err != nil {
 		return nil, err

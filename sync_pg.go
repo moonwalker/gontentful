@@ -88,7 +88,6 @@ func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entr
 	columnsByContentType := getColumnsByContentType(types)
 
 	for _, item := range entries {
-		fmt.Println(item.Sys.ContentType)
 		switch item.Sys.Type {
 		case ENTRY:
 			contentType := item.Sys.ContentType.Sys.ID
