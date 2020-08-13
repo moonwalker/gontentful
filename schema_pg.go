@@ -92,15 +92,13 @@ type PGSQLSchema struct {
 	Functions      []*PGSQLProcedure
 	AssetTableName string
 	AssetColumns   []string
-	WithMetaData   bool
-	WithEntries    bool
 }
 
 var schemaFuncMap = template.FuncMap{
 	"fmtLocale": fmtLocale,
 }
 
-func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, withMetaData bool, withEntries bool, includeDepth int64) *PGSQLSchema {
+func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, includeDepth int64) *PGSQLSchema {
 	schema := &PGSQLSchema{
 		SchemaName:   schemaName,
 		Locales:      space.Locales,
@@ -109,8 +107,6 @@ func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, withM
 		References:   make([]*PGSQLReference, 0),
 		Functions:    make([]*PGSQLProcedure, 0),
 		AssetColumns: assetColumns,
-		WithMetaData: withMetaData,
-		WithEntries:  withEntries,
 	}
 
 	itemsMap := make(map[string]*ContentType)
@@ -119,7 +115,7 @@ func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, withM
 	}
 
 	for _, item := range items {
-		table, conTables, references, proc := NewPGSQLTable(item, itemsMap, withMetaData, includeDepth)
+		table, conTables, references, proc := NewPGSQLTable(item, itemsMap, includeDepth)
 
 		schema.Tables = append(schema.Tables, table)
 		schema.ConTables = append(schema.ConTables, conTables...)
@@ -196,7 +192,7 @@ func (s *PGSQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewPGSQLTable(item *ContentType, items map[string]*ContentType, withMetaData bool, includeDepth int64) (*PGSQLTable, []*PGSQLTable, []*PGSQLReference, *PGSQLProcedure) {
+func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDepth int64) (*PGSQLTable, []*PGSQLTable, []*PGSQLReference, *PGSQLProcedure) {
 	table := &PGSQLTable{
 		TableName: toSnakeCase(item.Sys.ID),
 		Columns:   make([]*PGSQLColumn, 0),
@@ -219,10 +215,6 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, withMetaDat
 			table.Columns = append(table.Columns, column)
 			procColumn := NewPGSQLProcedureColumn(column.ColumnName, field, items, table.TableName, include, 0, "")
 
-			if withMetaData {
-				meta := makeMeta(field)
-				table.Data.Metas = append(table.Data.Metas, meta)
-			}
 			if field.LinkType != "" {
 				references = addOneTOne(references, table.TableName, field)
 			} else if field.Items != nil {

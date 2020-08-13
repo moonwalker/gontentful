@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	entriesTableName = "_entries"
-	defaultLocale    = "en"
+	defaultLocale = "en"
 )
 
 var (
@@ -37,13 +36,18 @@ type PGSyncTable struct {
 	Rows      []*PGSyncRow
 }
 
+type PGDeletedTable struct {
+	TableName string
+	SysIDs    []string
+}
+
 type PGSyncSchema struct {
 	SchemaName    string
 	Locales       []*Locale
 	DefaultLocale string
 	Tables        map[string]*PGSyncTable
 	ConTables     map[string]*PGSyncConTable
-	Deleted       []string
+	Deleted       map[string]*PGDeletedTable
 	InitSync      bool
 }
 
@@ -58,7 +62,7 @@ type PGSyncConTable struct {
 	Rows      [][]interface{}
 }
 
-func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entries []*Entry, initSync bool, withMetaData bool) *PGSyncSchema {
+func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entries []*Entry, initSync bool) *PGSyncSchema {
 
 	defLocale := defaultLocale
 	if len(space.Locales) > 0 {
@@ -75,72 +79,55 @@ func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entr
 		SchemaName:    schemaName,
 		Locales:       space.Locales,
 		DefaultLocale: defLocale,
-		Tables:        make(map[string]*PGSyncTable, 0),
-		ConTables:     make(map[string]*PGSyncConTable, 0),
-		Deleted:       make([]string, 0),
+		Tables:        make(map[string]*PGSyncTable),
+		ConTables:     make(map[string]*PGSyncConTable),
+		Deleted:       make(map[string]*PGDeletedTable),
 		InitSync:      initSync,
-	}
-
-	var entriesTable *PGSyncTable
-
-	if withMetaData {
-		// create a "global" entries table to store all entries with sys_id for later delete
-		entriesTable = newPGSyncTable(entriesTableName, []string{"table_name"})
-
-		// append the "global" entries table to the tables
-		schema.Tables[entriesTableName] = entriesTable
 	}
 
 	columnsByContentType := getColumnsByContentType(types)
 
 	for _, item := range entries {
+		fmt.Println(item.Sys.ContentType)
 		switch item.Sys.Type {
 		case ENTRY:
 			contentType := item.Sys.ContentType.Sys.ID
 			tableName := toSnakeCase(contentType)
 			appendTables(schema, item, tableName, columnsByContentType[contentType].fieldColumns, columnsByContentType[contentType].columnReferences, !initSync)
-			if withMetaData {
-				// append to "global" entries table
-				appendToEntries(entriesTable, tableName, item.Sys.ID, !initSync)
-			}
 			break
 		case ASSET:
 			appendTables(schema, item, assetTableName, assetColumns, nil, !initSync)
-			if withMetaData {
-				// append to "global" entries table
-				appendToEntries(entriesTable, assetTableName, item.Sys.ID, !initSync)
-			}
 			break
-		case DELETED_ENTRY, DELETED_ASSET:
-			schema.Deleted = append(schema.Deleted, item.Sys.ID)
-			break
+			// case DELETED_ENTRY:
+			// 	contentType := item.Sys.ContentType.Sys.ID
+			// 	tableName := toSnakeCase(contentType)
+			// 	if schema.Deleted[tableName] == nil {
+			// 		schema.Deleted[tableName] = &PGDeletedTable{
+			// 			TableName: tableName,
+			// 			SysIDs:    make([]string, 0),
+			// 		}
+			// 		schema.Deleted[tableName].SysIDs = append(schema.Deleted[tableName].SysIDs, item.Sys.ID)
+			// 	}
+			// 	break
+			// case DELETED_ASSET:
+			// 	if schema.Deleted[assetTableName] == nil {
+			// 		schema.Deleted[assetTableName] = &PGDeletedTable{
+			// 			TableName: assetTableName,
+			// 			SysIDs:    make([]string, 0),
+			// 		}
+			// 		schema.Deleted[assetTableName].SysIDs = append(schema.Deleted[assetTableName].SysIDs, item.Sys.ID)
+			// 	}
+			// 	break
 		}
 	}
 
 	return schema
 }
 
-func appendToEntries(entriesTable *PGSyncTable, tableName string, sysID string, templateFormat bool) {
-	fieldValue := tableName
-	if templateFormat {
-		fieldValue = fmt.Sprintf("'%s'", tableName)
-	}
-	enrtiesRow := &PGSyncRow{
-		SysID:        sysID,
-		FieldColumns: []string{"table_name"},
-		FieldValues: map[string]interface{}{
-			"table_name": fieldValue,
-		},
-	}
-	entriesTable.Rows = append(entriesTable.Rows, enrtiesRow)
-}
-
 func newPGSyncTable(tableName string, fieldColumns []string) *PGSyncTable {
 	columns := []string{"_id", "_sys_id"}
 	columns = append(columns, fieldColumns...)
-	if tableName != entriesTableName {
-		columns = append(columns, metaColumns...)
-	}
+	columns = append(columns, metaColumns...)
 
 	return &PGSyncTable{
 		TableName: tableName,
@@ -169,7 +156,7 @@ func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]int
 	return row
 }
 
-func (r *PGSyncRow) Fields(addMeta bool) []interface{} {
+func (r *PGSyncRow) Fields() []interface{} {
 	values := []interface{}{
 		fmt.Sprintf("%s_%s", r.SysID, r.Locale),
 		r.SysID,
@@ -177,9 +164,7 @@ func (r *PGSyncRow) Fields(addMeta bool) []interface{} {
 	for _, fieldColumn := range r.FieldColumns {
 		values = append(values, r.FieldValues[fieldColumn])
 	}
-	if addMeta {
-		values = append(values, r.Locale, r.Version, r.CreatedAt, "sync", r.UpdatedAt, "sync")
-	}
+	values = append(values, r.Locale, r.Version, r.CreatedAt, "sync", r.UpdatedAt, "sync")
 	return values
 }
 
@@ -237,7 +222,7 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 			return err
 		}
 		for _, row := range tbl.Rows {
-			_, err = stmt.Exec(row.Fields(tbl.TableName != entriesTableName)...)
+			_, err = stmt.Exec(row.Fields()...)
 			if err != nil {
 				fmt.Println("stmt.Exec error", tbl.TableName, row)
 				return err

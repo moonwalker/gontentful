@@ -13,9 +13,6 @@ var (
 	cmaToken    string
 	databaseURL string
 	schemaName  string
-
-	withMetaData bool
-	withEntries  bool
 )
 
 const (
@@ -39,7 +36,6 @@ func init() {
 	//rootCmd.MarkFlagRequired("cma")
 	//rootCmd.MarkFlagRequired("url")
 	//rootCmd.MarkFlagRequired("schema")
-	fmt.Println(schemaName)
 }
 
 func main() {

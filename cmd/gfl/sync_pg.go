@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -57,6 +58,10 @@ var pgSyncCmd = &cobra.Command{
 		}
 		log.Println("sync done")
 
+		for _, i := range res.Items {
+			fmt.Println(i.Sys.ID)
+		}
+
 		log.Println("get space...")
 		space, err := client.Spaces.GetSpace()
 		if err != nil {
@@ -71,7 +76,7 @@ var pgSyncCmd = &cobra.Command{
 		log.Println("get types done")
 
 		log.Println("exec...")
-		schema := gontentful.NewPGSyncSchema(schemaName, space, types.Items, res.Items, len(syncToken) == 0, withMetaData)
+		schema := gontentful.NewPGSyncSchema(schemaName, space, types.Items, res.Items, len(syncToken) == 0)
 		err = schema.Exec(databaseURL)
 		if err != nil {
 			log.Fatal(err)

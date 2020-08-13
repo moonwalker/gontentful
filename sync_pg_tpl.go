@@ -1,7 +1,7 @@
 package gontentful
 
 const pgSyncTemplate = `
-{{ range $tblidx, $tbl := .Tables }}
+{{ range $tblname, $tbl := .Tables }}
 {{ range $itemidx, $item := .Rows }}
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	_id,
@@ -42,15 +42,10 @@ SET
 ;
 {{- end -}}
 {{- end -}}
-{{ range $idx, $sys_id := $.Deleted }}
-DO $$
-DECLARE tn TEXT;
-BEGIN
-  SELECT table_name INTO tn FROM content._entries WHERE _sys_id = '{{ $sys_id }}';
-  IF tn IS NOT NULL THEN
-	  EXECUTE 'DELETE FROM content.' || tn || ' WHERE _sys_id = ''{{ $sys_id }}'' CASCADE';
-  END IF;
-END $$;
+{{ range $tblname, $tbl := $.Deleted }}
+{{ range $idx, $sys_id := .SysIDs }}
+DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE _sys_id = '{{ $sys_id }}' CASCADE
+{{- end -}}
 {{- end -}}
 {{ range $tblidx, $tbl := .ConTables }}
 {{ range $rowidx, $row := $tbl.Rows }}
