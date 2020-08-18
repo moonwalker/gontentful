@@ -78,9 +78,10 @@ type PGSQLTable struct {
 }
 
 type PGSQLReference struct {
-	TableName  string
-	ForeignKey string
-	Reference  string
+	TableName    string
+	ForeignKey   string
+	Reference    string
+	IsManyToMany bool
 }
 
 type PGSQLSchema struct {
@@ -90,8 +91,14 @@ type PGSQLSchema struct {
 	ConTables      []*PGSQLTable
 	References     []*PGSQLReference
 	Functions      []*PGSQLProcedure
+	DeleteTriggers []*PGSQLDeleteTrigger
 	AssetTableName string
 	AssetColumns   []string
+}
+
+type PGSQLDeleteTrigger struct {
+	TableName string
+	ConTables []string
 }
 
 var schemaFuncMap = template.FuncMap{
@@ -100,13 +107,14 @@ var schemaFuncMap = template.FuncMap{
 
 func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, includeDepth int64) *PGSQLSchema {
 	schema := &PGSQLSchema{
-		SchemaName:   schemaName,
-		Locales:      space.Locales,
-		Tables:       make([]*PGSQLTable, 0),
-		ConTables:    make([]*PGSQLTable, 0),
-		References:   make([]*PGSQLReference, 0),
-		Functions:    make([]*PGSQLProcedure, 0),
-		AssetColumns: assetColumns,
+		SchemaName:     schemaName,
+		Locales:        space.Locales,
+		Tables:         make([]*PGSQLTable, 0),
+		ConTables:      make([]*PGSQLTable, 0),
+		References:     make([]*PGSQLReference, 0),
+		Functions:      make([]*PGSQLProcedure, 0),
+		DeleteTriggers: make([]*PGSQLDeleteTrigger, 0),
+		AssetColumns:   assetColumns,
 	}
 
 	itemsMap := make(map[string]*ContentType)
@@ -121,6 +129,23 @@ func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, inclu
 		schema.ConTables = append(schema.ConTables, conTables...)
 		schema.References = append(schema.References, references...)
 		schema.Functions = append(schema.Functions, proc)
+	}
+
+	delTriggerMap := make(map[string][]string, 0)
+	for _, ref := range schema.References {
+		if !ref.IsManyToMany {
+			continue
+		}
+		if delTriggerMap[ref.Reference] == nil {
+			delTriggerMap[ref.Reference] = make([]string, 0)
+		}
+		delTriggerMap[ref.Reference] = append(delTriggerMap[ref.Reference], ref.TableName)
+	}
+	for tn, ct := range delTriggerMap {
+		schema.DeleteTriggers = append(schema.DeleteTriggers, &PGSQLDeleteTrigger{
+			TableName: tn,
+			ConTables: ct,
+		})
 	}
 
 	return schema
@@ -384,9 +409,10 @@ func addOneTOne(references []*PGSQLReference, tableName string, field *ContentTy
 	if linkType != "" && linkType != ENTRY {
 		foreignKey := toSnakeCase(field.ID)
 		references = append(references, &PGSQLReference{
-			TableName:  tableName,
-			Reference:  linkType,
-			ForeignKey: foreignKey,
+			TableName:    tableName,
+			Reference:    linkType,
+			ForeignKey:   foreignKey,
+			IsManyToMany: false,
 		})
 	}
 	return references
@@ -398,13 +424,15 @@ func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, tableN
 		conTable := NewPGSQLCon(tableName, toSnakeCase(field.ID), linkType)
 		conTables = append(conTables, conTable)
 		references = append(references, &PGSQLReference{
-			TableName:  conTable.TableName,
-			Reference:  tableName,
-			ForeignKey: tableName,
+			TableName:    conTable.TableName,
+			Reference:    tableName,
+			ForeignKey:   tableName,
+			IsManyToMany: true,
 		}, &PGSQLReference{
-			TableName:  conTable.TableName,
-			Reference:  linkType,
-			ForeignKey: linkType,
+			TableName:    conTable.TableName,
+			Reference:    linkType,
+			ForeignKey:   linkType,
+			IsManyToMany: true,
 		})
 	}
 	return conTables, references

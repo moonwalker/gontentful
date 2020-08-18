@@ -210,5 +210,27 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-{{- end -}}
+{{- end }}
+{{- range $i, $t := $.DeleteTriggers }}
+CREATE OR REPLACE FUNCTION {{ .TableName }}_delete_trigger() 
+   RETURNS TRIGGER 
+AS $$
+BEGIN
+	{{- range $idx, $c := .ConTables }}
+	DELETE FROM {{ . }} where {{ . }}.{{ $t.TableName }} = OLD._id;
+	{{- end }}
+	RETURN OLD;
+END
+$$ LANGUAGE 'plpgsql';
+--
+DROP TRIGGER IF EXISTS {{ .TableName }}_delete
+ON {{ .TableName }};
+--
+CREATE TRIGGER {{ .TableName }}_delete 
+	AFTER DELETE 
+ON {{ .TableName }} 
+FOR EACH ROW 
+	EXECUTE PROCEDURE {{ .TableName }}_delete_trigger();
+--
+{{- end }}
 `
