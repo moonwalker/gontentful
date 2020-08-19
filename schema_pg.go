@@ -130,23 +130,7 @@ func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, inclu
 		schema.References = append(schema.References, references...)
 		schema.Functions = append(schema.Functions, proc)
 	}
-
-	delTriggerMap := make(map[string][]string, 0)
-	for _, ref := range schema.References {
-		if !ref.IsManyToMany {
-			continue
-		}
-		if delTriggerMap[ref.Reference] == nil {
-			delTriggerMap[ref.Reference] = make([]string, 0)
-		}
-		delTriggerMap[ref.Reference] = append(delTriggerMap[ref.Reference], ref.TableName)
-	}
-	for tn, ct := range delTriggerMap {
-		schema.DeleteTriggers = append(schema.DeleteTriggers, &PGSQLDeleteTrigger{
-			TableName: tn,
-			ConTables: ct,
-		})
-	}
+	schema.DeleteTriggers = getDeleteTriggers(schema.References)
 
 	return schema
 }
@@ -559,4 +543,22 @@ func truncatePath(path string) string {
 	}
 	re := regexp.MustCompile(`_(\S)[^_]*`)
 	return fmt.Sprintf("%s__%s", path[:idx], re.ReplaceAllString(path[idx+1:], "$1"))
+}
+
+func getDeleteTriggers(references []*PGSQLReference) []*PGSQLDeleteTrigger {
+	res := make([]*PGSQLDeleteTrigger, 0)
+	delTriggerMap := make(map[string][]string, 0)
+	for _, ref := range references {
+		if !ref.IsManyToMany {
+			continue
+		}
+		if delTriggerMap[ref.Reference] == nil {
+			delTriggerMap[ref.Reference] = make([]string, 0)
+		}
+		delTriggerMap[ref.Reference] = append(delTriggerMap[ref.Reference], ref.TableName)
+	}
+	for tn, ct := range delTriggerMap {
+		res = append(res, &PGSQLDeleteTrigger{TableName: tn, ConTables: ct})
+	}
+	return res
 }
