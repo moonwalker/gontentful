@@ -137,3 +137,10 @@ type AssetFile struct {
 		} `json:"image"`
 	} `json:"details"`
 }
+
+type PublishFields map[string]map[string]interface{}
+
+type PublishedEntry struct {
+	Sys    *Sys          `json:"sys"`
+	Fields PublishFields `json:"fields"`
+}

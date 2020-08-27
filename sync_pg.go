@@ -23,7 +23,6 @@ type PGSyncRow struct {
 	SysID        string
 	FieldColumns []string
 	FieldValues  map[string]interface{}
-	MetaColumns  []string
 	Locale       string
 	Version      int
 	CreatedAt    string

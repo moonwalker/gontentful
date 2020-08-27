@@ -195,22 +195,27 @@ func getColumnsByContentType(types []*ContentType) map[string]*columnData {
 	typeColumns := make(map[string]*columnData)
 	for _, t := range types {
 		if typeColumns[t.Sys.ID] == nil {
-			fieldColumns := make([]string, 0)
-			refColumns := make(map[string]string)
-			for _, f := range t.Fields {
-				if !f.Omitted {
-					colName := toSnakeCase(f.ID)
-					fieldColumns = append(fieldColumns, colName)
-					if f.Items != nil {
-						linkType := getFieldLinkType(f.Items.LinkType, f.Items.Validations)
-						if linkType != "" {
-							refColumns[colName] = linkType
-						}
-					}
-				}
-			}
+			fieldColumns, refColumns := getContentTypeColumns(t)
 			typeColumns[t.Sys.ID] = &columnData{fieldColumns, refColumns}
 		}
 	}
 	return typeColumns
+}
+
+func getContentTypeColumns(t *ContentType) ([]string, map[string]string) {
+	fieldColumns := make([]string, 0)
+	refColumns := make(map[string]string)
+	for _, f := range t.Fields {
+		if !f.Omitted {
+			colName := toSnakeCase(f.ID)
+			fieldColumns = append(fieldColumns, colName)
+			if f.Items != nil {
+				linkType := getFieldLinkType(f.Items.LinkType, f.Items.Validations)
+				if linkType != "" {
+					refColumns[colName] = linkType
+				}
+			}
+		}
+	}
+	return fieldColumns, refColumns
 }
