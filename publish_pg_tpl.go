@@ -42,7 +42,9 @@ SET
 {{- end -}}
 {{ range $conidx, $con := .ConTables }}
 {{ range $rowidx, $row := $con.Rows }}
+{{ if not $rowidx -}}
 DELETE FROM {{ $.SchemaName }}.{{ $con.TableName }} WHERE {{ index $con.Columns 0 }} = {{ (index $row 0) }};
+{{ end -}}
 INSERT INTO {{ $.SchemaName }}.{{ $con.TableName }} (
 	{{- range $k, $v := $con.Columns }}
 	{{- if $k -}},{{- end -}}{{ $v }}

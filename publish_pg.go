@@ -24,10 +24,9 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 	if len(space.Locales) > 0 {
 		defLocale = space.Locales[0].Code
 		for _, loc := range space.Locales {
-			code := strings.ToLower(loc.Code)
-			locales = append(locales, code)
+			locales = append(locales, loc.Code)
 			if loc.Default {
-				defLocale = code
+				defLocale = loc.Code
 			}
 		}
 	}
@@ -43,13 +42,14 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 	case ENTRY:
 		contentType := item.Sys.ContentType.Sys.ID
 		q.TableName = toSnakeCase(contentType)
-		for _, loc := range locales {
+		for _, oLoc := range locales {
+			loc := strings.ToLower(oLoc)
 			fieldValues := make(map[string]interface{})
 			id := fmtSysID(item.Sys.ID, true, loc)
 			for _, col := range contentTypeColumns {
 				prop := toCamelCase(col)
 				if item.Fields[prop] != nil {
-					fieldValue := item.Fields[prop][loc]
+					fieldValue := item.Fields[prop][oLoc]
 					if fieldValue == nil {
 						fieldValue = item.Fields[prop][defLocale]
 					}
@@ -119,6 +119,12 @@ func (s *PGPublish) Exec(databaseURL string) error {
 	if err != nil {
 		return err
 	}
+
+	err = txn.Commit()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
