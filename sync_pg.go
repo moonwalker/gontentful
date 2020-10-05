@@ -196,10 +196,10 @@ func (s *PGSyncSchema) Exec(databaseURL string) error {
 	// init sync
 	if s.InitSync {
 		// disable triggers for the current session
-		_, err := txn.Exec("SET session_replication_role=replica")
-		if err != nil {
-			return err
-		}
+		// _, err := txn.Exec("SET session_replication_role=replica")
+		// if err != nil {
+		// 	return err
+		// }
 
 		// bulk insert
 		return s.bulkInsert(txn)
