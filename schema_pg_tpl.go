@@ -23,6 +23,10 @@ CREATE TABLE IF NOT EXISTS _asset (
 --
 {{ range $tblidx, $tbl := $.Tables }}
 --
+{{- if $.DropTables }}
+DROP TABLE IF EXISTS {{ $tbl.TableName }} CASCADE;
+{{ end -}}
+--
 CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }} (
 	_id text primary key,
 	_sys_id text not null,

@@ -144,3 +144,12 @@ type PublishedEntry struct {
 	Sys    *Sys          `json:"sys"`
 	Fields PublishFields `json:"fields"`
 }
+
+type PublishedEntries struct {
+	Sys      *Sys              `json:"sys"`
+	Total    int               `json:"total"`
+	Skip     int               `json:"skip"`
+	Limit    int               `json:"limit"`
+	Items    []*PublishedEntry `json:"items"`
+	Includes *Include          `json:"includes,omitempty"`
+}

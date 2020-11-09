@@ -94,6 +94,7 @@ type PGSQLSchema struct {
 	DeleteTriggers []*PGSQLDeleteTrigger
 	AssetTableName string
 	AssetColumns   []string
+	DropTables     bool
 }
 
 type PGSQLDeleteTrigger struct {

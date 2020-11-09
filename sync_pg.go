@@ -209,6 +209,21 @@ func (s *PGSyncSchema) Exec(databaseURL string) error {
 	return s.deltaSync(txn)
 }
 
+func (s *PGSyncSchema) Render() (string, error) {
+	tmpl, err := template.New("").Parse(pgSyncTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buff bytes.Buffer
+	err = tmpl.Execute(&buff, s)
+	if err != nil {
+		return "", err
+	}
+
+	return buff.String(), nil
+}
+
 func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 	for _, tbl := range s.Tables {
 		if len(tbl.Rows) == 0 {
