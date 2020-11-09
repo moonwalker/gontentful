@@ -16,6 +16,10 @@ CREATE TYPE _result AS (
 );
 --
 {{ range $i, $t := $.Tables }}
+{{- if $.DropTables }}
+DROP FUNCTION IF EXISTS _get_{{ .TableName }}_items CASCADE;
+{{ end -}}
+--
 CREATE OR REPLACE FUNCTION _get_{{ .TableName }}_items(locale TEXT, filters TEXT[], orderBy TEXT, skip INTEGER, take INTEGER)
 RETURNS TABLE(
 	_id text,

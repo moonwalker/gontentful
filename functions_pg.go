@@ -62,3 +62,18 @@ func (s *PGFunctions) Exec(databaseURL string) error {
 	}
 	return nil
 }
+
+func (s *PGFunctions) Render() (string, error) {
+	tmpl, err := template.New("").Parse(pgFuncTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buff bytes.Buffer
+	err = tmpl.Execute(&buff, s.Schema)
+	if err != nil {
+		return "", err
+	}
+
+	return buff.String(), nil
+}
