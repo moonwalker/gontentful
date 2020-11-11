@@ -7,6 +7,10 @@ import (
 	"net/url"
 )
 
+const (
+	DELETED_CONTENT_TYPE = "DeletedContentType"
+)
+
 type ContentTypesService service
 
 func (s *ContentTypesService) Get(query url.Values) ([]byte, error) {
