@@ -25,7 +25,6 @@ CREATE TABLE IF NOT EXISTS _game_meta (
 	priority integer not null default 0,
 	excluded_markets text[] not null default '{}',
 	content text not null unique,
-	game_identifier text,
 	sys_id text not null unique,
 	created timestamp without time zone default now(),
 	created_by text not null default 'system',
