@@ -156,6 +156,7 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 					{{- template "join" . }}
 					{{- end }}
 					WHERE {{ .ConTableName }}.{{ .TableName }} = {{ .JoinAlias }}._id 
+					ORDER BY {{ .ConTableName }}._id 
 				) l
 			) _included_{{ .Reference.JoinAlias }} ON true
 		{{- else if .Reference }}

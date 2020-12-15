@@ -49,6 +49,7 @@ DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE _sys_id = '{{ $sys_id 
 {{- end -}}
 {{ range $tblidx, $tbl := .ConTables }}
 {{ range $rowidx, $row := $tbl.Rows }}
+DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE {{ index $tbl.Columns 0 }} = {{ (index $row 0) }};
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	{{- range $k, $v := $tbl.Columns }}
 	{{- if $k -}},{{- end -}}{{ $v }}
