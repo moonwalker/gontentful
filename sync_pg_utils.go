@@ -141,6 +141,9 @@ func convertFieldValue(v interface{}, t bool, locale string) interface{} {
 			if err != nil {
 				log.Fatal("failed to marshal content field")
 			}
+			if t {
+				return fmt.Sprintf("'%s'", string(data))
+			}
 			return string(data)
 		}
 
