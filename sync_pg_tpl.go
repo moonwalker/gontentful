@@ -47,9 +47,13 @@ SET
 DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE _sys_id = '{{ $sys_id }}' CASCADE
 {{- end -}}
 {{- end -}}
+{{ $prevId := "" }}
 {{ range $tblidx, $tbl := .ConTables }}
 {{ range $rowidx, $row := $tbl.Rows }}
+{{if ne $prevId (index $row 0) -}}
 DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE {{ index $tbl.Columns 0 }} = {{ (index $row 0) }};
+{{ end -}}
+{{ $prevId = (index $row 0) -}}
 INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	{{- range $k, $v := $tbl.Columns }}
 	{{- if $k -}},{{- end -}}{{ $v }}

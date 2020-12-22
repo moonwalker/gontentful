@@ -37,9 +37,9 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 		ConTables:  make([]*PGSyncConTable, 0),
 	}
 
-	contentTypeColumns, columnReferences := getContentTypeColumns(contentModel)
 	switch item.Sys.Type {
 	case ENTRY:
+		contentTypeColumns, columnReferences := getContentTypeColumns(contentModel)
 		contentType := item.Sys.ContentType.Sys.ID
 		q.TableName = toSnakeCase(contentType)
 		for _, oLoc := range locales {
@@ -66,6 +66,11 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 		q.TableName = assetTableName
 		for _, loc := range locales {
 			fieldValues := make(map[string]interface{})
+			locTitle := item.Fields["title"][loc]
+			if locTitle == nil {
+				locTitle = item.Fields["title"][defLocale]
+			}
+			fieldValues["title"] = fmt.Sprintf("'%s'", locTitle)
 			locFile := item.Fields["file"][loc]
 			if locFile == nil {
 				locFile = item.Fields["file"][defLocale]
