@@ -41,6 +41,7 @@ type EntrySys implements Sys {
   createdAt: String!
   updatedAt: String!
   contentTypeId: ID!
+  firstPublishedAt: String
 }
 
 {{- range $t := .TypeDefs }}
