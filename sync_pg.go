@@ -156,7 +156,7 @@ func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]int
 
 func (r *PGSyncRow) Fields() []interface{} {
 	values := []interface{}{
-		fmt.Sprintf("%s_%s", r.SysID, r.Locale),
+		r.ID,
 		r.SysID,
 	}
 	for _, fieldColumn := range r.FieldColumns {
@@ -244,6 +244,7 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 
 		err = stmt.Close()
 		if err != nil {
+			fmt.Println("stmt.Close error", tbl.TableName)
 			return err
 		}
 	}
@@ -286,6 +287,7 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 
 		err = stmt.Close()
 		if err != nil {
+			fmt.Println("stmt.Close error", tbl.TableName)
 			return err
 		}
 	}

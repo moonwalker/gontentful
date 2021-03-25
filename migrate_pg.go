@@ -9,7 +9,8 @@ import (
 const (
 	newSchemaNameTpl = "%s_new"
 	oldSchemaNameTpl = "%s_old"
-	migrateSchemaTpl = `ALTER SCHEMA %[1]s RENAME TO %[2]s;
+	migrateSchemaTpl = `CREATE SCHEMA IF NOT EXISTS %[1]s;
+	ALTER SCHEMA %[1]s RENAME TO %[2]s;
 	ALTER SCHEMA %[3]s RENAME TO %[1]s;
 	DROP SCHEMA %[2]s CASCADE;`
 )
