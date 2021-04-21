@@ -97,7 +97,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 --
-{{- define "asset" -}}
+{{- define "assetRef" -}}
 (CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
 						'title', {{ .Reference.JoinAlias }}.title,
 						'description', {{ .Reference.JoinAlias }}.description,
@@ -108,6 +108,16 @@ $$ LANGUAGE 'plpgsql';
 						)
 					) END)
 {{- end -}}
+{{- define "assetCon" -}}
+json_build_object('id', {{ .Reference.JoinAlias }}._sys_id) AS sys,
+						{{ .Reference.JoinAlias }}.title AS "title",
+						{{ .Reference.JoinAlias }}.description AS "description",
+						json_build_object(
+							'contentType', {{ .Reference.JoinAlias }}.content_type,
+							'fileName', {{ .Reference.JoinAlias }}.file_name,
+							'url', {{ .Reference.JoinAlias }}.url
+						) AS "file"
+{{- end -}}
 {{- define "refColumn" -}} 
 (CASE WHEN {{ .JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
 					'sys', json_build_object('id', {{ .JoinAlias }}._sys_id)
@@ -117,7 +127,7 @@ $$ LANGUAGE 'plpgsql';
 					{{- if .ConTableName -}}
 						_included_{{ .Reference.JoinAlias }}.res
 					{{- else if .IsAsset -}}
-						{{ template "asset" . }}	
+						{{ template "assetRef" . }}	
 					{{- else if .Reference -}}
 						{{ template "refColumn" .Reference }}
 					{{- else -}}
@@ -132,7 +142,7 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 						{{ if .ConTableName -}}
 							_included_{{ .Reference.JoinAlias }}.res
 						{{- else if .IsAsset -}}
-						{{ template "asset" . }}
+						{{ template "assetRef" . }}
 						{{- else if .Reference -}}
 							{{ template "refColumn" .Reference }}
 						{{- else -}}
@@ -146,7 +156,7 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 				SELECT json_agg(l) AS res FROM (
 					SELECT
 						{{ if .IsAsset -}}
-						{{ template "asset" . }}
+						{{ template "assetCon" . }}
 						{{- else -}}
 						{{ template "conColumn" .Reference }}
 						{{- end }}
@@ -179,10 +189,10 @@ BEGIN
 				json_build_object('id', {{ .TableName }}._sys_id) AS sys
 			{{- range .Columns -}}
 				,
-				{{ if .IsAsset -}}
-					{{ template "asset" . }}
-				{{- else if .ConTableName -}}
+				{{ if .ConTableName -}}
 					_included_{{ .Reference.JoinAlias }}.res
+				{{- else if .IsAsset -}}
+					{{ template "assetRef" . }}
 				{{- else if .Reference -}}
 					{{ template "refColumn" .Reference }}
 				{{- else -}}
