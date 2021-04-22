@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
@@ -34,6 +35,8 @@ var (
 	comparerRegex      = regexp.MustCompile(`[^[]+\[([^]]+)+]`)
 	joinedContentRegex = regexp.MustCompile(`(?:fields.)?([^.]+)\.sys\.contentType\.sys\.id`)
 	foreignKeyRegex    = regexp.MustCompile(`([^.]+)\.(?:fields.)?(.+)`)
+	once               sync.Once
+	db                 *sqlx.DB
 )
 
 const (
@@ -230,11 +233,13 @@ func formatOrder(order string, tableName string) string {
 }
 
 func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
-	db, err := sqlx.Connect("postgres", databaseURL)
+	var err error
+	once.Do(func() {
+		db, err = sqlx.Connect("postgres", databaseURL)
+	})
 	if err != nil {
 		return 0, "", err
 	}
-	defer db.Close()
 
 	tmpl, err := template.New("").Parse(queryTemplate)
 	if err != nil {
