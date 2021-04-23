@@ -9,11 +9,15 @@ CREATE TYPE _filter AS (
 	comparer TEXT,
 	value TEXT
 );
-DROP TYPE IF EXISTS _result CASCADE;
-CREATE TYPE _result AS (
-	count INTEGER,
-	items JSON
-);
+DO $$
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '_result') THEN
+		CREATE TYPE _result AS (
+			count INTEGER,
+			items JSON
+		);
+	END IF;
+END $$;
 --
 {{ range $i, $t := $.Tables }}
 {{- if $.DropTables }}
