@@ -11,7 +11,7 @@ CREATE TYPE _filter AS (
 );
 DO $$
 BEGIN
-	IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '_result') THEN
+	IF NOT EXISTS (SELECT 1 FROM pg_type AS pt JOIN pg_namespace as pn ON (pt.typnamespace = pn.oid) WHERE pn.nspname = '{{ $.SchemaName }}' and pt.typname = '_result') THEN
 		CREATE TYPE _result AS (
 			count INTEGER,
 			items JSON
