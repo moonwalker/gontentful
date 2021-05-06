@@ -173,7 +173,7 @@ func getFilterFormat(key string, value string) string {
 	case "gte":
 		return fmt.Sprintf("%s >= %s", col, value)
 	case "match":
-		return fmt.Sprintf("%s ILIKE %%%s%%", col, value)
+		return fmt.Sprintf("%s ILIKE ''%%'' || %s || ''%%''", col, value)
 	case "in":
 		// IF isArray THEN
 		// RETURN 	' && ARRAY[' || fmtVal || ']';
