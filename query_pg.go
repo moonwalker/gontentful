@@ -237,6 +237,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 	var err error
 	once.Do(func() {
 		db, err = sqlx.Connect("postgres", databaseURL)
+		db.SetMaxOpenConns(50)
 		db.SetMaxIdleConns(100)                // The default is defaultMaxIdleConns (= 2)
 		db.SetConnMaxLifetime(5 * time.Minute) // The default is 0 (connections reused forever)
 	})
