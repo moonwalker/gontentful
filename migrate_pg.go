@@ -9,21 +9,25 @@ import (
 const (
 	newSchemaNameTpl = "%s_new"
 	oldSchemaNameTpl = "%s_old"
-	migrateSchemaTpl = `CREATE SCHEMA IF NOT EXISTS %[1]s;
+	migrateSchemaTpl = `DROP SCHEMA IF EXISTS %[2]s CASCADE;
+	CREATE SCHEMA IF NOT EXISTS %[1]s;
 	ALTER SCHEMA %[1]s RENAME TO %[2]s;
-	ALTER SCHEMA %[3]s RENAME TO %[1]s;
-	DROP SCHEMA %[2]s CASCADE;`
+	ALTER SCHEMA %[3]s RENAME TO %[1]s;`
 )
 
-func MigratePGSQL(databaseURL string, schemaName string,
-	space *Space, types []*ContentType, cmaTypes []*ContentType, entries []*Entry, syncToken string) error {
+func MigratePGSQL(databaseURL string, newSchemaName string,
+	space *Space, types []*ContentType, cmaTypes []*ContentType, entries []*Entry, syncToken string, createFunctions bool) error {
 
-	newSchemaName := fmt.Sprintf(newSchemaNameTpl, schemaName)
-	oldSchemaName := fmt.Sprintf(oldSchemaNameTpl, schemaName)
+	// 0) drop newSchema if exists
+	drop := NewPGDrop(newSchemaName)
+	err := drop.Exec(databaseURL)
+	if err != nil {
+		return err
+	}
 
 	// 1) re-create schema
 	schema := NewPGSQLSchema(newSchemaName, space, cmaTypes, 0)
-	err := schema.Exec(databaseURL)
+	err = schema.Exec(databaseURL)
 	if err != nil {
 		return err
 	}
@@ -39,7 +43,20 @@ func MigratePGSQL(databaseURL string, schemaName string,
 		return err
 	}
 
-	// 3) rename (swap schemas)
+	// 3) create functions
+	if createFunctions {
+		funcs := NewPGFunctions(schema)
+		err = funcs.Exec(databaseURL)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func SwapSchemas(databaseURL string, schemaName string, oldSchemaName string, newSchemaName string) error {
+	// rename (swap schemas)
 	db, err := sqlx.Connect("postgres", databaseURL)
 	if err != nil {
 		return err
