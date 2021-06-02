@@ -29,6 +29,7 @@ RETURNS TABLE(
 	_id text,
 	_sys_id text,
 	_locale text,
+	_count bigint,
 	{{- range $j, $c:= .Columns }}
 	{{- if $j -}},{{- end }}
 	{{ if eq .ColumnName "limit" -}}_{{- end -}}
@@ -39,7 +40,7 @@ DECLARE
 	qs text := '';
 	filter text;
 BEGIN
-	qs:= 'SELECT _id,_sys_id,_locale,';
+	qs:= 'SELECT _id,_sys_id,_locale,COUNT(*) OVER(),';
 	
 	qs:= qs || '{{- range $j, $c:= .Columns -}}
 	{{- if $j -}},{{- end -}}
@@ -181,51 +182,41 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 		{{- end -}}
 {{- end -}}
 {{ range $i, $t := $.Functions }}
-CREATE OR REPLACE FUNCTION {{ .TableName }}_items(localeArg TEXT, filters TEXT[], orderBy TEXT, skip INTEGER, take INTEGER)
-RETURNS json AS $$
-BEGIN
-	RETURN (
-		WITH filtered AS (
-			SELECT * FROM _get_{{- .TableName -}}_items(localeArg, filters, orderBy, skip, take)
-		)
-		SELECT json_agg(t) AS res FROM (
-			SELECT
-				json_build_object('id', {{ .TableName }}._sys_id) AS sys
-			{{- range .Columns -}}
-				,
-				{{ if .ConTableName -}}
-					_included_{{ .Reference.JoinAlias }}.res
-				{{- else if .IsAsset -}}
-					{{ template "assetRef" . }}
-				{{- else if .Reference -}}
-					{{ template "refColumn" .Reference }}
-				{{- else -}}
-					{{ .TableName }}.{{ .ColumnName }}
-				{{- end }} AS "{{ .Alias }}"
-			{{- end }}
-			FROM filtered {{ .TableName }}
-			{{- range .Columns -}}
-				{{ template "join" . }}
-			{{- end }}
-			WHERE {{ .TableName }}._locale = localeArg
-		) t
-	);
-END;
-$$ LANGUAGE 'plpgsql';
---
 CREATE OR REPLACE FUNCTION {{ .TableName }}_query(localeArg TEXT, filters TEXT[], orderBy TEXT, skip INTEGER, take INTEGER)
 RETURNS _result AS $$
-DECLARE
-	count integer;
-	items json;
+DECLARE 
 	res _result;
 BEGIN
-	SELECT COUNT(f) FROM (SELECT _get_sys_ids('{{ .TableName }}', localeArg, filters, '', 0, 0)) AS f INTO count;
-	SELECT {{ .TableName }}_items(localeArg, filters, orderBy, skip, take) INTO items;
-	IF items IS NULL THEN
-		items:= '[]'::JSON;
+	WITH filtered AS (
+		SELECT * FROM _get_{{- .TableName -}}_items(localeArg, filters, orderBy, skip, take)
+	)
+	SELECT (SELECT _count FROM filtered LIMIT 1)::INTEGER, json_agg(t)::json FROM (
+		SELECT
+			json_build_object('id', {{ .TableName }}._sys_id) AS sys
+		{{- range .Columns -}}
+			,
+			{{ if .ConTableName -}}
+				_included_{{ .Reference.JoinAlias }}.res
+			{{- else if .IsAsset -}}
+				{{ template "assetRef" . }}
+			{{- else if .Reference -}}
+				{{ template "refColumn" .Reference }}
+			{{- else -}}
+				{{ .TableName }}.{{ .ColumnName }}
+			{{- end }} AS "{{ .Alias }}"
+		{{- end }}
+		FROM filtered {{ .TableName }}
+		{{- range .Columns -}}
+			{{ template "join" . }}
+		{{- end }}
+		WHERE {{ .TableName }}._locale = localeArg
+	) t INTO res;
+
+	IF res.items IS NULL THEN
+		res.items:= '[]'::JSON;
+		res.count:=0::INTEGER;
 	END IF;
-	RETURN ROW(count, items)::_result;
+	RETURN res;
 END;
 $$ LANGUAGE 'plpgsql';
 --
