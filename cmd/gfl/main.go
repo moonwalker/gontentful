@@ -8,11 +8,12 @@ import (
 )
 
 var (
-	spaceID     string
-	cdnToken    string
-	cmaToken    string
-	databaseURL string
-	schemaName  string
+	spaceID       string
+	environmentID string
+	cdnToken      string
+	cmaToken      string
+	databaseURL   string
+	schemaName    string
 )
 
 const (

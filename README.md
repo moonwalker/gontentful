@@ -20,9 +20,10 @@ import (
 )
 
 client := gontentful.NewClient(&gontentful.ClientOptions{
-	CdnURL:   "cdn.contentful.com",
-	SpaceID:  <spaceid>,
-	CdnToken: <cdntoken>,
+	CdnURL:        "cdn.contentful.com",
+	SpaceID:       <spaceid>,
+	EnvironmentID: <environmentid>,
+	CdnToken:      <cdntoken>,
 })
 
 // get entries

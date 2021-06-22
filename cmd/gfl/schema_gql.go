@@ -19,9 +19,10 @@ var gqlSchemaCmd = &cobra.Command{
 
 	Run: func(cmd *cobra.Command, args []string) {
 		client := gontentful.NewClient(&gontentful.ClientOptions{
-			CdnURL:   apiURL,
-			SpaceID:  spaceID,
-			CdnToken: cdnToken,
+			CdnURL:        apiURL,
+			SpaceID:       spaceID,
+			EnvironmentID: environmentID,
+			CdnToken:      cdnToken,
 		})
 
 		types, err := client.ContentTypes.GetTypes()

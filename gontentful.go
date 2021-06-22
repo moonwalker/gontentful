@@ -17,13 +17,14 @@ const (
 	timeout = 30 * time.Second
 
 	pathSpaces              = "/spaces/%s"
+	pathEnvironments        = "/environments/%s"
 	pathSpacesCreate        = "/spaces"
-	pathEntries             = pathSpaces + "/entries"
+	pathEntries             = pathSpaces + pathEnvironments + "/entries"
 	pathEntry               = pathEntries + "/%s"
 	pathEntriesPublish      = pathEntry + "/published"
 	pathEntriesArchive      = pathEntry + "/archived"
 	pathSync                = pathSpaces + "/sync"
-	pathAssets              = pathSpaces + "/assets"
+	pathAssets              = pathSpaces + pathEnvironments + "/assets"
 	pathAssetsProcess       = pathAssets + "/%s/files/%s/process"
 	pathAssetsPublished     = pathAssets + "/%s/published"
 	pathUploads             = pathSpaces + "/uploads"
@@ -59,6 +60,7 @@ type service struct {
 type ClientOptions struct {
 	OrgID          string
 	SpaceID        string
+	EnvironmentID  string
 	CdnToken       string
 	PreviewToken   string
 	CmaToken       string
