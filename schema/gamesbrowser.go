@@ -24,8 +24,6 @@ CREATE TABLE IF NOT EXISTS _game_meta (
 	display_ratios jsonb not null default '{}'::jsonb,
 	priority integer not null default 0,
 	excluded_markets text[] not null default '{}',
-	content text not null unique,
-	sys_id text not null unique,
 	created timestamp without time zone default now(),
 	created_by text not null default 'system',
 	updated timestamp without time zone default now(),
@@ -35,8 +33,9 @@ CREATE TABLE IF NOT EXISTS _game_meta (
 );
 
 CREATE TABLE IF NOT EXISTS _game_content (
-	sys_id text primary key,
+	slug text primary key,
 	content jsonb not null default '{}',
+	sys_id text not null unique,
 	created timestamp without time zone default now(),
 	created_by text not null default 'system',
 	updated timestamp without time zone default now(),
@@ -49,8 +48,9 @@ ALTER TABLE _game_meta DROP CONSTRAINT IF EXISTS gamesbrowser_content_fkey;
 
 ALTER TABLE _game_meta
   ADD CONSTRAINT gamesbrowser_content_fkey
-  FOREIGN KEY (content)
-  REFERENCES _game_content (sys_id)
+  FOREIGN KEY (slug)
+  REFERENCES _game_content (slug)
   ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON _game_meta (sys_id);`
+  CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON _game_content (sys_id);
+  `
