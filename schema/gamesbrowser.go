@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS _game_meta (
 	updated timestamp without time zone default now(),
 	updated_by text not null default 'system',
 	deleted timestamp without time zone,
-	deleted_by text
+	deleted_by text,
+	content text not null unique
 );
 
 CREATE TABLE IF NOT EXISTS _game_content (
@@ -53,4 +54,5 @@ ALTER TABLE _game_meta
   ON DELETE CASCADE;
 
   CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON _game_content (sys_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS game_content_id ON _game_meta (content);
   `
