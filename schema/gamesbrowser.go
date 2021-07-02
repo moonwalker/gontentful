@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS _game_meta (
 	updated_by text not null default 'system',
 	deleted timestamp without time zone,
 	deleted_by text,
-	content text not null unique
+	content text
 );
 
 CREATE TABLE IF NOT EXISTS _game_content (
