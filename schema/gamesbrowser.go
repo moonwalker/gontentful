@@ -46,6 +46,12 @@ CREATE TABLE IF NOT EXISTS _game_content (
 	deleted_by text
 );
 
+CREATE TABLE IF NOT EXISTS _game_csv (
+	created timestamp without time zone default now(),
+	created_by text not null default 'system',
+	csv text not null
+);
+
 ALTER TABLE _game_meta DROP CONSTRAINT IF EXISTS gamesbrowser_content_fkey;
 
 ALTER TABLE _game_meta
