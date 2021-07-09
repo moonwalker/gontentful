@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS _game_meta (
 	display_ratios jsonb not null default '{}'::jsonb,
 	priority integer not null default 0,
 	excluded_markets text[] not null default '{}',
+	enabled boolean default FALSE,
 	created timestamp without time zone default now(),
 	created_by text not null default 'system',
 	updated timestamp without time zone default now(),
