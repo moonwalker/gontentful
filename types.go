@@ -56,6 +56,13 @@ type Spaces struct {
 	Items []*Space `json:"items"`
 }
 
+type Locales struct {
+	Total int       `json:"total"`
+	Limit int       `json:"limit"`
+	Skip  int       `json:"skip"`
+	Items []*Locale `json:"items"`
+}
+
 type Locale struct {
 	Code         string `json:"code"`
 	Default      bool   `json:"default"`

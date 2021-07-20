@@ -31,6 +31,7 @@ const (
 	pathContentTypes        = pathSpaces + "/content_types"
 	pathContentType         = pathContentTypes + "/%s"
 	pathContentTypesPublish = pathContentType + "/published"
+	pathLocales             = pathSpaces + "/locales"
 
 	headerContentfulContentType  = "X-Contentful-Content-Type"
 	headerContentfulVersion      = "X-Contentful-Version"
@@ -48,6 +49,7 @@ type Client struct {
 	common       service
 	Entries      *EntriesService
 	Spaces       *SpacesService
+	Locales      *LocalesService
 	Assets       *AssetsService
 	Uploads      *UploadsService
 	ContentTypes *ContentTypesService
@@ -90,6 +92,7 @@ func NewClient(options *ClientOptions) *Client {
 	client.common.client = client
 	client.Entries = (*EntriesService)(&client.common)
 	client.Spaces = (*SpacesService)(&client.common)
+	client.Locales = (*LocalesService)(&client.common)
 	client.Assets = (*AssetsService)(&client.common)
 	client.Uploads = (*UploadsService)(&client.common)
 	client.ContentTypes = (*ContentTypesService)(&client.common)
