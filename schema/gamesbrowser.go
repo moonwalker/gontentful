@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS _game_meta (
 	win_features text[] not null default '{}',
 	wild_features text[] not null default '{}',
 	payout_properties jsonb not null default '{}'::jsonb,
-	releaseDate text,
+	release_date text,
 	feeGroup text,
 	provider_ids jsonb not null default '{}'::jsonb,	
 	priority integer not null default 0,
@@ -50,14 +50,13 @@ CREATE TABLE IF NOT EXISTS _game_csv (
 	csv text not null
 );
 
-ALTER TABLE _game_meta DROP CONSTRAINT IF EXISTS gamesbrowser_content_fkey;
-
-ALTER TABLE _game_meta
-  ADD CONSTRAINT gamesbrowser_content_fkey
-  FOREIGN KEY (slug)
-  REFERENCES _game_content (slug)
-  ON DELETE CASCADE;
-
 CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON _game_content (sys_id);
+`
 
-  `
+// ALTER TABLE _game_meta DROP CONSTRAINT IF EXISTS gamesbrowser_content_fkey;
+
+// ALTER TABLE _game_meta
+//   ADD CONSTRAINT gamesbrowser_content_fkey
+//   FOREIGN KEY (slug)
+//   REFERENCES _game_content (slug)
+//   ON DELETE CASCADE;
