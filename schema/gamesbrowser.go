@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS _game_meta (
 	wild_features text[] not null default '{}',
 	payout_properties jsonb not null default '{}'::jsonb,
 	release_date text,
-	feeGroup text,
+	fee_group text,
 	provider_ids jsonb not null default '{}'::jsonb,	
 	priority integer not null default 0,
 	excluded_markets text[] not null default '{}',
