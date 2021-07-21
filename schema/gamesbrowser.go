@@ -18,10 +18,9 @@ CREATE TABLE IF NOT EXISTS _game_meta (
 	win_features text[] not null default '{}',
 	wild_features text[] not null default '{}',
 	payout_properties jsonb not null default '{}'::jsonb,
-	screens text[] not null default '{}',
-	settings text[] not null default '{}', 
+	releaseDate text,
+	feeGroup text,
 	provider_ids jsonb not null default '{}'::jsonb,	
-	display_ratios jsonb not null default '{}'::jsonb,
 	priority integer not null default 0,
 	excluded_markets text[] not null default '{}',
 	enabled boolean default FALSE,
@@ -30,8 +29,7 @@ CREATE TABLE IF NOT EXISTS _game_meta (
 	updated timestamp without time zone default now(),
 	updated_by text not null default 'system',
 	deleted timestamp without time zone,
-	deleted_by text,
-	content text
+	deleted_by text
 );
 
 CREATE TABLE IF NOT EXISTS _game_content (
@@ -60,6 +58,6 @@ ALTER TABLE _game_meta
   REFERENCES _game_content (slug)
   ON DELETE CASCADE;
 
-  CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON _game_content (sys_id);
-  CREATE UNIQUE INDEX IF NOT EXISTS game_content_id ON _game_meta (content);
+CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON _game_content (sys_id);
+
   `
