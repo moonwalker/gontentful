@@ -143,6 +143,9 @@ func getFilterFormat(key string, value string) string {
 		return f
 	}
 
+	if strings.Contains(f, ".") {
+		return ""
+	}
 	// if strings.Contains(colName, ".") {
 	// 	// content.fields.name%5Bmatch%5D=jack&content.sys.contentType.sys.id=gameInfo
 	// 	// content.sys.contentType.sys.id=gameId&deviceConfigurations.sys.id=1yyHAve4aE6AQgkIyYG4im
