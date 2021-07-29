@@ -18,6 +18,7 @@ type Sys struct {
 	PublishedAt      string       `json:"publishedAt,omitempty"`
 	PublishedBy      *Entry       `json:"publishedBy,omitempty"`
 	PublishedVersion int          `json:"publishedVersion,omitempty"`
+	Space            *Space       `json:"space,omitempty"`
 }
 
 type Entries struct {
