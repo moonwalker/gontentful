@@ -46,7 +46,7 @@ func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColu
 			}
 			locale := strings.ToLower(loc.Code)
 			fallback := strings.ToLower(loc.FallbackCode)
-			fieldValue := locFields[locale]
+			fieldValue := locFields[loc.Code]
 			if fieldValue == nil {
 				if locFields[fallback] != nil {
 					fieldValue = locFields[fallback]
