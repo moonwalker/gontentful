@@ -44,9 +44,10 @@ CREATE TABLE IF NOT EXISTS _game_content (
 	deleted_by text
 );
 
-CREATE TABLE IF NOT EXISTS _game_csv (
+CREATE TABLE IF NOT EXISTS _csv_upload (
 	created timestamp without time zone default now(),
 	created_by text not null default 'system',
+	timespan text,
 	csv text not null
 );
 
