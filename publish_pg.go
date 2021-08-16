@@ -81,7 +81,7 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 				fieldValues["file_name"] = fmt.Sprintf("'%s'", file["fileName"])
 				fieldValues["content_type"] = fmt.Sprintf("'%s'", file["contentType"])
 			}
-			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, assetColumns, fieldValues, loc))
+			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, assetColumns, fieldValues, strings.ToLower(loc)))
 		}
 		break
 	}

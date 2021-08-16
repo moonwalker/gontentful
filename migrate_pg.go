@@ -15,8 +15,7 @@ const (
 	ALTER SCHEMA %[3]s RENAME TO %[1]s;`
 )
 
-func MigratePGSQL(databaseURL string, newSchemaName string,
-	space *Space, types []*ContentType, cmaTypes []*ContentType, entries []*Entry, syncToken string, createFunctions bool) error {
+func MigratePGSQL(databaseURL string, newSchemaName string, space *Space, types []*ContentType, cmaTypes []*ContentType, entries []*Entry, syncToken string, createFunctions bool) error {
 
 	// 0) drop newSchema if exists
 	drop := NewPGDrop(newSchemaName)

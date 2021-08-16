@@ -44,10 +44,39 @@ CREATE TABLE IF NOT EXISTS _game_content (
 	deleted_by text
 );
 
+CREATE TABLE IF NOT EXISTS _game_history (
+	timestamp text primary key,
+	slug text,
+	provider text,
+	studio text,
+	category text,
+	format text,
+	type text,
+	bonus_features text[] not null default '{}',
+	labels text[] not null default '{}',
+	tags text[] not null default '{}',
+	themes text[] not null default '{}',
+	win_features text[] not null default '{}',
+	wild_features text[] not null default '{}',
+	payout_properties jsonb not null default '{}'::jsonb,
+	release_date text,
+	fee_group text,
+	provider_ids jsonb not null default '{}'::jsonb,	
+	priority integer not null default 0,
+	excluded_markets text[] not null default '{}',
+	enabled boolean default FALSE,
+	created timestamp without time zone default now(),
+	created_by text not null default 'system',
+	updated timestamp without time zone default now(),
+	updated_by text not null default 'system',
+	deleted timestamp without time zone,
+	deleted_by text
+);
+
 CREATE TABLE IF NOT EXISTS _csv_upload (
 	created timestamp without time zone default now(),
 	created_by text not null default 'system',
-	timespan text,
+	timestamp text,
 	csv text not null
 );
 
