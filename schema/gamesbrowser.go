@@ -45,8 +45,9 @@ CREATE TABLE IF NOT EXISTS _game_content (
 );
 
 CREATE TABLE IF NOT EXISTS _game_history (
-	timestamp text primary key,
-	slug text,
+	version text primary key,
+	timestamp text not null,
+	slug text not null,
 	provider text,
 	studio text,
 	category text,
