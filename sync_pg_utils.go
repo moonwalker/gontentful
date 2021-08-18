@@ -22,9 +22,6 @@ type columnData struct {
 
 func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColumns []string, refColumns map[string]string, templateFormat bool) {
 	fieldsByLocale := make(map[string][]*rowField, 0)
-	tablesByName := schema.Tables
-	conTablesByName := schema.ConTables
-	locales := schema.Locales
 
 	// iterate over fields
 	for fieldName, f := range item.Fields {
@@ -37,12 +34,12 @@ func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColu
 		columnName := toSnakeCase(fieldName)
 
 		// iterate over locale fields
-		for _, loc := range locales {
+		for _, loc := range schema.Locales {
 			// create table
-			tbl := tablesByName[tableName]
+			tbl := schema.Tables[tableName]
 			if tbl == nil {
 				tbl = newPGSyncTable(tableName, fieldColumns)
-				tablesByName[tableName] = tbl
+				schema.Tables[tableName] = tbl
 			}
 			locale := strings.ToLower(loc.Code)
 			fallback := strings.ToLower(loc.FallbackCode)
@@ -63,14 +60,14 @@ func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColu
 	// append rows with fields to tables
 	for locale, rowFields := range fieldsByLocale {
 		// table
-		tbl := tablesByName[tableName]
+		tbl := schema.Tables[tableName]
 		if tbl != nil {
-			appendRowsToTable(item, tbl, rowFields, fieldColumns, templateFormat, conTablesByName, refColumns, tableName, locale)
+			appendRowsToTable(item, tbl, rowFields, fieldColumns, templateFormat, schema.ConTables, schema.DeletedConTables, refColumns, tableName, locale)
 		}
 	}
 }
 
-func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fieldColumns []string, templateFormat bool, conTables map[string]*PGSyncConTable, refColumns map[string]string, tableName string, locale string) {
+func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fieldColumns []string, templateFormat bool, conTables map[string]*PGSyncConTable, deletedConTables map[string]*PGSyncConTable, refColumns map[string]string, tableName string, locale string) {
 	fieldValues := make(map[string]interface{})
 	id := fmtSysID(item.Sys.ID, templateFormat, locale)
 	fieldValues["_id"] = id
@@ -91,10 +88,10 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 			fieldValues["content_type"] = contentType
 		}
 		// append con tables with Array Links
-		if refColumns[rowField.fieldName] != "" {
+		if _, ok := refColumns[rowField.fieldName]; ok {
 			links, ok := rowField.fieldValue.([]interface{})
-			addedRefs := make(map[string]bool)
 			if ok {
+				addedRefs := make(map[string]bool)
 				conTableName := getConTableName(tableName, rowField.fieldName)
 				if conTables[conTableName] == nil {
 					conTables[conTableName] = &PGSyncConTable{
@@ -115,6 +112,19 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 							fmt.Println(tbl.TableName, id, rowField.fieldName, conID)
 						}
 					}
+				}
+			} else {
+				conTableName := getConTableName(tableName, rowField.fieldName)
+				if deletedConTables[conTableName] == nil {
+					deletedConTables[conTableName] = &PGSyncConTable{
+						TableName: conTableName,
+						Columns:   []string{tableName},
+						Rows:      make([][]interface{}, 0),
+					}
+				}
+				if id != "" {
+					conRow := []interface{}{id}
+					deletedConTables[conTableName].Rows = append(deletedConTables[conTableName].Rows, conRow)
 				}
 			}
 		}

@@ -41,13 +41,14 @@ type PGDeletedTable struct {
 }
 
 type PGSyncSchema struct {
-	SchemaName    string
-	Locales       []*Locale
-	DefaultLocale string
-	Tables        map[string]*PGSyncTable
-	ConTables     map[string]*PGSyncConTable
-	Deleted       map[string]*PGDeletedTable
-	InitSync      bool
+	SchemaName       string
+	Locales          []*Locale
+	DefaultLocale    string
+	Tables           map[string]*PGSyncTable
+	Deleted          map[string]*PGDeletedTable
+	ConTables        map[string]*PGSyncConTable
+	DeletedConTables map[string]*PGSyncConTable
+	InitSync         bool
 }
 
 type PGSyncField struct {
@@ -75,13 +76,14 @@ func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entr
 	}
 
 	schema := &PGSyncSchema{
-		SchemaName:    schemaName,
-		Locales:       space.Locales,
-		DefaultLocale: defLocale,
-		Tables:        make(map[string]*PGSyncTable),
-		ConTables:     make(map[string]*PGSyncConTable),
-		Deleted:       make(map[string]*PGDeletedTable),
-		InitSync:      initSync,
+		SchemaName:       schemaName,
+		Locales:          space.Locales,
+		DefaultLocale:    defLocale,
+		Tables:           make(map[string]*PGSyncTable),
+		Deleted:          make(map[string]*PGDeletedTable),
+		ConTables:        make(map[string]*PGSyncConTable),
+		DeletedConTables: make(map[string]*PGSyncConTable),
+		InitSync:         initSync,
 	}
 
 	columnsByContentType := getColumnsByContentType(types)

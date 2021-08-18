@@ -47,6 +47,11 @@ SET
 DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE _sys_id = '{{ $sys_id }}' CASCADE
 {{- end -}}
 {{- end -}}
+{{ range $tblidx, $tbl := .DeletedConTables }}
+{{ range $rowidx, $row := $tbl.Rows }}
+DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE {{ index $tbl.Columns 0 }} = {{ (index $row 0) }};
+{{- end -}}
+{{- end -}}
 {{ $prevId := "" }}
 {{ range $tblidx, $tbl := .ConTables }}
 {{ range $rowidx, $row := $tbl.Rows }}

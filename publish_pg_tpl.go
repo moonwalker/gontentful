@@ -40,6 +40,11 @@ SET
 	_updated_by=EXCLUDED._updated_by
 ;
 {{- end -}}
+{{ range $tblidx, $tbl := .DeletedConTables }}
+{{ range $rowidx, $row := $tbl.Rows }}
+DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE {{ index $tbl.Columns 0 }} = {{ (index $row 0) }};
+{{- end -}}
+{{- end -}}
 {{ range $conidx, $con := .ConTables }}
 {{ range $rowidx, $row := $con.Rows }}
 {{ if not $rowidx -}}
