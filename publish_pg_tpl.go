@@ -45,13 +45,15 @@ SET
 DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE {{ index $tbl.Columns 0 }} = {{ (index $row 0) }};
 {{- end -}}
 {{- end -}}
-{{ range $conidx, $con := .ConTables }}
-{{ range $rowidx, $row := $con.Rows }}
-{{ if not $rowidx -}}
-DELETE FROM {{ $.SchemaName }}.{{ $con.TableName }} WHERE {{ index $con.Columns 0 }} = {{ (index $row 0) }};
+{{ range $tblidx, $tbl := .ConTables }}
+{{ $prevId := "" }}
+{{ range $rowidx, $row := $tbl.Rows }}
+{{if ne $prevId (index $row 0) -}}
+DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE {{ index $tbl.Columns 0 }} = {{ (index $row 0) }};
 {{ end -}}
-INSERT INTO {{ $.SchemaName }}.{{ $con.TableName }} (
-	{{- range $k, $v := $con.Columns }}
+{{ $prevId = (index $row 0) -}}
+INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
+	{{- range $k, $v := $tbl.Columns }}
 	{{- if $k -}},{{- end -}}{{ $v }}
 	{{- end }}
 ) VALUES (

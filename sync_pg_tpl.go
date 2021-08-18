@@ -52,8 +52,8 @@ DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE _sys_id = '{{ $sys_id 
 DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE {{ index $tbl.Columns 0 }} = {{ (index $row 0) }};
 {{- end -}}
 {{- end -}}
-{{ $prevId := "" }}
 {{ range $tblidx, $tbl := .ConTables }}
+{{ $prevId := "" }}
 {{ range $rowidx, $row := $tbl.Rows }}
 {{if ne $prevId (index $row 0) -}}
 DELETE FROM {{ $.SchemaName }}.{{ $tbl.TableName }} WHERE {{ index $tbl.Columns 0 }} = {{ (index $row 0) }};
@@ -69,4 +69,5 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	{{- end -}}
 );
 {{- end -}}
-{{- end -}}`
+{{- end -}}
+`
