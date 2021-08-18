@@ -14,8 +14,8 @@ type PGPublish struct {
 	TableName        string
 	Columns          []string
 	Rows             []*PGSyncRow
-	ConTables        []*PGSyncConTable
-	DeletedConTables []*PGSyncConTable
+	ConTables        map[string]*PGSyncConTable
+	DeletedConTables map[string]*PGSyncConTable
 }
 
 func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, item *PublishedEntry) *PGPublish {
@@ -35,8 +35,8 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 	q := &PGPublish{
 		SchemaName:       schemaName,
 		Rows:             make([]*PGSyncRow, 0),
-		ConTables:        make([]*PGSyncConTable, 0),
-		DeletedConTables: make([]*PGSyncConTable, 0),
+		ConTables:        make(map[string]*PGSyncConTable),
+		DeletedConTables: make(map[string]*PGSyncConTable),
 	}
 
 	switch item.Sys.Type {
@@ -161,10 +161,12 @@ func appendPublishColCons(q *PGPublish, columnReference string, col string, fiel
 	addedRefs := make(map[string]bool)
 	if ok {
 		conTableName := getConTableName(q.TableName, col)
-		colConTable := &PGSyncConTable{
-			TableName: conTableName,
-			Columns:   []string{q.TableName, columnReference},
-			Rows:      make([][]interface{}, 0),
+		if q.ConTables[conTableName] == nil {
+			q.ConTables[conTableName] = &PGSyncConTable{
+				TableName: conTableName,
+				Columns:   []string{q.TableName, columnReference},
+				Rows:      make([][]interface{}, 0),
+			}
 		}
 
 		for _, e := range links {
@@ -173,29 +175,28 @@ func appendPublishColCons(q *PGPublish, columnReference string, col string, fiel
 				conID := convertSys(f, true, loc)
 				if id != "" && conID != "" && !addedRefs[conID] {
 					conRow := []interface{}{id, conID}
-					colConTable.Rows = append(colConTable.Rows, conRow)
+					q.ConTables[conTableName].Rows = append(q.ConTables[conTableName].Rows, conRow)
 					addedRefs[conID] = true
 				} else {
 					fmt.Println(q.TableName, id, col, conID)
 				}
 			}
 		}
-		q.ConTables = append(q.ConTables, colConTable)
 	}
 }
 
 func appendDeletedColCons(q *PGPublish, col string, id string) {
 	conTableName := getConTableName(q.TableName, col)
-	colConTable := &PGSyncConTable{
-		TableName: conTableName,
-		Columns:   []string{q.TableName},
-		Rows:      make([][]interface{}, 0),
+	if q.DeletedConTables[conTableName] == nil {
+		q.DeletedConTables[conTableName] = &PGSyncConTable{
+			TableName: conTableName,
+			Columns:   []string{q.TableName},
+			Rows:      make([][]interface{}, 0),
+		}
 	}
 
 	if id != "" {
 		conRow := []interface{}{id}
-		colConTable.Rows = append(colConTable.Rows, conRow)
+		q.DeletedConTables[conTableName].Rows = append(q.DeletedConTables[conTableName].Rows, conRow)
 	}
-
-	q.DeletedConTables = append(q.DeletedConTables, colConTable)
 }
