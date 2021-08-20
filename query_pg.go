@@ -104,7 +104,7 @@ func NewPGQuery(schemaName string, contentType string, locale string, filters ur
 }
 
 func createFilters(filters url.Values) *[]string {
-	if len(filters) > 0 {
+	if filters != nil && len(filters) > 0 {
 		filterFields := make([]string, 0)
 		for key, values := range filters {
 			vals := ""
