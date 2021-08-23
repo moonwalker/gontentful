@@ -38,6 +38,7 @@ var (
 	foreignKeyRegex    = regexp.MustCompile(`([^.]+)\.(?:fields.)?(.+)`)
 	once               sync.Once
 	db                 *sqlx.DB
+	dbErr              error
 )
 
 const (
@@ -237,15 +238,16 @@ func formatOrder(order string, tableName string) string {
 }
 
 func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
-	var err error
 	once.Do(func() {
-		db, err = sqlx.Connect("postgres", databaseURL)
-		db.SetMaxOpenConns(50)
-		db.SetMaxIdleConns(50)                 // The default is defaultMaxIdleConns (= 2)
-		db.SetConnMaxLifetime(5 * time.Minute) // The default is 0 (connections reused forever)
+		db, dbErr = sqlx.Connect("postgres", databaseURL)
+		if db != nil {
+			db.SetMaxOpenConns(50)
+			db.SetMaxIdleConns(50)                 // The default is defaultMaxIdleConns (= 2)
+			db.SetConnMaxLifetime(5 * time.Minute) // The default is 0 (connections reused forever)
+		}
 	})
-	if err != nil {
-		return 0, "", err
+	if dbErr != nil {
+		return 0, "", dbErr
 	}
 
 	tmpl, err := template.New("").Parse(queryTemplate)
