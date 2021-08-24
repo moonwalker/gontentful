@@ -117,7 +117,7 @@ func createFilters(filters url.Values) *[]string {
 					vals = vals + formatValue(v)
 				}
 			}
-			f := getFilterFormat(key, vals)
+			f := getFilterFormat(key, vals, values)
 			if f != "" {
 				filterFields = append(filterFields, f)
 			}
@@ -129,7 +129,7 @@ func createFilters(filters url.Values) *[]string {
 	return nil
 }
 
-func getFilterFormat(key string, value string) string {
+func getFilterFormat(key string, value string, values []string) string {
 	f := key
 	c := ""
 
@@ -177,7 +177,7 @@ func getFilterFormat(key string, value string) string {
 	case "gte":
 		return fmt.Sprintf("%s >= %s", col, value)
 	case "match":
-		return fmt.Sprintf("%s ILIKE ''%%'' || %s || ''%%''", col, value)
+		return fmt.Sprintf("%s ILIKE ''%%'' || ''%s'' || ''%%''", col, strings.Join(values, ","))
 	case "in":
 		// IF isArray THEN
 		// RETURN 	' && ARRAY[' || fmtVal || ']';
