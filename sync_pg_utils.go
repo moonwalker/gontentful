@@ -22,6 +22,7 @@ type columnData struct {
 
 func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColumns []string, refColumns map[string]string, templateFormat bool) {
 	fieldsByLocale := make(map[string][]*rowField, 0)
+	defaultLocale := strings.ToLower(schema.DefaultLocale)
 
 	// iterate over fields
 	for fieldName, f := range item.Fields {
@@ -48,7 +49,7 @@ func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColu
 				if locFields[fallback] != nil {
 					fieldValue = locFields[fallback]
 				} else {
-					fieldValue = locFields[schema.DefaultLocale]
+					fieldValue = locFields[defaultLocale]
 				}
 			}
 
