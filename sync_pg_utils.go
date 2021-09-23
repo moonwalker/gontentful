@@ -45,8 +45,8 @@ func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColu
 			locale := strings.ToLower(loc.Code)
 			fallback := strings.ToLower(loc.FallbackCode)
 			fieldValue := locFields[loc.Code]
-			if fieldValue == nil {
-				if locFields[fallback] != nil {
+			if sv, ok := fieldValue.(string); !ok || sv == "" {
+				if sv, ok = locFields[fallback].(string); ok && sv != "" {
 					fieldValue = locFields[fallback]
 				} else {
 					fieldValue = locFields[defaultLocale]
