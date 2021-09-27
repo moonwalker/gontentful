@@ -36,9 +36,8 @@ var (
 	comparerRegex      = regexp.MustCompile(`[^[]+\[([^]]+)+]`)
 	joinedContentRegex = regexp.MustCompile(`(?:fields.)?([^.]+)\.sys\.contentType\.sys\.id`)
 	foreignKeyRegex    = regexp.MustCompile(`([^.]+)\.(?:fields.)?(.+)`)
-	once               sync.Once
+	once               = new(sync.Once)
 	db                 *sqlx.DB
-	dbErr              error
 )
 
 const (
@@ -238,6 +237,7 @@ func formatOrder(order string, tableName string) string {
 }
 
 func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
+	var dbErr error
 	once.Do(func() {
 		db, dbErr = sqlx.Connect("postgres", databaseURL)
 		if db != nil {
@@ -247,6 +247,7 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 		}
 	})
 	if dbErr != nil {
+		once = new(sync.Once)
 		return 0, "", dbErr
 	}
 
