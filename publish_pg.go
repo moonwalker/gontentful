@@ -71,16 +71,25 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 		break
 	case ASSET:
 		q.TableName = assetTableName
-		for _, loc := range locales {
+		for _, oLoc := range space.Locales {
+			fallback := strings.ToLower(oLoc.FallbackCode)
 			fieldValues := make(map[string]interface{})
-			locTitle := item.Fields["title"][loc]
-			if locTitle == nil {
-				locTitle = item.Fields["title"][defLocale]
+			locTitle := item.Fields["title"][oLoc.Code]
+			if sv, ok := locTitle.(string); !ok || sv == "" {
+				if sv, ok = item.Fields["title"][fallback].(string); ok && sv != "" {
+					locTitle = item.Fields["title"][fallback]
+				} else {
+					locTitle = item.Fields["title"][defLocale]
+				}
 			}
 			fieldValues["title"] = fmt.Sprintf("'%s'", locTitle)
-			locFile := item.Fields["file"][loc]
+			locFile := item.Fields["file"][oLoc.Code]
 			if locFile == nil {
-				locFile = item.Fields["file"][defLocale]
+				if item.Fields["file"][fallback] != nil {
+					locFile = item.Fields["file"][fallback]
+				} else {
+					locFile = item.Fields["file"][defLocale]
+				}
 			}
 			file, ok := locFile.(map[string]interface{})
 			if ok {
@@ -88,7 +97,7 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 				fieldValues["file_name"] = fmt.Sprintf("'%s'", file["fileName"])
 				fieldValues["content_type"] = fmt.Sprintf("'%s'", file["contentType"])
 			}
-			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, assetColumns, fieldValues, strings.ToLower(loc)))
+			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, assetColumns, fieldValues, strings.ToLower(oLoc.Code)))
 		}
 		break
 	}
