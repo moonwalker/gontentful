@@ -21,11 +21,9 @@ type PGPublish struct {
 func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, item *PublishedEntry) *PGPublish {
 
 	defLocale := defaultLocale
-	locales := make([]string, 0)
 	if len(space.Locales) > 0 {
 		defLocale = space.Locales[0].Code
 		for _, loc := range space.Locales {
-			locales = append(locales, loc.Code)
 			if loc.Default {
 				defLocale = loc.Code
 			}
@@ -44,16 +42,21 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 		contentTypeColumns, columnReferences := getContentTypeColumns(contentModel)
 		contentType := item.Sys.ContentType.Sys.ID
 		q.TableName = toSnakeCase(contentType)
-		for _, oLoc := range locales {
-			loc := strings.ToLower(oLoc)
+		for _, oLoc := range space.Locales {
+			loc := strings.ToLower(oLoc.Code)
+			fallback := strings.ToLower(oLoc.FallbackCode)
 			fieldValues := make(map[string]interface{})
 			id := fmtSysID(item.Sys.ID, true, loc)
 			for _, col := range contentTypeColumns {
 				prop := toCamelCase(col)
 				if item.Fields[prop] != nil {
-					fieldValue := item.Fields[prop][oLoc]
-					if fieldValue == nil {
-						fieldValue = item.Fields[prop][defLocale]
+					fieldValue := item.Fields[prop][oLoc.Code]
+					if sv, ok := fieldValue.(string); !ok || sv == "" {
+						if sv, ok = item.Fields[prop][fallback].(string); ok && sv != "" {
+							fieldValue = item.Fields[prop][fallback]
+						} else {
+							fieldValue = item.Fields[prop][defLocale]
+						}
 					}
 					fieldValues[col] = convertFieldValue(fieldValue, true, loc)
 					if columnReferences[col] != "" {
