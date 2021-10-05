@@ -51,8 +51,8 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 				prop := toCamelCase(col)
 				if item.Fields[prop] != nil {
 					fieldValue := item.Fields[prop][oLoc.Code]
-					if sv, ok := fieldValue.(string); !ok || sv == "" {
-						if sv, ok = item.Fields[prop][fallback].(string); ok && sv != "" {
+					if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
+						if sv, ok = item.Fields[prop][fallback].(string); item.Fields[prop][fallback] != nil && (!ok || (ok && sv != "")) {
 							fieldValue = item.Fields[prop][fallback]
 						} else {
 							fieldValue = item.Fields[prop][defLocale]
