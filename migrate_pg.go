@@ -13,7 +13,7 @@ const (
 	CREATE SCHEMA IF NOT EXISTS %[1]s;
 	ALTER SCHEMA %[1]s RENAME TO %[2]s;
 	ALTER SCHEMA %[3]s RENAME TO %[1]s;`
-	copyTableTpl = `CREATE TABLE  %[1]s.%[3]s AS SELECT * FROM %[2]s.%[3]s;`
+	copyTableTpl = `INSERT INTO %[1]s.%[3]s SELECT * FROM %[2]s.%[3]s;`
 )
 
 func MigratePGSQL(databaseURL string, newSchemaName string, space *Space, types []*ContentType, cmaTypes []*ContentType, entries []*Entry, syncToken string, createFunctions bool) error {
