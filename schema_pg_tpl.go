@@ -4,6 +4,8 @@ const pgTemplate = `
 {{- if $.SchemaName -}}
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
+CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
+--
 {{- end }}
 CREATE TABLE IF NOT EXISTS _asset (
 	_id text primary key,
