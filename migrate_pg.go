@@ -81,7 +81,7 @@ func SwapSchemas(databaseURL string, schemaName string, oldSchemaName string, ne
 	return nil
 }
 
-func CopyGameData(databaseURL string, schemaName string, newSchemaName string, gamesMetaTableName string, gamesContentTableName string) error {
+func CopyGameData(databaseURL string, schemaName string, newSchemaName string, gamesMetaTableName string, gamesContentTableName string, studioExcludedMarketTableName string) error {
 	db, err := sqlx.Connect("postgres", databaseURL)
 	if err != nil {
 		return err
@@ -100,6 +100,11 @@ func CopyGameData(databaseURL string, schemaName string, newSchemaName string, g
 	}
 
 	_, err = txn.Exec(fmt.Sprintf(copyTableTpl, newSchemaName, schemaName, gamesContentTableName))
+	if err != nil {
+		return err
+	}
+
+	_, err = txn.Exec(fmt.Sprintf(copyTableTpl, newSchemaName, schemaName, studioExcludedMarketTableName))
 	if err != nil {
 		return err
 	}
