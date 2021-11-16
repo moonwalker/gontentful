@@ -16,7 +16,8 @@ import (
 var (
 	runQuery bool
 	test     = []string{
-		"content_type=gameWildFeature&fields.name%5Bmatch%5D=%27fruits&include=1&limit=1000&locale=en-EU&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
+		"content_type=valuableFreespin&fields.environment%5Bne%5D=staging&fields.excludeFromSegmentationAction%5Bne%5D=yes&fields.value%5Blte%5D=1.000000&include=1&limit=1000&locale=en&order=-fields.value%2C-sys.updatedAt%2C-sys.createdAt%2Csys.id&skip=0",
+		// "content_type=gameWildFeature&fields.name%5Bmatch%5D=%27fruits&include=1&limit=1000&locale=en-EU&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0",
 		// "content_type=gameStudio&fields.enabled%5Bne%5D=false&fields.name%5Bmatch%5D=dragon%27s+&include=1&limit=1000&locale=en-EU&order=-fields.priority%2C-sys.updatedAt%2Csys.id&skip=0&sys.id%5Bnin%5D=2JsfZhGIsM84gk8MAWy6UY%2C1n7p035oIQ46kKUSKg4Csa%2C2szkSRoCiY0MwkegOKe6im%2C6QsVoUKraoOIq04S6yGYKM%2CLcaJjLfZ82IawQ0MuUqCc%2C4XKBCEZTM3cHSoFh3v1doI%2C2YO6k4bCC54QkbhIx8Ncqg%2C3X24TeiCsrMhIHgYITHOlc%2C3YtvKTXi08myuwKY8YUI4S%2C3K6a1VGwdymQeCamyOSMAs%2C2KID4jvLGUEOuCSI6YEuKo%2C5eDdC3owGci4WwkiUOAYcm%2CE1RRDLNADQiqsmCGoM2am%2Cm2M8Q8JDWWTLC9TPtWAwn%2C3xqNdiQ7CEE8Gy6A4wgKeo%2CdsGjjzpDQPIELDdxbiQbx%2C6YVKxuzJ3ixJPJUJ3LCA98",
 		// "content_type=valuableDepositBonus&fields.slug%5Bin%5D=100p_20_250_40x&include=3&limit=1000&locale=en&skip=0",
 		// "content_type=product&fields.name=dreamz&include=3&limit=1&skip=0",
