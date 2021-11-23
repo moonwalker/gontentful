@@ -30,6 +30,7 @@ RETURNS TABLE(
 	_sys_id text,
 	_locale text,
 	_count bigint,
+	_idx bigint,
 	{{- range $j, $c:= .Columns }}
 	{{- if $j -}},{{- end }}
 	{{ if eq .ColumnName "limit" -}}_{{- end -}}
@@ -40,9 +41,13 @@ DECLARE
 	qs text := '';
 	filter text;
 BEGIN
-	qs:= 'SELECT _id,_sys_id,_locale,COUNT(*) OVER(),';
-	
-	qs:= qs || '{{- range $j, $c:= .Columns -}}
+	qs:= 'SELECT _id,_sys_id,_locale,COUNT(*) OVER(),row_number() OVER(';
+
+	IF orderBy <> '' THEN
+	qs:= qs || ' ORDER BY ' || orderBy;
+	END IF;
+
+	qs:= qs || '),' || '{{- range $j, $c:= .Columns -}}
 	{{- if $j -}},{{- end -}}
 	{{- .ColumnName }} {{- if eq .ColumnName "limit" }} AS _ "{{ .ColumnName }}"{{- end -}}
 	{{- end -}}';
@@ -53,10 +58,6 @@ BEGIN
 		FOREACH filter IN ARRAY filters LOOP
 			qs := qs || ' AND ({{ .TableName }}.' || filter || ')';
 		END LOOP;
-	END IF;
-
-	IF orderBy <> '' THEN
-	qs:= qs || ' ORDER BY ' || orderBy;
 	END IF;
 
 	IF skip <> 0 THEN
@@ -210,6 +211,7 @@ BEGIN
 			{{ template "join" . }}
 		{{- end }}
 		WHERE {{ .TableName }}._locale = localeArg
+		ORDER BY {{ .TableName }}._idx
 	) t INTO res;
 
 	IF res.items IS NULL THEN
