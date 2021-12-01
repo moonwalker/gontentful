@@ -106,7 +106,7 @@ var schemaFuncMap = template.FuncMap{
 	"fmtLocale": fmtLocale,
 }
 
-func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, includeDepth int64) *PGSQLSchema {
+func NewPGSQLSchema(schemaName string, space *Space, contentTypeFilter string, items []*ContentType, includeDepth int64) *PGSQLSchema {
 	schema := &PGSQLSchema{
 		SchemaName:     schemaName,
 		Locales:        space.Locales,
@@ -124,6 +124,10 @@ func NewPGSQLSchema(schemaName string, space *Space, items []*ContentType, inclu
 	}
 
 	for _, item := range items {
+		if len(contentTypeFilter) > 0 && contentTypeFilter != item.Sys.ID {
+			continue
+		}
+
 		table, conTables, references, proc := NewPGSQLTable(item, itemsMap, includeDepth)
 
 		schema.Tables = append(schema.Tables, table)

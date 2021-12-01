@@ -26,7 +26,7 @@ func MigratePGSQL(databaseURL string, newSchemaName string, space *Space, types 
 	}
 
 	// 1) re-create schema
-	schema := NewPGSQLSchema(newSchemaName, space, cmaTypes, 0)
+	schema := NewPGSQLSchema(newSchemaName, space, "", cmaTypes, 0)
 	err = schema.Exec(databaseURL)
 	if err != nil {
 		return err
