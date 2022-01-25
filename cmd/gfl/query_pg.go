@@ -24,7 +24,6 @@ var (
 		// "content_type=webComponent&include=3&limit=1000&skip=0",
 		// "content_type=phrase&include=3&limit=1000&locale=en&skip=0",
 		// "content_type=route&include=3&limit=1000&locale=en&skip=0",
-		// "content_type=routeAlias&include=3&limit=1000&locale=en&skip=0",
 		// "content_type=market&fields.code=ROW&include=2&limit=1&locale=en&skip=0",
 		// "content_type=currency&include=3&limit=1000&locale=en&skip=0",
 		// "content_type=market&include=3&limit=1000&skip=0",
