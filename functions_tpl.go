@@ -329,7 +329,7 @@ BEGIN
 	{{- end }}
 	FROM filtered {{ .TableName }}';
 
-	qs:= qs || ' ORDER BY feature._idx ) t;';
+	qs:= qs || ' ORDER BY {{ .TableName }}._idx ) t;';
 
 	EXECUTE qs INTO res;
 
@@ -401,7 +401,7 @@ BEGIN
 			';
 			{{- end }}											
 
-			qs:= qs || ' ORDER BY feature._idx ) t;';
+			qs:= qs || ' ORDER BY {{ .TableName }}._idx ) t;';
 
 			EXECUTE qs INTO res;
 
