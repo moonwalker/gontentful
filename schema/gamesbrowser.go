@@ -75,13 +75,10 @@ CREATE TABLE IF NOT EXISTS _game_history (
 );
 
 CREATE TABLE IF NOT EXISTS _csv_upload (
-	timestamp text,
-	csv text not null,
-	count integer not null default 0,
-	type text,
-	success bool not null default FALSE,
 	created timestamp without time zone default now(),
-	created_by text not null default 'system'
+	created_by text not null default 'system',
+	timestamp text,
+	csv text not null
 );
 
 CREATE TABLE IF NOT EXISTS _studio_excluded_market (
@@ -95,7 +92,18 @@ CREATE TABLE IF NOT EXISTS _studio_excluded_market (
 	deleted_by text
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON _game_content (sys_id);
+CREATE TABLE IF NOT EXISTS _studio_excluded_currency (
+	studio text primary key,
+	excluded_currencies text[] not null default '{}',
+	created timestamp without time zone default now(),
+	created_by text not null default 'system',
+	updated timestamp without time zone default now(),
+	updated_by text not null default 'system',
+	deleted timestamp without time zone,
+	deleted_by text
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_game_sys_id ON _game_content (sys_id);
 `
 
 // ALTER TABLE _game_meta DROP CONSTRAINT IF EXISTS gamesbrowser_content_fkey;

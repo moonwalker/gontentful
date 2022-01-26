@@ -52,6 +52,61 @@ func MigratePGSQL(databaseURL string, newSchemaName string, space *Space, types 
 		}
 	}
 
+	// 4) refresh materialized views
+	if createFunctions {
+		matViews := NewPGMatViews(schema)
+		err = matViews.ExecOneByOne(databaseURL, newSchemaName)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func MigrateGamesPGSQL(databaseURL string, newSchemaName string, contentSchemaName string, space *Space, types []*ContentType, cmaTypes []*ContentType, entries []*Entry, syncToken string) error {
+
+	// 0) drop newSchema if exists
+	drop := NewPGDrop(newSchemaName)
+	err := drop.Exec(databaseURL)
+	if err != nil {
+		return err
+	}
+
+	// 1) re-create schema
+	schema := NewPGSQLSchema(newSchemaName, space, "", cmaTypes, 0)
+	schema.DropTables = true
+	schema.ContentSchema = contentSchemaName
+	err = schema.Exec(databaseURL)
+	if err != nil {
+		return err
+	}
+
+	// 2) sync data & save token
+	sync := NewPGSyncSchema(newSchemaName, space, types, entries, true)
+	err = sync.Exec(databaseURL)
+	if err != nil {
+		return err
+	}
+	err = SaveSyncToken(databaseURL, newSchemaName, syncToken)
+	if err != nil {
+		return err
+	}
+
+	// 3) create functions
+	funcs := NewPGFunctions(schema)
+	err = funcs.Exec(databaseURL)
+	if err != nil {
+		return err
+	}
+
+	// 4) refresh materialized views
+	matViews := NewPGMatViews(schema)
+	err = matViews.ExecOneByOne(databaseURL, newSchemaName)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

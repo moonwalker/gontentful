@@ -24,18 +24,23 @@ type PGSQLProcedureColumn struct {
 	Reference    *PGSQLProcedureReference
 	JoinAlias    string
 	IsAsset      bool
+	Localized    bool
+	SqlType      string
 }
 
 type PGSQLProcedureReference struct {
-	TableName  string
-	ForeignKey string
-	Columns    []*PGSQLProcedureColumn
-	JoinAlias  string
+	TableName    string
+	ForeignKey   string
+	Columns      []*PGSQLProcedureColumn
+	JoinAlias    string
+	Localized    bool
+	HasLocalized bool
 }
 
 type PGSQLProcedure struct {
-	TableName string
-	Columns   []*PGSQLProcedureColumn
+	TableName    string
+	Columns      []*PGSQLProcedureColumn
+	HasLocalized bool
 }
 
 type PGSQLColumn struct {
@@ -75,6 +80,7 @@ type PGSQLTable struct {
 	TableName string
 	Data      *PGSQLData
 	Columns   []*PGSQLColumn
+	Indices   map[string]string
 }
 
 type PGSQLReference struct {
@@ -95,6 +101,7 @@ type PGSQLSchema struct {
 	AssetTableName string
 	AssetColumns   []string
 	DropTables     bool
+	ContentSchema  string
 }
 
 type PGSQLDeleteTrigger struct {
@@ -235,6 +242,9 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDept
 				conTables, references = addManyToMany(conTables, references, table.TableName, field)
 			}
 			proc.Columns = append(proc.Columns, procColumn)
+			if procColumn.Localized {
+				proc.HasLocalized = true
+			}
 
 			// } else {
 			// 	fmt.Println("Ignoring omitted field", field.ID, "in", table.TableName)
@@ -375,6 +385,7 @@ func NewPGSQLCon(tableName string, fieldName string, reference string) *PGSQLTab
 	return &PGSQLTable{
 		TableName: getConTableName(tableName, fieldName),
 		Columns:   getConTableColumns(tableName, reference),
+		Indices:   map[string]string{"id_locale": fmt.Sprintf("%s_sys_id,_locale", tableName), "sys_id_locale": fmt.Sprintf("%s_sys_id,_locale", reference)},
 	}
 }
 
@@ -388,7 +399,16 @@ func getConTableColumns(tableName string, reference string) []*PGSQLColumn {
 			ColumnName: tableName,
 		},
 		&PGSQLColumn{
+			ColumnName: fmt.Sprintf("%s_sys_id", tableName),
+		},
+		&PGSQLColumn{
 			ColumnName: reference,
+		},
+		&PGSQLColumn{
+			ColumnName: fmt.Sprintf("%s_sys_id", reference),
+		},
+		&PGSQLColumn{
+			ColumnName: "_locale",
 		},
 	}
 }
@@ -432,6 +452,8 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 		TableName:  tableName,
 		ColumnName: columnName,
 		Alias:      field.ID,
+		Localized:  field.Localized,
+		SqlType:    mapFieldType(columnName, field.Type, field.Items, field),
 	}
 
 	if field.LinkType == ASSET {
@@ -446,6 +468,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 			TableName:  assetTableName,
 			ForeignKey: toSnakeCase(field.ID),
 			JoinAlias:  assetJoinAlias,
+			Localized:  col.Localized,
 		}
 	} else if field.LinkType != "" {
 		linkType := getFieldLinkContentType(field.Validations)
@@ -462,6 +485,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 				ForeignKey: toSnakeCase(field.ID),
 				Columns:    make([]*PGSQLProcedureColumn, 0),
 				JoinAlias:  joinAlias,
+				Localized:  col.Localized,
 			}
 
 			if includeDepth <= maxIncludeDepth && items[linkType] != nil {
@@ -490,6 +514,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 				TableName:  assetTableName,
 				ForeignKey: toSnakeCase(field.ID),
 				JoinAlias:  assetJoinAlias,
+				Localized:  col.Localized,
 			}
 		} else if field.Items.LinkType != "" {
 			conLinkType := getFieldLinkContentType(field.Items.Validations)
@@ -507,6 +532,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 					ForeignKey: toSnakeCase(field.ID),
 					Columns:    make([]*PGSQLProcedureColumn, 0),
 					JoinAlias:  conJoinAlias,
+					Localized:  col.Localized,
 				}
 				if includeDepth <= maxIncludeDepth && items[conLinkType] != nil {
 					itemTableName := toSnakeCase(items[conLinkType].Sys.ID)
@@ -523,7 +549,70 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 		}
 	}
 
+	if col.Reference != nil {
+		col.Reference.HasLocalized = getHasLocalized(col.Reference)
+	}
+
 	return col
+}
+
+func mapFieldType(fieldName string, fieldType string, fieldItems *FieldTypeArrayItem, field *ContentTypeField) string {
+	switch fieldType {
+	case "Integer":
+		return "integer"
+	case "Number":
+		return "decimal"
+	case "Date":
+		return "date"
+	case "Location":
+		return "point"
+	case "Object":
+		return "jsonb"
+	case "Symbol":
+		return "text"
+	case "Link":
+		if field.LinkType == "Entry" && len(field.Validations) == 0 {
+			return "text"
+		}
+		return "json"
+	case "Text":
+		return "text"
+	case "Boolean":
+		return "boolean"
+	case "Array":
+		if fieldItems != nil {
+			switch fieldItems.Type {
+			case "Link":
+				if fieldItems.LinkType == "Entry" && len(fieldItems.Validations) == 0 {
+					return "text[]"
+				}
+				return "json"
+			default:
+				return fmt.Sprintf("%s[]", mapFieldType(fieldName, fieldItems.Type, nil, nil))
+			}
+		}
+		return "text[]"
+	default:
+		return "text"
+	}
+}
+
+func getHasLocalized(ref *PGSQLProcedureReference) bool {
+	for _, col := range ref.Columns {
+		if col.Localized || col.IsAsset {
+			if col.Reference != nil {
+				col.Reference.HasLocalized = true
+			}
+			return true
+		}
+		if col.Reference != nil {
+			col.Reference.HasLocalized = getHasLocalized(col.Reference)
+			if col.Reference.HasLocalized {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func getJoinAlias(path string, columnName, tableName string) string {

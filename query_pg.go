@@ -61,7 +61,7 @@ func ParsePGQuery(schemaName string, defaultLocale string, q url.Values) *PGQuer
 
 	locale := q.Get("locale")
 	q.Del("locale")
-	if locale == "" {
+	if locale == "" || locale == "*" {
 		locale = defaultLocale
 	}
 

@@ -63,4 +63,8 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 );
 {{- end -}}
 {{- end -}}
+--
+{{ range $i, $l := $.Locales }}
+REFRESH MATERIALIZED VIEW CONCURRENTLY "mv_{{ $.TableName }}_{{ .Code | ToLower }}";
+{{- end }}
 `

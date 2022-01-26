@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS {{ .TableName }} (
 	"{{ .ColumnName }}" TEXT NOT NULL
 	{{- end }}
 );
+{{ range $idxn, $idxf := .Indices }}
+CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}_{{ $tbl.TableName }}_{{ $idxn }} ON {{ $tbl.TableName }} ({{ $idxf }});
+{{- end }}
 {{ end -}}
 --
 {{ range $idx, $ref := $.Schema.References }}
@@ -20,7 +23,7 @@ CREATE TABLE IF NOT EXISTS {{ .TableName }} (
 --  REFERENCES {{ .Reference }} (_id)
 --  ON DELETE CASCADE;
 --
-CREATE INDEX IF NOT EXISTS {{ .TableName }}_{{ .ForeignKey }} ON {{ .TableName }}({{ .ForeignKey }});
+CREATE INDEX IF NOT EXISTS idx_{{ .TableName }}_{{ .ForeignKey }} ON {{ .TableName }}({{ .ForeignKey }});
 --
 {{- end -}}
 `
