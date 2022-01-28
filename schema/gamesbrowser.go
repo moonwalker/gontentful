@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS _studio_excluded_currency (
 
 CREATE TABLE IF NOT EXISTS _studio_excluded_licence (
 	studio text primary key,
-	licence text not null default '{}',
+	licence text not null default '',
 	created timestamp without time zone default now(),
 	created_by text not null default 'system',
 	updated timestamp without time zone default now(),
