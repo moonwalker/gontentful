@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS _studio_excluded_currency (
 
 CREATE TABLE IF NOT EXISTS _studio_excluded_licence (
 	studio text primary key,
-	licence text not null default '',
+	excluded_licences text[] not null default '{}',
 	created timestamp without time zone default now(),
 	created_by text not null default 'system',
 	updated timestamp without time zone default now(),
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS _studio_excluded_licence (
 	deleted_by text
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_game_sys_id ON _game_content (sys_id);
+CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON _game_content (sys_id);
 `
 
 // ALTER TABLE _game_meta DROP CONSTRAINT IF EXISTS gamesbrowser_content_fkey;
