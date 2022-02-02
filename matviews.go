@@ -67,6 +67,25 @@ func (s *PGMatViews) Exec(databaseURL string) error {
 	return nil
 }
 
+func (s *PGMatViews) Render() (string, error) {
+	funcMap := template.FuncMap{
+		"ToLower": strings.ToLower,
+	}
+	tmpl, err := template.New("").Funcs(funcMap).Parse(pgRefreshMatViewsTemplate)
+
+	if err != nil {
+		return "", err
+	}
+
+	var buff bytes.Buffer
+	err = tmpl.Execute(&buff, s.Schema)
+	if err != nil {
+		return "", err
+	}
+
+	return buff.String(), nil
+}
+
 func (s *PGMatViews) ExecOneByOne(databaseURL string, schemaName string) error {
 	funcMap := template.FuncMap{
 		"ToLower": strings.ToLower,

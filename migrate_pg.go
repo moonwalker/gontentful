@@ -75,7 +75,6 @@ func MigrateGamesPGSQL(databaseURL string, newSchemaName string, contentSchemaNa
 
 	// 1) re-create schema
 	schema := NewPGSQLSchema(newSchemaName, space, "", cmaTypes, 0)
-	schema.DropTables = true
 	schema.ContentSchema = contentSchemaName
 	err = schema.Exec(databaseURL)
 	if err != nil {

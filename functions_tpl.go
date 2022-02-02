@@ -3,7 +3,7 @@ package gontentful
 const pgRefreshMatViewsTemplate = `
 {{ range $i, $t := $.Functions }}
 	{{ range $i, $l := $.Locales }}
-		REFRESH MATERIALIZED VIEW CONCURRENTLY "mv_{{ $t.TableName }}_{{ .Code | ToLower }}";
+		REFRESH MATERIALIZED VIEW "mv_{{ $t.TableName }}_{{ .Code | ToLower }}";
 	{{- end }}
 {{- end }}`
 
@@ -47,87 +47,9 @@ END $$;
 --
 {{ range $i, $t := $.Tables }}
 {{- if $.DropTables }}
-DROP FUNCTION IF EXISTS _get_{{ .TableName }}_items CASCADE;
+DROP FUNCTION IF EXISTS {{ .TableName }}_view CASCADE;
 {{ end -}}
---
-CREATE OR REPLACE FUNCTION _get_{{ .TableName }}_items(locale TEXT, filters TEXT[], orderBy TEXT, skip INTEGER, take INTEGER)
-RETURNS TABLE(
-	_id text,
-	_sys_id text,
-	_locale text,
-	_count bigint,
-	_idx bigint,
-	{{- range $j, $c:= .Columns }}
-	{{- if $j -}},{{- end }}
-	{{ if eq .ColumnName "limit" -}}_{{- end -}}
-	{{- .ColumnName }} {{ .ColumnType }}
-	{{- end }}
-) AS $$
-DECLARE
-	qs text := '';
-	filter text;
-BEGIN
-	qs:= 'SELECT _id,_sys_id,_locale,COUNT(*) OVER(),row_number() OVER(';
-
-	IF orderBy <> '' THEN
-	qs:= qs || ' ORDER BY ' || orderBy;
-	END IF;
-
-	qs:= qs || '),' || '{{- range $j, $c:= .Columns -}}
-	{{- if $j -}},{{- end -}}
-	{{- .ColumnName }} {{- if eq .ColumnName "limit" }} AS _ "{{ .ColumnName }}"{{- end -}}
-	{{- end -}}';
-	
-	qs:= qs || ' FROM {{ .TableName }} WHERE ({{ .TableName }}._locale=''' || locale || ''')';
-
-	IF filters IS NOT NULL THEN
-		FOREACH filter IN ARRAY filters LOOP
-			qs := qs || ' AND ({{ .TableName }}.' || filter || ')';
-		END LOOP;
-	END IF;
-
-	IF skip <> 0 THEN
-	qs:= qs || ' OFFSET ' || skip;
-	END IF;
-
-	IF take <> 0 THEN
-	qs:= qs || ' LIMIT ' || take;
-	END IF;
-
-	RETURN QUERY EXECUTE qs;
-END;
-$$ LANGUAGE 'plpgsql';	
 {{ end }}
---
-CREATE OR REPLACE FUNCTION _get_sys_ids(tableName text, locale TEXT, filters TEXT[], orderBy TEXT, skip INTEGER, take INTEGER)
-RETURNS SETOF text AS $$
-DECLARE
-	qs text := '';
-	filter text;
-BEGIN
-	qs:= 'SELECT _sys_id FROM ' || tableName || ' WHERE (' || tableName || '._locale=''' || locale || ''')';
-
-	IF filters IS NOT NULL THEN
-		FOREACH filter IN ARRAY filters LOOP
-			qs := qs || ' AND (' || tableName || '.' || filter || ')';
-		END LOOP;
-	END IF;
-
-	IF orderBy <> '' THEN
-	qs:= qs || ' ORDER BY ' || orderBy;
-	END IF;
-
-	IF skip <> 0 THEN
-	qs:= qs || ' OFFSET ' || skip;
-	END IF;
-
-	IF take <> 0 THEN
-	qs:= qs || ' LIMIT ' || take;
-	END IF;
-
-	RETURN QUERY EXECUTE qs;
-END;
-$$ LANGUAGE 'plpgsql';
 --
 {{- define "assetRef" -}}
 (CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN 
@@ -469,8 +391,18 @@ $$ LANGUAGE 'plpgsql';
 {{- if eq $fallbackLocale "" -}}
 	{{ $fallbackLocale := "en" }}
 {{- end -}}
-CREATE MATERIALIZED VIEW IF NOT EXISTS "mv_{{ $t.TableName }}_{{ .Code | ToLower }}" AS SELECT * FROM {{ $t.TableName }}_view('{{ .Code | ToLower }}', '{{ $fallbackLocale | ToLower }}', 'en')  WITH NO DATA;
+
+{{- if $.DropTables -}}
+CREATE MATERIALIZED VIEW IF NOT EXISTS "mv_{{ $t.TableName }}_{{ .Code | ToLower }}" AS SELECT * FROM {{ $t.TableName }}_view('{{ .Code | ToLower }}', '{{ $fallbackLocale | ToLower }}', 'en');
+{{- else -}}
+CREATE MATERIALIZED VIEW IF NOT EXISTS "mv_{{ $t.TableName }}_{{ .Code | ToLower }}" AS SELECT * FROM {{ $t.TableName }}_view('{{ .Code | ToLower }}', '{{ $fallbackLocale | ToLower }}', 'en') WITH NO DATA;
+{{- end }}
 CREATE UNIQUE INDEX IF NOT EXISTS "mv_{{ $t.TableName }}_{{ .Code | ToLower }}_idx" ON "mv_{{ $t.TableName }}_{{ .Code | ToLower }}" (_id);
+--
+{{ range $cfi, $cfl := .CFLocales }}
+CREATE OR REPLACE VIEW "mv_{{ $t.TableName }}_{{ $cfl | ToLower }}" AS SELECT * FROM "mv_{{ $t.TableName }}_{{ $l.Code | ToLower }}";
+{{- end }}
+--
 {{- end }}
 {{- end }}
 --

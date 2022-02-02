@@ -65,10 +65,11 @@ type Locales struct {
 }
 
 type Locale struct {
-	Code         string `json:"code"`
-	Default      bool   `json:"default"`
-	Name         string `json:"name"`
-	FallbackCode string `json:"fallbackCode"`
+	Code         string   `json:"code"`
+	Default      bool     `json:"default"`
+	Name         string   `json:"name"`
+	FallbackCode string   `json:"fallbackCode"`
+	CFLocales    []string `json:"cfFallbackCode"`
 }
 
 type ContentType struct {

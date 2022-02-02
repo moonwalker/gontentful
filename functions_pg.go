@@ -15,6 +15,13 @@ var overwritableFields = map[string]bool{
 	"description": true,
 }
 
+var funcMap = template.FuncMap{
+	"ToLower": strings.ToLower,
+	"Overwritable": func(f string) bool {
+		return overwritableFields[f]
+	},
+}
+
 type PGFunctions struct {
 	Schema *PGSQLSchema
 }
@@ -26,12 +33,6 @@ func NewPGFunctions(schema *PGSQLSchema) *PGFunctions {
 }
 
 func (s *PGFunctions) Exec(databaseURL string) error {
-	funcMap := template.FuncMap{
-		"ToLower": strings.ToLower,
-		"Overwritable": func(f string) bool {
-			return overwritableFields[f]
-		},
-	}
 	tmpl, err := template.New("").Funcs(funcMap).Parse(pgFuncTemplate)
 
 	if err != nil {
@@ -77,7 +78,7 @@ func (s *PGFunctions) Exec(databaseURL string) error {
 }
 
 func (s *PGFunctions) Render() (string, error) {
-	tmpl, err := template.New("").Parse(pgFuncTemplate)
+	tmpl, err := template.New("").Funcs(funcMap).Parse(pgFuncTemplate)
 	if err != nil {
 		return "", err
 	}
