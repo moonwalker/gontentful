@@ -181,7 +181,11 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 			) l
 		) _included_{{ .Reference.JoinAlias }} ON true
 	{{- else if .Reference }}
+		{{ if .Localized }}
+		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = COALESCE({{ .JoinAlias }}.{{ .Reference.ForeignKey }},{{ .JoinAlias }}_fallbacklocale.{{ .Reference.ForeignKey }} ,{{ .JoinAlias }}_deflocale.{{ .Reference.ForeignKey }}) AND {{ .Reference.JoinAlias }}._locale = localeArg
+		{{- else -}}
 		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}._locale = localeArg
+		{{- end -}}
 		{{ if or .Localized .IsAsset .Reference.HasLocalized }}
 		{{ if .IsAsset }}
 		-- IsAsset join
