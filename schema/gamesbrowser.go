@@ -75,10 +75,13 @@ CREATE TABLE IF NOT EXISTS _game_history (
 );
 
 CREATE TABLE IF NOT EXISTS _csv_upload (
-	created timestamp without time zone default now(),
-	created_by text not null default 'system',
 	timestamp text,
-	csv text not null
+	csv text not null,
+	count integer not null default 0,
+	type text,
+	success bool not null default FALSE,
+	created timestamp without time zone default now(),
+	created_by text not null default 'system'
 );
 
 CREATE TABLE IF NOT EXISTS _studio_excluded_market (
