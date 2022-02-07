@@ -7,23 +7,9 @@ const pgRefreshMatViewsTemplate = `
 	{{- end }}
 {{- end }}`
 
-const pgRefreshMatViewsTemplate1 = `
+const pgRefreshMatViewsTemplateOBO = `
 {{ range $i, $l := $.Locales }}
 REFRESH MATERIALIZED VIEW "mv_{{ $.Function.TableName }}_{{ .Code | ToLower }}";
-{{- end }}`
-
-const pgRefreshMatViewsTemplate2 = `
-{{ range $i, $l := $.Locales }}
-{{ $fallbackLocale := .FallbackCode }}
-{{- if eq $fallbackLocale "" -}}
-	{{ $fallbackLocale := "en" }}
-{{- end -}}
-{{- if $i -}}
-INSERT INTO "tbl_{{ $.Function.TableName }}" SELECT '{{ .Code | ToLower }}' AS _locale, t.* FROM {{ $.Function.TableName }}_view('{{ .Code | ToLower }}', '{{ $fallbackLocale | ToLower }}', 'en') t;
-{{- else -}}
-CREATE TABLE "tbl_{{ $.Function.TableName }}" AS SELECT '{{ .Code | ToLower }}' AS _locale, t.* FROM {{ $.Function.TableName }}_view('{{ .Code | ToLower }}', '{{ $fallbackLocale | ToLower }}', 'en') t;
-{{- end -}}
--- REFRESH MATERIALIZED VIEW "mv_{{ $.Function.TableName }}_{{ .Code | ToLower }}";
 {{- end }}`
 
 const pgFuncTemplate = `
@@ -431,5 +417,12 @@ ON {{ .TableName }}
 FOR EACH ROW 
 	EXECUTE PROCEDURE {{ .TableName }}_delete_trigger();
 --
+{{- end }}
+`
+
+const pgFuncPublishTemplate = `
+{{ range $i, $t := $.Functions }}
+	DROP VIEW IF EXISTS "mv_{{ $t.TableName }}_{{ $.Locale | ToLower }}"; 
+	CREATE OR REPLACE VIEW "mv_{{ $t.TableName }}_{{ $.Locale | ToLower }}" AS SELECT * FROM "mv_{{ $t.TableName }}_{{ $.FallbackLocale | ToLower }}";
 {{- end }}
 `

@@ -90,7 +90,7 @@ func (s *PGMatViews) ExecOneByOne(databaseURL string, schemaName string) error {
 	funcMap := template.FuncMap{
 		"ToLower": strings.ToLower,
 	}
-	tmpl, err := template.New("").Funcs(funcMap).Parse(pgRefreshMatViewsTemplate1)
+	tmpl, err := template.New("").Funcs(funcMap).Parse(pgRefreshMatViewsTemplateOBO)
 	if err != nil {
 		return err
 	}
