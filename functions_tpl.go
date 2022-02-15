@@ -92,13 +92,8 @@ DROP FUNCTION IF EXISTS {{ .TableName }}_view CASCADE;
 								END) AS "file"
 {{- end -}}
 {{- define "refColumn" -}} 
-{{- if .Localized -}}	
-(CASE WHEN COALESCE({{ .JoinAlias }}._sys_id, {{ .JoinAlias }}_fallbacklocale._sys_id, {{ .JoinAlias }}_deflocale._sys_id) IS NULL THEN NULL ELSE json_build_object(
-	'sys', json_build_object('id', COALESCE({{ .JoinAlias }}._sys_id, {{ .JoinAlias }}_fallbacklocale._sys_id, {{ .JoinAlias }}_deflocale._sys_id))
-{{- else -}}
 (CASE WHEN {{ .JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
 	'sys', json_build_object('id', {{ .JoinAlias }}._sys_id)
-{{- end -}}
 					{{- range $i, $c:= .Columns -}}
 					,
 					'{{ .Alias }}',
@@ -180,8 +175,8 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 		{{- else -}}
 		-- Reference {{ .Localized }} {{ .IsAsset }} {{ .Reference.HasLocalized }}
 		{{ if .Reference.Localized }}
-		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_fallbacklocale ON {{ .Reference.JoinAlias }}_fallbacklocale._sys_id = {{ .JoinAlias }}_fallbacklocale.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}_fallbacklocale._locale = fallbackLocaleArg
-		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_deflocale ON {{ .Reference.JoinAlias }}_deflocale._sys_id = {{ .JoinAlias }}_deflocale.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}_deflocale._locale = defLocaleArg
+		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_fallbacklocale ON {{ .Reference.JoinAlias }}_fallbacklocale._sys_id = COALESCE({{ .JoinAlias }}.{{ .Reference.ForeignKey }},{{ .JoinAlias }}_fallbacklocale.{{ .Reference.ForeignKey }} ,{{ .JoinAlias }}_deflocale.{{ .Reference.ForeignKey }}) AND {{ .Reference.JoinAlias }}_fallbacklocale._locale = fallbackLocaleArg
+		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_deflocale ON {{ .Reference.JoinAlias }}_deflocale._sys_id = COALESCE({{ .JoinAlias }}.{{ .Reference.ForeignKey }},{{ .JoinAlias }}_fallbacklocale.{{ .Reference.ForeignKey }} ,{{ .JoinAlias }}_deflocale.{{ .Reference.ForeignKey }}) AND {{ .Reference.JoinAlias }}_deflocale._locale = defLocaleArg
 		{{- else -}}
 		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_fallbacklocale ON {{ .Reference.JoinAlias }}_fallbacklocale._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}_fallbacklocale._locale = fallbackLocaleArg
 		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_deflocale ON {{ .Reference.JoinAlias }}_deflocale._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}_deflocale._locale = defLocaleArg
