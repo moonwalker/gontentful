@@ -9,8 +9,19 @@ const pgRefreshMatViewsTemplate = `
 
 const pgRefreshMatViewsTemplateOBO = `
 {{ range $i, $l := $.Locales }}
-REFRESH MATERIALIZED VIEW "mv_{{ $.Function.TableName }}_{{ .Code | ToLower }}";
+REFRESH MATERIALIZED VIEW "mv_{{ $.TableName }}_{{ .Code | ToLower }}";
 {{- end }}`
+
+const pgRefreshMatViewsGetDepsTemplate = `
+WITH RECURSIVE refs AS (
+	SELECT '{{ . }}' AS "tablename", 1 AS "rl" 
+	UNION ALL
+	SELECT tr.tablename, r.rl + 1 FROM refs AS r
+	JOIN table_references tr ON tr.reference = r.tablename
+	WHERE r.rl < 3
+)
+SELECT DISTINCT refs.tablename FROM refs;
+`
 
 const pgFuncTemplate = `
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};

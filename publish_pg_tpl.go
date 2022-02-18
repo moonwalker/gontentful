@@ -63,10 +63,4 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 );
 {{- end -}}
 {{- end -}}
---
-{{if ne $.TableName "_asset" -}}
-{{ range $i, $l := $.Locales }}
-REFRESH MATERIALIZED VIEW CONCURRENTLY "mv_{{ $.TableName }}_{{ .Code | ToLower }}";
-{{- end }}
-{{- end }}
 `

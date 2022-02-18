@@ -90,12 +90,18 @@ type PGSQLReference struct {
 	IsManyToMany bool
 }
 
+type PGSQLDependency struct {
+	TableName string
+	Reference string
+}
+
 type PGSQLSchema struct {
 	SchemaName     string
 	Locales        []*Locale
 	Tables         []*PGSQLTable
 	ConTables      []*PGSQLTable
 	References     []*PGSQLReference
+	Dependencies   []*PGSQLDependency
 	Functions      []*PGSQLProcedure
 	DeleteTriggers []*PGSQLDeleteTrigger
 	AssetTableName string
@@ -120,6 +126,7 @@ func NewPGSQLSchema(schemaName string, space *Space, contentTypeFilter string, i
 		Tables:         make([]*PGSQLTable, 0),
 		ConTables:      make([]*PGSQLTable, 0),
 		References:     make([]*PGSQLReference, 0),
+		Dependencies:   make([]*PGSQLDependency, 0),
 		Functions:      make([]*PGSQLProcedure, 0),
 		DeleteTriggers: make([]*PGSQLDeleteTrigger, 0),
 		AssetColumns:   assetColumns,
@@ -135,11 +142,12 @@ func NewPGSQLSchema(schemaName string, space *Space, contentTypeFilter string, i
 			continue
 		}
 
-		table, conTables, references, proc := NewPGSQLTable(item, itemsMap, includeDepth)
+		table, conTables, references, dependencies, proc := NewPGSQLTable(item, itemsMap, includeDepth)
 
 		schema.Tables = append(schema.Tables, table)
 		schema.ConTables = append(schema.ConTables, conTables...)
 		schema.References = append(schema.References, references...)
+		schema.Dependencies = append(schema.Dependencies, dependencies...)
 		schema.Functions = append(schema.Functions, proc)
 	}
 	schema.DeleteTriggers = getDeleteTriggers(schema.References)
@@ -213,7 +221,7 @@ func (s *PGSQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDepth int64) (*PGSQLTable, []*PGSQLTable, []*PGSQLReference, *PGSQLProcedure) {
+func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDepth int64) (*PGSQLTable, []*PGSQLTable, []*PGSQLReference, []*PGSQLDependency, *PGSQLProcedure) {
 	table := &PGSQLTable{
 		TableName: toSnakeCase(item.Sys.ID),
 		Columns:   make([]*PGSQLColumn, 0),
@@ -221,6 +229,7 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDept
 	}
 	conTables := make([]*PGSQLTable, 0)
 	references := make([]*PGSQLReference, 0)
+	dependencies := make([]*PGSQLDependency, 0)
 	proc := &PGSQLProcedure{
 		TableName: table.TableName,
 		Columns:   make([]*PGSQLProcedureColumn, 0),
@@ -237,9 +246,9 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDept
 			procColumn := NewPGSQLProcedureColumn(column.ColumnName, field, items, table.TableName, include, 0, "")
 
 			if field.LinkType != "" {
-				references = addOneTOne(references, table.TableName, field)
+				references, dependencies = addOneTOne(references, dependencies, table.TableName, field)
 			} else if field.Items != nil {
-				conTables, references = addManyToMany(conTables, references, table.TableName, field)
+				conTables, references, dependencies = addManyToMany(conTables, references, dependencies, table.TableName, field)
 			}
 			proc.Columns = append(proc.Columns, procColumn)
 			if procColumn.Localized {
@@ -251,7 +260,7 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDept
 		}
 	}
 
-	return table, conTables, references, proc
+	return table, conTables, references, dependencies, proc
 }
 
 func NewPGSQLColumn(field *ContentTypeField) *PGSQLColumn {
@@ -413,7 +422,7 @@ func getConTableColumns(tableName string, reference string) []*PGSQLColumn {
 	}
 }
 
-func addOneTOne(references []*PGSQLReference, tableName string, field *ContentTypeField) []*PGSQLReference {
+func addOneTOne(references []*PGSQLReference, dependencies []*PGSQLDependency, tableName string, field *ContentTypeField) ([]*PGSQLReference, []*PGSQLDependency) {
 	linkType := getFieldLinkType(field.LinkType, field.Validations)
 	if linkType != "" && linkType != ENTRY {
 		foreignKey := toSnakeCase(field.ID)
@@ -423,11 +432,15 @@ func addOneTOne(references []*PGSQLReference, tableName string, field *ContentTy
 			ForeignKey:   foreignKey,
 			IsManyToMany: false,
 		})
+		dependencies = append(dependencies, &PGSQLDependency{
+			TableName: tableName,
+			Reference: linkType,
+		})
 	}
-	return references
+	return references, dependencies
 }
 
-func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, tableName string, field *ContentTypeField) ([]*PGSQLTable, []*PGSQLReference) {
+func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, dependencies []*PGSQLDependency, tableName string, field *ContentTypeField) ([]*PGSQLTable, []*PGSQLReference, []*PGSQLDependency) {
 	linkType := getFieldLinkType(field.Items.LinkType, field.Items.Validations)
 	if linkType != "" && linkType != ENTRY {
 		conTable := NewPGSQLCon(tableName, toSnakeCase(field.ID), linkType)
@@ -443,8 +456,12 @@ func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, tableN
 			ForeignKey:   linkType,
 			IsManyToMany: true,
 		})
+		dependencies = append(dependencies, &PGSQLDependency{
+			TableName: tableName,
+			Reference: linkType,
+		})
 	}
-	return conTables, references
+	return conTables, references, dependencies
 }
 
 func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items map[string]*ContentType, tableName string, maxIncludeDepth int64, includeDepth int64, path string) *PGSQLProcedureColumn {

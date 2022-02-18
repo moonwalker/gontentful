@@ -15,8 +15,8 @@ type PGMatViews struct {
 }
 
 type PGMatView struct {
-	Locales  []*Locale
-	Function *PGSQLProcedure
+	Locales   []*Locale
+	TableName string
 }
 
 const xthreads = 10
@@ -98,11 +98,81 @@ func (s *PGMatViews) ExecOneByOne(databaseURL string, schemaName string) error {
 	params := make([]*PGMatView, 0)
 	for _, f := range s.Schema.Functions {
 		params = append(params, &PGMatView{
-			Locales:  s.Schema.Locales,
-			Function: f,
+			Locales:   s.Schema.Locales,
+			TableName: f.TableName,
 		})
 	}
 
+	doRefresh(databaseURL, schemaName, tmpl, params)
+
+	return nil
+}
+
+func (s *PGMatViews) ExecPublish(databaseURL string, schemaName string, tableName string) (string, error) {
+	funcMap := template.FuncMap{
+		"ToLower": strings.ToLower,
+	}
+
+	tableNames, err := getDependencies(databaseURL, schemaName, tableName)
+	tmpl, err := template.New("").Funcs(funcMap).Parse(pgRefreshMatViewsTemplateOBO)
+	if err != nil {
+		return "", err
+	}
+
+	locales := make([]string, 0)
+	for _, l := range s.Schema.Locales {
+		locales = append(locales, l.Code)
+	}
+
+	params := make([]*PGMatView, 0)
+	for _, tn := range tableNames {
+		params = append(params, &PGMatView{
+			Locales:   s.Schema.Locales,
+			TableName: tn,
+		})
+	}
+
+	go doRefresh(databaseURL, schemaName, tmpl, params)
+
+	return fmt.Sprintf("content types (%s) successfully refreshed for locales: %s", strings.Join(tableNames, ","), strings.Join(locales, ",")), nil
+}
+
+func getDependencies(databaseURL string, schemaName string, tableName string) ([]string, error) {
+	db, err := sqlx.Connect("postgres", databaseURL)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	if schemaName != "" {
+		// set schema in use
+		_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", schemaName))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	tmpl, err := template.New("").Parse(pgRefreshMatViewsGetDepsTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	var buff bytes.Buffer
+	err = tmpl.Execute(&buff, tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	tableNames := make([]string, 0)
+	err = db.Select(&tableNames, buff.String())
+	if err != nil {
+		return nil, err
+	}
+
+	return tableNames, nil
+}
+
+func doRefresh(databaseURL string, schemaName string, tmpl *template.Template, params []*PGMatView) {
 	var ch = make(chan *PGMatView, len(params)) // This number 50 can be anything as long as it's larger than xthreads
 	var wg sync.WaitGroup
 
@@ -128,8 +198,6 @@ func (s *PGMatViews) ExecOneByOne(databaseURL string, schemaName string) error {
 
 	close(ch) // This tells the goroutines there's nothing else to do
 	wg.Wait() // Wait for the threads to finish
-
-	return nil
 }
 
 func createMatView(tmpl *template.Template, mv *PGMatView, databaseURL string, schemaName string) error {
