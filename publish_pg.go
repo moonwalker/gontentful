@@ -56,6 +56,9 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 				}
 				if item.Fields[prop] != nil {
 					fieldValue := item.Fields[prop][oLocCode]
+					if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
+						continue
+					}
 					fieldValues[col] = convertFieldValue(fieldValue, true, loc)
 					if columnReferences[col] != "" {
 						appendPublishColCons(q, columnReferences[col], col, fieldValue, item.Sys.ID, id, loc)

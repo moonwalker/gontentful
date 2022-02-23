@@ -49,7 +49,9 @@ func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColu
 				locCode = defaultLocale
 			}
 			fieldValue := locFields[locCode]
-
+			if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
+				continue
+			}
 			// collect row fields by locale
 			fieldsByLocale[locale] = append(fieldsByLocale[locale], &rowField{columnName, fieldValue})
 		}
