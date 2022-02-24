@@ -1,13 +1,6 @@
 package gontentful
 
 const pgRefreshMatViewsTemplate = `
-{{ range $i, $t := $.Functions }}
-	{{ range $i, $l := $.Locales }}
-		REFRESH MATERIALIZED VIEW "mv_{{ $t.TableName }}_{{ .Code | ToLower }}";
-	{{- end }}
-{{- end }}`
-
-const pgRefreshMatViewsTemplateOBO = `
 {{ range $i, $l := $.Locales }}
 REFRESH MATERIALIZED VIEW "mv_{{ $.TableName }}_{{ .Code | ToLower }}";
 {{- end }}`
@@ -153,9 +146,13 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 					{{ template "conColumn" .Reference }}
 					{{- end }}
 				FROM {{ .ConTableName }}
+				{{ if .Localized -}}
+				LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ .ConTableName }}.{{ .Reference.TableName }}_sys_id AND {{ .Reference.JoinAlias }}._locale = localeArg
+				{{- else -}}
 				LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._id = {{ .ConTableName }}.{{ .Reference.TableName }}
+				{{- end }}
 				{{ if or .Localized .IsAsset .Reference.HasLocalized -}}
-				-- Join {{ .Localized }} {{ .IsAsset }} {{ .Reference.HasLocalized }} {{ .Reference.Localized }}
+				-- Join (Localized:{{ .Localized }}, IsAsset:{{ .IsAsset }}, Reference HasLocalized:{{ .Reference.HasLocalized }}, Reference Localized:{{ .Reference.Localized }})
 				LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_fallbacklocale ON {{ .Reference.JoinAlias }}_fallbacklocale._sys_id = {{ .ConTableName }}.{{ .Reference.TableName }}_sys_id AND {{ .Reference.JoinAlias }}_fallbacklocale._locale = fallbackLocaleArg
 				LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_deflocale ON {{ .Reference.JoinAlias }}_deflocale._sys_id = {{ .ConTableName }}.{{ .Reference.TableName }}_sys_id AND {{ .Reference.JoinAlias }}_deflocale._locale = defLocaleArg
 				{{- end -}}
@@ -173,18 +170,18 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 			) l
 		) _included_{{ .Reference.JoinAlias }} ON true
 	{{- else if .Reference }}
-		{{ if .Localized }}
+		{{ if .Localized -}}
 		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = COALESCE({{ .JoinAlias }}.{{ .Reference.ForeignKey }},{{ .JoinAlias }}_fallbacklocale.{{ .Reference.ForeignKey }} ,{{ .JoinAlias }}_deflocale.{{ .Reference.ForeignKey }}) AND {{ .Reference.JoinAlias }}._locale = localeArg
 		{{- else -}}
 		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}._locale = localeArg
 		{{- end -}}
 		{{ if or .Localized .IsAsset .Reference.HasLocalized }}
-		{{ if .IsAsset }}
+		{{ if .IsAsset -}}
 		-- IsAsset join
 		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_fallbacklocale ON {{ .Reference.JoinAlias }}_fallbacklocale._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}_fallbacklocale._locale = fallbackLocaleArg
 		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_deflocale ON {{ .Reference.JoinAlias }}_deflocale._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}_deflocale._locale = defLocaleArg
 		{{- else -}}
-		-- Reference {{ .Localized }} {{ .IsAsset }} {{ .Reference.HasLocalized }}
+		-- Reference (Localized:{{ .Localized }}, Reference Localized:{{ .Reference.Localized }}, Reference HasLocalized:{{ .Reference.HasLocalized }})
 		{{ if .Reference.Localized }}
 		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_fallbacklocale ON {{ .Reference.JoinAlias }}_fallbacklocale._sys_id = COALESCE({{ .JoinAlias }}.{{ .Reference.ForeignKey }},{{ .JoinAlias }}_fallbacklocale.{{ .Reference.ForeignKey }} ,{{ .JoinAlias }}_deflocale.{{ .Reference.ForeignKey }}) AND {{ .Reference.JoinAlias }}_fallbacklocale._locale = fallbackLocaleArg
 		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_deflocale ON {{ .Reference.JoinAlias }}_deflocale._sys_id = COALESCE({{ .JoinAlias }}.{{ .Reference.ForeignKey }},{{ .JoinAlias }}_fallbacklocale.{{ .Reference.ForeignKey }} ,{{ .JoinAlias }}_deflocale.{{ .Reference.ForeignKey }}) AND {{ .Reference.JoinAlias }}_deflocale._locale = defLocaleArg

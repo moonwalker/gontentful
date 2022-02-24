@@ -55,7 +55,7 @@ func MigratePGSQL(databaseURL string, newSchemaName string, space *Space, types 
 	// 4) refresh materialized views
 	if createFunctions {
 		matViews := NewPGMatViews(schema)
-		err = matViews.ExecOneByOne(databaseURL, newSchemaName)
+		err = matViews.Exec(databaseURL, newSchemaName)
 		if err != nil {
 			return err
 		}
@@ -101,7 +101,7 @@ func MigrateGamesPGSQL(databaseURL string, newSchemaName string, contentSchemaNa
 
 	// 4) refresh materialized views
 	matViews := NewPGMatViews(schema)
-	err = matViews.ExecOneByOne(databaseURL, newSchemaName)
+	err = matViews.Exec(databaseURL, newSchemaName)
 	if err != nil {
 		return err
 	}

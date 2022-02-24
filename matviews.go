@@ -27,70 +27,11 @@ func NewPGMatViews(schema *PGSQLSchema) *PGMatViews {
 	}
 }
 
-func (s *PGMatViews) Exec(databaseURL string) error {
+func (s *PGMatViews) Exec(databaseURL string, schemaName string) error {
 	funcMap := template.FuncMap{
 		"ToLower": strings.ToLower,
 	}
 	tmpl, err := template.New("").Funcs(funcMap).Parse(pgRefreshMatViewsTemplate)
-
-	if err != nil {
-		return err
-	}
-
-	var buff bytes.Buffer
-	err = tmpl.Execute(&buff, s.Schema)
-	if err != nil {
-		return err
-	}
-
-	db, err := sqlx.Open("postgres", databaseURL)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	if s.Schema.SchemaName != "" {
-		// set schema in use
-		_, err = db.Exec(fmt.Sprintf("SET search_path='%s'", s.Schema.SchemaName))
-		if err != nil {
-			return err
-		}
-	}
-
-	// ioutil.WriteFile("/tmp/matViews", buff.Bytes(), 0644)
-
-	_, err = db.Exec(buff.String())
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s *PGMatViews) Render() (string, error) {
-	funcMap := template.FuncMap{
-		"ToLower": strings.ToLower,
-	}
-	tmpl, err := template.New("").Funcs(funcMap).Parse(pgRefreshMatViewsTemplate)
-
-	if err != nil {
-		return "", err
-	}
-
-	var buff bytes.Buffer
-	err = tmpl.Execute(&buff, s.Schema)
-	if err != nil {
-		return "", err
-	}
-
-	return buff.String(), nil
-}
-
-func (s *PGMatViews) ExecOneByOne(databaseURL string, schemaName string) error {
-	funcMap := template.FuncMap{
-		"ToLower": strings.ToLower,
-	}
-	tmpl, err := template.New("").Funcs(funcMap).Parse(pgRefreshMatViewsTemplateOBO)
 	if err != nil {
 		return err
 	}
@@ -114,7 +55,7 @@ func (s *PGMatViews) ExecPublish(databaseURL string, schemaName string, tableNam
 	}
 
 	tableNames, err := getDependencies(databaseURL, schemaName, tableName)
-	tmpl, err := template.New("").Funcs(funcMap).Parse(pgRefreshMatViewsTemplateOBO)
+	tmpl, err := template.New("").Funcs(funcMap).Parse(pgRefreshMatViewsTemplate)
 	if err != nil {
 		return "", err
 	}
