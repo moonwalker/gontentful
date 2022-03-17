@@ -51,7 +51,7 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 			for _, col := range contentTypeColumns {
 				prop := toCamelCase(col)
 				oLocCode := oLoc.Code
-				if !localizedColumns[prop] {
+				if !localizedColumns[col] {
 					oLocCode = defLocale
 				}
 				if item.Fields[prop] != nil {
