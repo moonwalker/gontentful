@@ -55,7 +55,7 @@ func (s *SpacesService) SyncPaged(token string, callback SyncCallback) (string, 
 }
 
 func (s *SpacesService) getSyncPage(query url.Values) (*SyncResponse, error) {
-	path := fmt.Sprintf(pathSync, s.client.Options.SpaceID)
+	path := fmt.Sprintf(pathSync, s.client.Options.SpaceID, s.client.Options.EnvironmentID)
 	// key := query.Get("sync_token")
 	// if key == "" {
 	// 	key = "initial"
