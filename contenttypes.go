@@ -53,15 +53,13 @@ func (s *ContentTypesService) Publish(contentType string, version string) ([]byt
 	return s.client.put(path, nil)
 }
 
-func (s *ContentTypesService) UnPublish(contentType string, version string) ([]byte, error) {
+func (s *ContentTypesService) UnPublish(contentType string) ([]byte, error) {
 	path := fmt.Sprintf(pathContentTypesPublish, s.client.Options.SpaceID, s.client.Options.EnvironmentID, contentType)
-	s.client.headers[headerContentfulVersion] = version
 	return s.client.delete(path)
 }
 
-func (s *ContentTypesService) Delete(contentType string, version string) ([]byte, error) {
+func (s *ContentTypesService) Delete(contentType string) ([]byte, error) {
 	path := fmt.Sprintf(pathContentType, s.client.Options.SpaceID, s.client.Options.EnvironmentID, contentType)
-	s.client.headers[headerContentfulVersion] = version
 	return s.client.delete(path)
 }
 
