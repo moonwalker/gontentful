@@ -96,6 +96,7 @@ var (
 		&GraphQLResolverArg{"code", "String"},
 		&GraphQLResolverArg{"name", "String"},
 		&GraphQLResolverArg{"key", "String"},
+		&GraphQLResolverArg{"level", "Int"},
 	}
 	collectionArgs = []*GraphQLResolverArg{
 		&GraphQLResolverArg{"localeArg", "String"},
