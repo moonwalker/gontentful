@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	createSyncTable = "CREATE TABLE IF NOT EXISTS %s_sync ( id int primary key, token text );"
-	insertSyncToken = "INSERT INTO %s_sync (id, token) VALUES (0, '%s') ON CONFLICT (id) DO UPDATE SET token = EXCLUDED.token;"
+	createSyncTable = "CREATE TABLE IF NOT EXISTS %s_sync ( id int primary key, token text, created_at timestamp without time zone DEFAULT now() );"
+	insertSyncToken = "INSERT INTO %s_sync (id, token) VALUES (0, '%s') ON CONFLICT (id) DO UPDATE SET token = EXCLUDED.token, created_at=now();"
 	selectSyncToken = "SELECT token FROM %s_sync WHERE id = 0;"
 )
 
