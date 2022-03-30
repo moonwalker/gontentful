@@ -13,6 +13,7 @@ var overwritableFields = map[string]bool{
 	"name":        true,
 	"content":     true,
 	"description": true,
+	"priority":    true,
 }
 
 var funcMap = template.FuncMap{
