@@ -42,6 +42,11 @@ DROP FUNCTION IF EXISTS {{ .TableName }}_view CASCADE;
 {{ end }}
 --
 {{- define "assetRef" -}}
+(CASE WHEN 
+	{{ .Reference.JoinAlias }}._sys_id IS NULL AND 
+	{{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL AND 
+	{{ .Reference.JoinAlias }}_deflocale._sys_id IS NULL THEN NULL 
+ELSE
 json_build_object(
 	'title', COALESCE({{ .Reference.JoinAlias }}.title, {{ .Reference.JoinAlias }}_fallbacklocale.title, {{ .Reference.JoinAlias }}_deflocale.title),
 	'description', COALESCE({{ .Reference.JoinAlias }}.description, {{ .Reference.JoinAlias }}_fallbacklocale.description, {{ .Reference.JoinAlias }}_deflocale.description),
@@ -66,6 +71,7 @@ json_build_object(
 		)
 	END)
 )
+END)
 /*(CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN 
 	(CASE WHEN {{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL THEN
 		(CASE WHEN {{ .Reference.JoinAlias }}_deflocale._sys_id IS NULL THEN NULL ELSE json_build_object(
