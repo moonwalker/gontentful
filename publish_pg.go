@@ -75,13 +75,18 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 		for _, oLoc := range space.Locales {
 			fieldValues := make(map[string]interface{})
 			locTitle := item.Fields["title"][oLoc.Code]
-			fieldValues["title"] = fmt.Sprintf("'%s'", locTitle)
+			if locTitle != nil {
+				fieldValues["title"] = fmt.Sprintf("'%s'", locTitle)
+			}
 			locFile := item.Fields["file"][oLoc.Code]
 			file, ok := locFile.(map[string]interface{})
 			if ok {
 				fieldValues["url"] = fmt.Sprintf("'%s'", file["url"])
 				fieldValues["file_name"] = fmt.Sprintf("'%s'", file["fileName"])
 				fieldValues["content_type"] = fmt.Sprintf("'%s'", file["contentType"])
+			}
+			if locTitle == nil && locFile == nil {
+				continue
 			}
 			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, assetColumns, fieldValues, strings.ToLower(oLoc.Code)))
 		}
