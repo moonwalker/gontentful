@@ -126,8 +126,13 @@ END)
 								END) AS "file"
 {{- end -}}
 {{- define "refColumn" -}} 
+{{ if .Localized -}}
+(CASE WHEN COALESCE({{ .JoinAlias }}._sys_id, {{ .JoinAlias }}_fallbacklocale._sys_id, {{ .JoinAlias }}_deflocale._sys_id) IS NULL THEN NULL ELSE json_build_object(
+	'sys', json_build_object('id', COALESCE({{ .JoinAlias }}._sys_id, {{ .JoinAlias }}_fallbacklocale._sys_id, {{ .JoinAlias }}_deflocale._sys_id))
+{{- else -}}
 (CASE WHEN {{ .JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
 	'sys', json_build_object('id', {{ .JoinAlias }}._sys_id)
+{{- end -}}
 					{{- range $i, $c:= .Columns -}}
 					,
 					'{{ .Alias }}',
