@@ -72,33 +72,6 @@ json_build_object(
 	END)
 )
 END)
-/*(CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN 
-	(CASE WHEN {{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL THEN
-		(CASE WHEN {{ .Reference.JoinAlias }}_deflocale._sys_id IS NULL THEN NULL ELSE json_build_object(
-						'title', {{ .Reference.JoinAlias }}_deflocale.title,
-						'description', {{ .Reference.JoinAlias }}_deflocale.description,
-						'file', json_build_object(
-							'contentType', {{ .Reference.JoinAlias }}_deflocale.content_type,
-							'fileName', {{ .Reference.JoinAlias }}_deflocale.file_name,
-							'url', {{ .Reference.JoinAlias }}_deflocale.url
-						)
-					) END) ELSE json_build_object(
-							'title', {{ .Reference.JoinAlias }}_fallbacklocale.title,
-							'description', {{ .Reference.JoinAlias }}_fallbacklocale.description,
-							'file', json_build_object(
-								'contentType', {{ .Reference.JoinAlias }}_fallbacklocale.content_type,
-								'fileName', {{ .Reference.JoinAlias }}_fallbacklocale.file_name,
-								'url', {{ .Reference.JoinAlias }}_fallbacklocale.url
-							)
-						) END) ELSE json_build_object(
-								'title', {{ .Reference.JoinAlias }}.title,
-								'description', {{ .Reference.JoinAlias }}.description,
-								'file', json_build_object(
-									'contentType', {{ .Reference.JoinAlias }}.content_type,
-									'fileName', {{ .Reference.JoinAlias }}.file_name,
-									'url', {{ .Reference.JoinAlias }}.url
-								)
-								) END)*/
 {{- end -}}
 {{- define "assetCon" -}}
 		json_build_object('id', COALESCE({{ .Reference.JoinAlias }}._sys_id, {{ .Reference.JoinAlias }}_fallbacklocale._sys_id, {{ .Reference.JoinAlias }}_deflocale._sys_id)) AS sys,
