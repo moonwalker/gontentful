@@ -69,7 +69,7 @@ func (s *PGMatViews) ExecPublish(databaseURL string, schemaName string, tableNam
 	for _, tn := range tableNames {
 		params = append(params, &PGMatView{
 			Locales:   s.Schema.Locales,
-			TableName: tn,
+			TableName: toSnakeCase(tn),
 		})
 	}
 
