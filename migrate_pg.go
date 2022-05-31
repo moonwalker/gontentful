@@ -134,31 +134,3 @@ func SwapSchemas(databaseURL string, schemaName string, oldSchemaName string, ne
 
 	return nil
 }
-
-func CopyGameData(databaseURL string, schemaName string, newSchemaName string, tableNames []string) error {
-	db, err := sqlx.Connect("postgres", databaseURL)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	txn, err := db.Beginx()
-	if err != nil {
-		return err
-	}
-	defer txn.Rollback()
-
-	for _, tn := range tableNames {
-		_, err = txn.Exec(fmt.Sprintf(copyTableTpl, newSchemaName, schemaName, tn))
-		if err != nil {
-			return err
-		}
-	}
-
-	err = txn.Commit()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
