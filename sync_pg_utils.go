@@ -92,7 +92,7 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 						sysConID := convertSysID(f, templateFormat)
 						conID := convertSys(f, templateFormat, locale)
 						if id != "" && conID != "" && !addedRefs[conID] {
-							conRow := []interface{}{id, fmt.Sprintf("'%s'", item.Sys.ID), conID, sysConID, fmt.Sprintf("'%s'", locale)}
+							conRow := []interface{}{id, item.Sys.ID, conID, sysConID, locale}
 							conTables[conTableName].Rows = append(conTables[conTableName].Rows, conRow)
 							addedRefs[conID] = true
 						} else {
