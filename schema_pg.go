@@ -24,18 +24,23 @@ type PGSQLProcedureColumn struct {
 	Reference    *PGSQLProcedureReference
 	JoinAlias    string
 	IsAsset      bool
+	Localized    bool
+	SqlType      string
 }
 
 type PGSQLProcedureReference struct {
-	TableName  string
-	ForeignKey string
-	Columns    []*PGSQLProcedureColumn
-	JoinAlias  string
+	TableName    string
+	ForeignKey   string
+	Columns      []*PGSQLProcedureColumn
+	JoinAlias    string
+	Localized    bool
+	HasLocalized bool
 }
 
 type PGSQLProcedure struct {
-	TableName string
-	Columns   []*PGSQLProcedureColumn
+	TableName    string
+	Columns      []*PGSQLProcedureColumn
+	HasLocalized bool
 }
 
 type PGSQLColumn struct {
@@ -75,6 +80,7 @@ type PGSQLTable struct {
 	TableName string
 	Data      *PGSQLData
 	Columns   []*PGSQLColumn
+	Indices   map[string]string
 }
 
 type PGSQLReference struct {
@@ -84,17 +90,24 @@ type PGSQLReference struct {
 	IsManyToMany bool
 }
 
+type PGSQLDependency struct {
+	TableName string
+	Reference string
+}
+
 type PGSQLSchema struct {
 	SchemaName     string
 	Locales        []*Locale
 	Tables         []*PGSQLTable
 	ConTables      []*PGSQLTable
 	References     []*PGSQLReference
+	Dependencies   []*PGSQLDependency
 	Functions      []*PGSQLProcedure
 	DeleteTriggers []*PGSQLDeleteTrigger
 	AssetTableName string
 	AssetColumns   []string
 	DropTables     bool
+	ContentSchema  string
 }
 
 type PGSQLDeleteTrigger struct {
@@ -113,6 +126,7 @@ func NewPGSQLSchema(schemaName string, space *Space, contentTypeFilter string, i
 		Tables:         make([]*PGSQLTable, 0),
 		ConTables:      make([]*PGSQLTable, 0),
 		References:     make([]*PGSQLReference, 0),
+		Dependencies:   make([]*PGSQLDependency, 0),
 		Functions:      make([]*PGSQLProcedure, 0),
 		DeleteTriggers: make([]*PGSQLDeleteTrigger, 0),
 		AssetColumns:   assetColumns,
@@ -128,11 +142,12 @@ func NewPGSQLSchema(schemaName string, space *Space, contentTypeFilter string, i
 			continue
 		}
 
-		table, conTables, references, proc := NewPGSQLTable(item, itemsMap, includeDepth)
+		table, conTables, references, dependencies, proc := NewPGSQLTable(item, itemsMap, includeDepth)
 
 		schema.Tables = append(schema.Tables, table)
 		schema.ConTables = append(schema.ConTables, conTables...)
 		schema.References = append(schema.References, references...)
+		schema.Dependencies = append(schema.Dependencies, dependencies...)
 		schema.Functions = append(schema.Functions, proc)
 	}
 	schema.DeleteTriggers = getDeleteTriggers(schema.References)
@@ -206,7 +221,7 @@ func (s *PGSQLSchema) Render() (string, error) {
 	return buff.String(), nil
 }
 
-func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDepth int64) (*PGSQLTable, []*PGSQLTable, []*PGSQLReference, *PGSQLProcedure) {
+func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDepth int64) (*PGSQLTable, []*PGSQLTable, []*PGSQLReference, []*PGSQLDependency, *PGSQLProcedure) {
 	table := &PGSQLTable{
 		TableName: toSnakeCase(item.Sys.ID),
 		Columns:   make([]*PGSQLColumn, 0),
@@ -214,6 +229,7 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDept
 	}
 	conTables := make([]*PGSQLTable, 0)
 	references := make([]*PGSQLReference, 0)
+	dependencies := make([]*PGSQLDependency, 0)
 	proc := &PGSQLProcedure{
 		TableName: table.TableName,
 		Columns:   make([]*PGSQLProcedureColumn, 0),
@@ -230,18 +246,21 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDept
 			procColumn := NewPGSQLProcedureColumn(column.ColumnName, field, items, table.TableName, include, 0, "")
 
 			if field.LinkType != "" {
-				references = addOneTOne(references, table.TableName, field)
+				references, dependencies = addOneTOne(references, dependencies, table.TableName, field)
 			} else if field.Items != nil {
-				conTables, references = addManyToMany(conTables, references, table.TableName, field)
+				conTables, references, dependencies = addManyToMany(conTables, references, dependencies, table.TableName, field)
 			}
 			proc.Columns = append(proc.Columns, procColumn)
+			if procColumn.Localized {
+				proc.HasLocalized = true
+			}
 
 			// } else {
 			// 	fmt.Println("Ignoring omitted field", field.ID, "in", table.TableName)
 		}
 	}
 
-	return table, conTables, references, proc
+	return table, conTables, references, dependencies, proc
 }
 
 func NewPGSQLColumn(field *ContentTypeField) *PGSQLColumn {
@@ -375,6 +394,7 @@ func NewPGSQLCon(tableName string, fieldName string, reference string) *PGSQLTab
 	return &PGSQLTable{
 		TableName: getConTableName(tableName, fieldName),
 		Columns:   getConTableColumns(tableName, reference),
+		Indices:   map[string]string{"id_locale": fmt.Sprintf("%s_sys_id,_locale", tableName), "sys_id_locale": fmt.Sprintf("%s_sys_id,_locale", reference)},
 	}
 }
 
@@ -388,12 +408,21 @@ func getConTableColumns(tableName string, reference string) []*PGSQLColumn {
 			ColumnName: tableName,
 		},
 		&PGSQLColumn{
+			ColumnName: fmt.Sprintf("%s_sys_id", tableName),
+		},
+		&PGSQLColumn{
 			ColumnName: reference,
+		},
+		&PGSQLColumn{
+			ColumnName: fmt.Sprintf("%s_sys_id", reference),
+		},
+		&PGSQLColumn{
+			ColumnName: "_locale",
 		},
 	}
 }
 
-func addOneTOne(references []*PGSQLReference, tableName string, field *ContentTypeField) []*PGSQLReference {
+func addOneTOne(references []*PGSQLReference, dependencies []*PGSQLDependency, tableName string, field *ContentTypeField) ([]*PGSQLReference, []*PGSQLDependency) {
 	linkType := getFieldLinkType(field.LinkType, field.Validations)
 	if linkType != "" && linkType != ENTRY {
 		foreignKey := toSnakeCase(field.ID)
@@ -403,11 +432,15 @@ func addOneTOne(references []*PGSQLReference, tableName string, field *ContentTy
 			ForeignKey:   foreignKey,
 			IsManyToMany: false,
 		})
+		dependencies = append(dependencies, &PGSQLDependency{
+			TableName: tableName,
+			Reference: linkType,
+		})
 	}
-	return references
+	return references, dependencies
 }
 
-func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, tableName string, field *ContentTypeField) ([]*PGSQLTable, []*PGSQLReference) {
+func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, dependencies []*PGSQLDependency, tableName string, field *ContentTypeField) ([]*PGSQLTable, []*PGSQLReference, []*PGSQLDependency) {
 	linkType := getFieldLinkType(field.Items.LinkType, field.Items.Validations)
 	if linkType != "" && linkType != ENTRY {
 		conTable := NewPGSQLCon(tableName, toSnakeCase(field.ID), linkType)
@@ -423,8 +456,12 @@ func addManyToMany(conTables []*PGSQLTable, references []*PGSQLReference, tableN
 			ForeignKey:   linkType,
 			IsManyToMany: true,
 		})
+		dependencies = append(dependencies, &PGSQLDependency{
+			TableName: tableName,
+			Reference: linkType,
+		})
 	}
-	return conTables, references
+	return conTables, references, dependencies
 }
 
 func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items map[string]*ContentType, tableName string, maxIncludeDepth int64, includeDepth int64, path string) *PGSQLProcedureColumn {
@@ -432,6 +469,8 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 		TableName:  tableName,
 		ColumnName: columnName,
 		Alias:      field.ID,
+		Localized:  field.Localized,
+		SqlType:    mapFieldType(columnName, field.Type, field.Items, field),
 	}
 
 	if field.LinkType == ASSET {
@@ -446,6 +485,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 			TableName:  assetTableName,
 			ForeignKey: toSnakeCase(field.ID),
 			JoinAlias:  assetJoinAlias,
+			Localized:  col.Localized,
 		}
 	} else if field.LinkType != "" {
 		linkType := getFieldLinkContentType(field.Validations)
@@ -462,6 +502,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 				ForeignKey: toSnakeCase(field.ID),
 				Columns:    make([]*PGSQLProcedureColumn, 0),
 				JoinAlias:  joinAlias,
+				Localized:  col.Localized,
 			}
 
 			if includeDepth <= maxIncludeDepth && items[linkType] != nil {
@@ -490,6 +531,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 				TableName:  assetTableName,
 				ForeignKey: toSnakeCase(field.ID),
 				JoinAlias:  assetJoinAlias,
+				Localized:  col.Localized,
 			}
 		} else if field.Items.LinkType != "" {
 			conLinkType := getFieldLinkContentType(field.Items.Validations)
@@ -507,6 +549,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 					ForeignKey: toSnakeCase(field.ID),
 					Columns:    make([]*PGSQLProcedureColumn, 0),
 					JoinAlias:  conJoinAlias,
+					Localized:  col.Localized,
 				}
 				if includeDepth <= maxIncludeDepth && items[conLinkType] != nil {
 					itemTableName := toSnakeCase(items[conLinkType].Sys.ID)
@@ -523,7 +566,70 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 		}
 	}
 
+	if col.Reference != nil {
+		col.Reference.HasLocalized = getHasLocalized(col.Reference)
+	}
+
 	return col
+}
+
+func mapFieldType(fieldName string, fieldType string, fieldItems *FieldTypeArrayItem, field *ContentTypeField) string {
+	switch fieldType {
+	case "Integer":
+		return "integer"
+	case "Number":
+		return "decimal"
+	case "Date":
+		return "date"
+	case "Location":
+		return "point"
+	case "Object":
+		return "jsonb"
+	case "Symbol":
+		return "text"
+	case "Link":
+		if field.LinkType == "Entry" && len(field.Validations) == 0 {
+			return "text"
+		}
+		return "json"
+	case "Text":
+		return "text"
+	case "Boolean":
+		return "boolean"
+	case "Array":
+		if fieldItems != nil {
+			switch fieldItems.Type {
+			case "Link":
+				if fieldItems.LinkType == "Entry" && len(fieldItems.Validations) == 0 {
+					return "text[]"
+				}
+				return "json"
+			default:
+				return fmt.Sprintf("%s[]", mapFieldType(fieldName, fieldItems.Type, nil, nil))
+			}
+		}
+		return "text[]"
+	default:
+		return "text"
+	}
+}
+
+func getHasLocalized(ref *PGSQLProcedureReference) bool {
+	for _, col := range ref.Columns {
+		if col.Localized || col.IsAsset {
+			if col.Reference != nil {
+				col.Reference.HasLocalized = true
+			}
+			return true
+		}
+		if col.Reference != nil {
+			col.Reference.HasLocalized = getHasLocalized(col.Reference)
+			if col.Reference.HasLocalized {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func getJoinAlias(path string, columnName, tableName string) string {

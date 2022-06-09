@@ -3,10 +3,25 @@ package gontentful
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
 )
+
+var overwritableFields = map[string]bool{
+	"name":        true,
+	"content":     true,
+	"description": true,
+	"priority":    true,
+}
+
+var funcMap = template.FuncMap{
+	"ToLower": strings.ToLower,
+	"Overwritable": func(f string) bool {
+		return overwritableFields[f]
+	},
+}
 
 type PGFunctions struct {
 	Schema *PGSQLSchema
@@ -19,7 +34,7 @@ func NewPGFunctions(schema *PGSQLSchema) *PGFunctions {
 }
 
 func (s *PGFunctions) Exec(databaseURL string) error {
-	tmpl, err := template.New("").Parse(pgFuncTemplate)
+	tmpl, err := template.New("").Funcs(funcMap).Parse(pgFuncTemplate)
 
 	if err != nil {
 		return err
@@ -64,7 +79,7 @@ func (s *PGFunctions) Exec(databaseURL string) error {
 }
 
 func (s *PGFunctions) Render() (string, error) {
-	tmpl, err := template.New("").Parse(pgFuncTemplate)
+	tmpl, err := template.New("").Funcs(funcMap).Parse(pgFuncTemplate)
 	if err != nil {
 		return "", err
 	}

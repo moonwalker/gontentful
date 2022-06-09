@@ -3,6 +3,7 @@ package gontentful
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"strings"
 	"text/template"
 
@@ -15,7 +16,12 @@ const (
 )
 
 var (
-	metaColumns = []string{"_locale", "_version", "_created_at", "_created_by", "_updated_at", "_updated_by"}
+	metaColumns           = []string{"_locale", "_version", "_created_at", "_created_by", "_updated_at", "_updated_by"}
+	localizedAssetColumns = map[string]bool{
+		"title":       true,
+		"description": true,
+		"file":        true,
+	}
 )
 
 type PGSyncRow struct {
@@ -93,10 +99,10 @@ func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entr
 		case ENTRY:
 			contentType := item.Sys.ContentType.Sys.ID
 			tableName := toSnakeCase(contentType)
-			appendTables(schema, item, tableName, columnsByContentType[contentType].fieldColumns, columnsByContentType[contentType].columnReferences, !initSync)
+			appendTables(schema, item, tableName, columnsByContentType[contentType].fieldColumns, columnsByContentType[contentType].columnReferences, columnsByContentType[contentType].localizedColumns, !initSync)
 			break
 		case ASSET:
-			appendTables(schema, item, assetTableName, assetColumns, nil, !initSync)
+			appendTables(schema, item, assetTableName, assetColumns, nil, localizedAssetColumns, !initSync)
 			break
 			// case DELETED_ENTRY:
 			// 	contentType := item.Sys.ContentType.Sys.ID
@@ -247,6 +253,9 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 		err = stmt.Close()
 		if err != nil {
 			fmt.Println("stmt.Close error", tbl.TableName)
+			for _, r := range tbl.Rows {
+				fmt.Println("row", fmt.Sprintf("%+v", r))
+			}
 			return err
 		}
 	}
@@ -283,7 +292,7 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 					break
 				}
 			}
-			// ioutil.WriteFile("/tmp/"+tbl.TableName, []byte(fmt.Sprintf("%+v", tbl.Rows)), 0644)
+			ioutil.WriteFile("/tmp/"+tbl.TableName, []byte(fmt.Sprintf("%+v", tbl.Rows)), 0644)
 			return err
 		}
 

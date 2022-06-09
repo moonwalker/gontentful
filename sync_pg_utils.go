@@ -18,9 +18,10 @@ type rowField struct {
 type columnData struct {
 	fieldColumns     []string
 	columnReferences map[string]string
+	localizedColumns map[string]bool
 }
 
-func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColumns []string, refColumns map[string]string, templateFormat bool) {
+func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColumns []string, refColumns map[string]string, localizedColumns map[string]bool, templateFormat bool) {
 	fieldsByLocale := make(map[string][]*rowField, 0)
 	defaultLocale := strings.ToLower(schema.DefaultLocale)
 
@@ -43,16 +44,14 @@ func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColu
 				schema.Tables[tableName] = tbl
 			}
 			locale := strings.ToLower(loc.Code)
-			fallback := strings.ToLower(loc.FallbackCode)
-			fieldValue := locFields[loc.Code]
-			if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
-				if sv, ok = locFields[fallback].(string); locFields[fallback] != nil && (!ok || (ok && sv != "")) {
-					fieldValue = locFields[fallback]
-				} else {
-					fieldValue = locFields[defaultLocale]
-				}
+			locCode := loc.Code
+			if !localizedColumns[columnName] {
+				locCode = defaultLocale
 			}
-
+			fieldValue := locFields[locCode]
+			if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
+				continue
+			}
 			// collect row fields by locale
 			fieldsByLocale[locale] = append(fieldsByLocale[locale], &rowField{columnName, fieldValue})
 		}
@@ -74,20 +73,6 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 	fieldValues["_id"] = id
 	for _, rowField := range rowFields {
 		fieldValues[rowField.fieldName] = convertFieldValue(rowField.fieldValue, templateFormat, locale)
-		assetFile, ok := fieldValues[rowField.fieldName].(*AssetFile)
-		if ok {
-			url := assetFile.URL
-			fileName := assetFile.FileName
-			contentType := assetFile.ContentType
-			if templateFormat {
-				url = fmt.Sprintf("'%s'", url)
-				fileName = fmt.Sprintf("'%s'", fileName)
-				contentType = fmt.Sprintf("'%s'", contentType)
-			}
-			fieldValues["url"] = url
-			fieldValues["file_name"] = fileName
-			fieldValues["content_type"] = contentType
-		}
 		// append con tables with Array Links
 		if _, ok := refColumns[rowField.fieldName]; ok {
 			links, ok := rowField.fieldValue.([]interface{})
@@ -97,16 +82,22 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 				if conTables[conTableName] == nil {
 					conTables[conTableName] = &PGSyncConTable{
 						TableName: conTableName,
-						Columns:   []string{tableName, refColumns[rowField.fieldName]},
+						Columns:   []string{tableName, fmt.Sprintf("%s_sys_id", tableName), refColumns[rowField.fieldName], fmt.Sprintf("%s_sys_id", refColumns[rowField.fieldName]), "_locale"},
 						Rows:      make([][]interface{}, 0),
 					}
 				}
 				for _, e := range links {
 					f, ok := e.(map[string]interface{})
 					if ok {
+						sysConID := convertSysID(f, templateFormat)
 						conID := convertSys(f, templateFormat, locale)
 						if id != "" && conID != "" && !addedRefs[conID] {
-							conRow := []interface{}{id, conID}
+							var conRow []interface{}
+							if templateFormat {
+								conRow = []interface{}{id, fmt.Sprintf("'%s'", item.Sys.ID), conID, sysConID, fmt.Sprintf("'%s'", locale)}
+							} else {
+								conRow = []interface{}{id, item.Sys.ID, conID, sysConID, locale}
+							}
 							conTables[conTableName].Rows = append(conTables[conTableName].Rows, conRow)
 							addedRefs[conID] = true
 						} else {
@@ -129,6 +120,21 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 				}
 			}
 		}
+		assetFile, ok := fieldValues[rowField.fieldName].(*AssetFile)
+		if ok {
+			url := assetFile.URL
+			fileName := assetFile.FileName
+			contentType := assetFile.ContentType
+			if templateFormat {
+				url = fmt.Sprintf("'%s'", url)
+				fileName = fmt.Sprintf("'%s'", fileName)
+				contentType = fmt.Sprintf("'%s'", contentType)
+			}
+			fieldValues["url"] = url
+			fieldValues["file_name"] = fileName
+			fieldValues["content_type"] = contentType
+		}
+
 	}
 	row := newPGSyncRow(item, fieldColumns, fieldValues, locale)
 	tbl.Rows = append(tbl.Rows, row)
@@ -139,7 +145,7 @@ func convertFieldValue(v interface{}, t bool, locale string) interface{} {
 
 	case map[string]interface{}:
 		if f["sys"] != nil {
-			s := convertSys(f, t, locale)
+			s := convertSysID(f, t)
 			if s != "" {
 				return s
 			}
@@ -205,20 +211,35 @@ func fmtSysID(id interface{}, t bool, l string) string {
 	return fmt.Sprintf("%v_%s", id, l)
 }
 
+func convertSysID(f map[string]interface{}, t bool) string {
+	s, ok := f["sys"].(map[string]interface{})
+	if ok {
+		if s["type"] == "Link" {
+			if t {
+				return fmt.Sprintf("'%v'", s["id"])
+			} else {
+				return fmt.Sprintf("%v", s["id"])
+			}
+		}
+	}
+	return ""
+}
+
 func getColumnsByContentType(types []*ContentType) map[string]*columnData {
 	typeColumns := make(map[string]*columnData)
 	for _, t := range types {
 		if typeColumns[t.Sys.ID] == nil {
-			fieldColumns, refColumns := getContentTypeColumns(t)
-			typeColumns[t.Sys.ID] = &columnData{fieldColumns, refColumns}
+			fieldColumns, refColumns, locColumns := getContentTypeColumns(t)
+			typeColumns[t.Sys.ID] = &columnData{fieldColumns, refColumns, locColumns}
 		}
 	}
 	return typeColumns
 }
 
-func getContentTypeColumns(t *ContentType) ([]string, map[string]string) {
+func getContentTypeColumns(t *ContentType) ([]string, map[string]string, map[string]bool) {
 	fieldColumns := make([]string, 0)
 	refColumns := make(map[string]string)
+	localizedColumns := make(map[string]bool)
 	for _, f := range t.Fields {
 		if !f.Omitted {
 			colName := toSnakeCase(f.ID)
@@ -229,7 +250,10 @@ func getContentTypeColumns(t *ContentType) ([]string, map[string]string) {
 					refColumns[colName] = linkType
 				}
 			}
+			if f.Localized && strings.ToLower(f.ID) != "slug" {
+				localizedColumns[colName] = true
+			}
 		}
 	}
-	return fieldColumns, refColumns
+	return fieldColumns, refColumns, localizedColumns
 }
