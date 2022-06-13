@@ -8,9 +8,6 @@ import (
 	"net/url"
 	"strconv"
 	"time"
-
-	"github.com/gregjones/httpcache"
-	"github.com/gregjones/httpcache/diskcache"
 )
 
 const (
@@ -60,27 +57,21 @@ type service struct {
 }
 
 type ClientOptions struct {
-	OrgID          string
-	SpaceID        string
-	EnvironmentID  string
-	CdnToken       string
-	PreviewToken   string
-	CmaToken       string
-	CdnURL         string
-	PreviewURL     string
-	CmaURL         string
-	UsePreview     bool
-	CacheResponses bool
+	OrgID         string
+	SpaceID       string
+	EnvironmentID string
+	CdnToken      string
+	PreviewToken  string
+	CmaToken      string
+	CdnURL        string
+	PreviewURL    string
+	CmaURL        string
+	UsePreview    bool
 }
 
 func NewClient(options *ClientOptions) *Client {
 	httpClient := &http.Client{
 		Timeout: timeout,
-	}
-
-	if options.CacheResponses {
-		dc := diskcache.New("/tmp/gontentful")
-		httpClient.Transport = httpcache.NewTransport(dc)
 	}
 
 	client := &Client{
