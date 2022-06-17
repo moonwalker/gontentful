@@ -413,7 +413,7 @@ CREATE OR REPLACE FUNCTION {{ .TableName }}_delete_trigger()
 AS $$
 BEGIN
 	{{- range $idx, $c := .ConTables }}
-	DELETE FROM {{ $.SchemaName }}.{{ . }} where {{ . }}.{{ $t.TableName }} = OLD._id;
+	DELETE FROM {{ . }} where {{ . }}.{{ $t.TableName }} = OLD._id;
 	{{- end }}
 	RETURN OLD;
 END
