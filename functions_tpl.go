@@ -422,11 +422,11 @@ $$ LANGUAGE 'plpgsql';
 DROP TRIGGER IF EXISTS {{ .TableName }}_delete
 ON {{ .TableName }};
 --
-CREATE TRIGGER {{ .TableName }}_delete 
-	AFTER DELETE 
-ON {{ .TableName }} 
-FOR EACH ROW 
-	EXECUTE PROCEDURE {{ .TableName }}_delete_trigger();
+-- CREATE TRIGGER {{ .TableName }}_delete 
+--	AFTER DELETE 
+-- ON {{ .TableName }} 
+-- FOR EACH ROW 
+--	EXECUTE PROCEDURE {{ .TableName }}_delete_trigger();
 --
 {{- end }}
 `
