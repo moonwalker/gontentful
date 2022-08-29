@@ -636,14 +636,14 @@ func getJoinAlias(path string, columnName, tableName string) string {
 	if len(path) == 0 {
 		return fmt.Sprintf("%s__%s", columnName, tableName)
 	}
-	return truncatePath(fmt.Sprintf("%s__%s__%s", truncatePath(path), columnName, tableName))
+	return truncatePath(fmt.Sprintf("%s__%s__%s", truncatePath(path), truncateColumn(columnName), tableName))
 }
 
 func getPath(path string, columnName string) string {
 	if len(path) == 0 {
 		return columnName
 	}
-	return fmt.Sprintf("%s__%s", truncatePath(path), columnName)
+	return fmt.Sprintf("%s__%s", truncatePath(path), truncateColumn(columnName))
 
 }
 
@@ -654,6 +654,19 @@ func truncatePath(path string) string {
 	}
 	re := regexp.MustCompile(`_(\S)[^_]*`)
 	return fmt.Sprintf("%s__%s", path[:idx], re.ReplaceAllString(path[idx+1:], "$1"))
+}
+
+func truncateColumn(column string) string {
+	items := strings.Split(column, "_")
+	if len(items) < 3 {
+		return column
+	}
+	for idx, item := range items {
+		if idx < (len(items) - 2) {
+			items[idx] = item[:1]
+		}
+	}
+	return strings.Join(items, "_")
 }
 
 func getDeleteTriggers(references []*PGSQLReference) []*PGSQLDeleteTrigger {
