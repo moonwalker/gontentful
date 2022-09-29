@@ -117,6 +117,17 @@ CREATE TABLE IF NOT EXISTS _studio_excluded_licence (
 	deleted_by text
 );
 
+CREATE TABLE IF NOT EXISTS _provider_studio_required_fields (
+	studio text primary key,
+	required_fields text[] not null default '{}',
+	created timestamp without time zone default now(),
+	created_by text not null default 'system',
+	updated timestamp without time zone default now(),
+	updated_by text not null default 'system',
+	deleted timestamp without time zone,
+	deleted_by text
+);
+
 CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON _game_content (sys_id);
 `
 
