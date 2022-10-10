@@ -54,7 +54,7 @@ func (s *PGMatViews) ExecPublish(databaseURL string, schemaName string, tableNam
 		"ToLower": strings.ToLower,
 	}
 
-	tableNames, err := getDependencies(databaseURL, schemaName, tableName)
+	tableNames, err := getDependencies(databaseURL, schemaName, toSnakeCase(tableName))
 	tmpl, err := template.New("").Funcs(funcMap).Parse(pgRefreshMatViewsTemplate)
 	if err != nil {
 		return "", err
