@@ -2,7 +2,6 @@ package gontentful
 
 import (
 	"bytes"
-	"fmt"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
@@ -50,7 +49,7 @@ func (s *PGDelete) Exec(databaseURL string) error {
 		return err
 	}
 
-	fmt.Println(buff.String())
+	// fmt.Println(buff.String())
 
 	_, err = db.Exec(buff.String())
 
