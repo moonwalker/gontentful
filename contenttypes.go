@@ -63,6 +63,11 @@ func (s *ContentTypesService) Delete(contentType string) ([]byte, error) {
 	return s.client.delete(path)
 }
 
+func (s *ContentTypesService) GetSingleCMA(contentTypeId string) ([]byte, error) {
+	path := fmt.Sprintf(pathContentType, s.client.Options.SpaceID, s.client.Options.EnvironmentID, contentTypeId)
+	return s.client.getCMA(path, nil)
+}
+
 func (s *ContentTypesService) GetCMATypes() (*ContentTypes, error) {
 	path := fmt.Sprintf(pathContentTypes, s.client.Options.SpaceID, s.client.Options.EnvironmentID)
 	data, err := s.client.getCMA(path, nil)
