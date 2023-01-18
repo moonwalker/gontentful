@@ -88,16 +88,17 @@ type ContentTypes struct {
 }
 
 type ContentTypeField struct {
-	ID          string              `json:"id,omitempty"`
-	Name        string              `json:"name"`
-	Type        string              `json:"type"`
-	LinkType    string              `json:"linkType,omitempty"`
-	Items       *FieldTypeArrayItem `json:"items,omitempty"`
-	Required    bool                `json:"required,omitempty"`
-	Localized   bool                `json:"localized,omitempty"`
-	Disabled    bool                `json:"disabled,omitempty"`
-	Omitted     bool                `json:"omitted,omitempty"`
-	Validations []*FieldValidation  `json:"validations,omitempty"`
+	ID           string                 `json:"id,omitempty"`
+	Name         string                 `json:"name"`
+	Type         string                 `json:"type"`
+	LinkType     string                 `json:"linkType,omitempty"`
+	Items        *FieldTypeArrayItem    `json:"items,omitempty"`
+	Required     bool                   `json:"required,omitempty"`
+	Localized    bool                   `json:"localized,omitempty"`
+	Disabled     bool                   `json:"disabled,omitempty"`
+	Omitted      bool                   `json:"omitted,omitempty"`
+	Validations  []*FieldValidation     `json:"validations,omitempty"`
+	DefaultValue map[string]interface{} `json:"defaultValue,omitempty"`
 }
 
 type FieldTypeArrayItem struct {
@@ -106,10 +107,24 @@ type FieldTypeArrayItem struct {
 	LinkType    string             `json:"linkType,omitempty"`
 }
 
+type RegexpValidation struct {
+	Pattern int `json:"pattern"`
+	Flags   int `json:"flags"`
+}
+
+type RangeValidation struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
+
 type FieldValidation struct {
-	LinkContentType   []string `json:"linkContentType"`
-	LinkMimetypeGroup []string `json:"linkMimetypeGroup"`
-	Unique            bool     `json:"unique"`
+	LinkContentType   []string         `json:"linkContentType"`
+	LinkMimetypeGroup []string         `json:"linkMimetypeGroup"`
+	Unique            bool             `json:"unique"`
+	In                []string         `json:"in"`
+	Size              RangeValidation  `json:"size"`
+	Range             RangeValidation  `json:"range"`
+	Regexp            RegexpValidation `json:"regexp"`
 }
 
 type CreateSpace struct {
