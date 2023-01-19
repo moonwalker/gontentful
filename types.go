@@ -118,13 +118,13 @@ type RangeValidation struct {
 }
 
 type FieldValidation struct {
-	LinkContentType   []string         `json:"linkContentType"`
-	LinkMimetypeGroup []string         `json:"linkMimetypeGroup"`
-	Unique            bool             `json:"unique"`
-	In                []string         `json:"in"`
-	Size              RangeValidation  `json:"size"`
-	Range             RangeValidation  `json:"range"`
-	Regexp            RegexpValidation `json:"regexp"`
+	LinkContentType   []string          `json:"linkContentType"`
+	LinkMimetypeGroup []string          `json:"linkMimetypeGroup"`
+	Unique            bool              `json:"unique"`
+	In                []string          `json:"in"`
+	Size              *RangeValidation  `json:"size,omitempty"`
+	Range             *RangeValidation  `json:"range,omitempty"`
+	Regexp            *RegexpValidation `json:"regexp,omitempty"`
 }
 
 type CreateSpace struct {
