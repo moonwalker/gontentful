@@ -121,7 +121,7 @@ type FieldValidation struct {
 	LinkContentType   []string          `json:"linkContentType"`
 	LinkMimetypeGroup []string          `json:"linkMimetypeGroup"`
 	Unique            bool              `json:"unique"`
-	In                []string          `json:"in"`
+	In                []string          `json:"in,omitempty"`
 	Size              *RangeValidation  `json:"size,omitempty"`
 	Range             *RangeValidation  `json:"range,omitempty"`
 	Regexp            *RegexpValidation `json:"regexp,omitempty"`
