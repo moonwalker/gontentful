@@ -7,8 +7,8 @@ import (
 )
 
 func TransformModel(model *ContentType) (*content.Schema, error) {
-	createdAt, _ := time.Parse("2014-11-12T11:45:26.371Z", model.Sys.CreatedAt)
-	updatedAt, _ := time.Parse("2015-10-11T10:35:26.341Z", model.Sys.UpdatedAt)
+	createdAt, _ := time.Parse(time.RFC3339, model.Sys.CreatedAt)
+	updatedAt, _ := time.Parse(time.RFC3339, model.Sys.UpdatedAt)
 	schema := &content.Schema{
 		ID:          model.Sys.ID,
 		Name:        model.Name,
@@ -29,79 +29,25 @@ func TransformModel(model *ContentType) (*content.Schema, error) {
 			List:      item.Type == "Array",
 			Reference: item.Type == "Link",
 		}
-		if item.Type == "Array" {
-			if item.Items.Type == "Link" {
-				cf.Reference = true
-				if len(item.Items.Validations) > 0 && len(item.Items.Validations[0].LinkContentType) > 0 {
-					cf.Type = item.Items.Validations[0].LinkContentType[0]
-				}
-			}
-			if item.Items.Type == "Symbol" {
-				cf.Type = "text"
-				if len(item.Items.Validations) > 0 {
-					cv := &content.Validation{
-						Type:  "in",
-						Value: item.Items.Validations[0].In,
-					}
-					cf.Validations = append(cf.Validations, cv)
-				}
-			}
-		} else {
-			cf.Type = transformType(item)
-		}
+
 		if item.Required {
-			cv := &content.Validation{
+			cf.Validations = append(cf.Validations, &content.Validation{
 				Type:  "required",
 				Value: true,
-			}
-			cf.Validations = append(cf.Validations, cv)
+			})
 		}
 
-		for _, v := range item.Validations {
-			if v.Unique {
-				cv := &content.Validation{
-					Type:  "unique",
-					Value: true,
-				}
-				cf.Validations = append(cf.Validations, cv)
+		if item.DefaultValue != nil {
+			for _, dv := range item.DefaultValue {
+				cf.DefaultValue = dv
+				break
 			}
-			if v.In != nil {
-				cv := &content.Validation{
-					Type:  "in",
-					Value: v.In,
-				}
-				cf.Validations = append(cf.Validations, cv)
-			}
-			if v.Size != nil || v.Range != nil {
-				if v.In != nil {
-					cv := &content.Validation{
-						Type:  "size",
-						Value: v.In,
-					}
-					cf.Validations = append(cf.Validations, cv)
-				}
-				if v.Size.Min != nil {
-					cv := &content.Validation{
-						Type:  "min",
-						Value: v.Size.Min,
-					}
-					cf.Validations = append(cf.Validations, cv)
-				}
-				if v.Size.Max != nil {
-					cv := &content.Validation{
-						Type:  "max",
-						Value: v.Size.Max,
-					}
-					cf.Validations = append(cf.Validations, cv)
-				}
-			}
-			if v.Regexp != nil {
-				cv := &content.Validation{
-					Type:  "regexp",
-					Value: v.Regexp,
-				}
-				cf.Validations = append(cf.Validations, cv)
-			}
+		}
+
+		if item.Type == "Array" {
+			transformField(cf, item.Items.Type, item.Items.LinkType, item.Items.Validations)
+		} else {
+			transformField(cf, item.Type, item.LinkType, item.Validations)
 		}
 
 		schema.Fields = append(schema.Fields, cf)
@@ -110,31 +56,70 @@ func TransformModel(model *ContentType) (*content.Schema, error) {
 	return schema, nil
 }
 
-func transformType(i *ContentTypeField) string {
-	returnType := ""
-	switch i.Type {
+func transformField(cf *content.Field, fieldType string, linkType string, validations []*FieldValidation) {
+	switch fieldType {
 	case "Symbol":
-		returnType = "text"
+		cf.Type = "text"
+		break
 	case "Boolean":
-		returnType = "bool"
+		cf.Type = "bool"
+		break
 	case "Integer":
-		returnType = "int"
+		cf.Type = "int"
+		break
 	case "Number":
-		returnType = "float"
+		cf.Type = "float"
+		break
 	case "Text":
-		returnType = "longtext"
+		cf.Type = "longtext"
+		break
 	case "Link":
-		if i.LinkType == "Asset" {
-			returnType = "_asset"
+		cf.Reference = true
+		if linkType == "Asset" {
+			cf.Type = "_asset"
 		} else {
-			if len(i.Validations) > 0 {
-				returnType = i.Validations[0].LinkContentType[0]
-			} else {
-				returnType = i.Items.Validations[0].LinkContentType[0]
+			cf.Type = getFieldLinkContentType(validations)
+		}
+		break
+	}
+
+	for _, v := range validations {
+		if v.Unique {
+			cv := &content.Validation{
+				Type:  "unique",
+				Value: true,
 			}
+			cf.Validations = append(cf.Validations, cv)
+		}
+		if v.In != nil {
+			cv := &content.Validation{
+				Type:  "in",
+				Value: v.In,
+			}
+			cf.Validations = append(cf.Validations, cv)
+		}
+		if v.Size != nil {
+			cv := &content.Validation{
+				Type:  "size",
+				Value: v.Size,
+			}
+			cf.Validations = append(cf.Validations, cv)
+		}
+		if v.Range != nil {
+			cv := &content.Validation{
+				Type:  "range",
+				Value: v.Range,
+			}
+			cf.Validations = append(cf.Validations, cv)
+		}
+		if v.Regexp != nil {
+			cv := &content.Validation{
+				Type:  "regexp",
+				Value: v.Regexp,
+			}
+			cf.Validations = append(cf.Validations, cv)
 		}
 	}
-	return returnType
 }
 
 func FormatSchema(schema *content.Schema) (*ContentType, error) {
