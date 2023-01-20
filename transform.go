@@ -51,36 +51,6 @@ func TransformModel(model *ContentType) (*content.Schema, error) {
 }
 
 func transformField(cf *content.Field, fieldType string, linkType string, validations []*FieldValidation, items *FieldTypeArrayItem) {
-	switch fieldType {
-	case "Symbol":
-		cf.Type = "text"
-		break
-	case "Boolean":
-		cf.Type = "bool"
-		break
-	case "Integer":
-		cf.Type = "int"
-		break
-	case "Number":
-		cf.Type = "float"
-		break
-	case "Text":
-		cf.Type = "longtext"
-		break
-	case "Link":
-		cf.Reference = true
-		if linkType == "Asset" {
-			cf.Type = "_asset"
-		} else {
-			cf.Type = getFieldLinkContentType(validations)
-		}
-		break
-	case "Array":
-		cf.List = true
-		transformField(cf, items.Type, items.LinkType, items.Validations, nil)
-		break
-	}
-
 	for _, v := range validations {
 		if v.Unique {
 			cf.Validations = append(cf.Validations, &content.Validation{
@@ -112,6 +82,36 @@ func transformField(cf *content.Field, fieldType string, linkType string, valida
 				Value: *v.Regexp,
 			})
 		}
+	}
+
+	switch fieldType {
+	case "Symbol":
+		cf.Type = "text"
+		break
+	case "Boolean":
+		cf.Type = "bool"
+		break
+	case "Integer":
+		cf.Type = "int"
+		break
+	case "Number":
+		cf.Type = "float"
+		break
+	case "Text":
+		cf.Type = "longtext"
+		break
+	case "Link":
+		cf.Reference = true
+		if linkType == "Asset" {
+			cf.Type = "_asset"
+		} else {
+			cf.Type = getFieldLinkContentType(validations)
+		}
+		break
+	case "Array":
+		cf.List = true
+		transformField(cf, items.Type, items.LinkType, items.Validations, nil)
+		break
 	}
 }
 
