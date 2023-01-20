@@ -113,8 +113,8 @@ type RegexpValidation struct {
 }
 
 type RangeValidation struct {
-	Min int `json:"min"`
-	Max int `json:"max"`
+	Min *int `json:"min,omitempty"`
+	Max *int `json:"max,omitempty"`
 }
 
 type FieldValidation struct {

@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/moonwalker/gontentful"
 	"github.com/spf13/cobra"
@@ -84,11 +86,17 @@ func transformContentType() {
 			if err != nil {
 				log.Fatal(errors.New(fmt.Sprintf("failed to transform model: %s", err.Error())))
 			}
-			fmt.Println(fmt.Sprintf("SchemaName: %+v", *schema))
+			path := fmt.Sprintf("./output/%s", item.Sys.ID)
+			err = os.MkdirAll(path, os.ModePerm)
+			if err != nil {
+				log.Fatal(errors.New(fmt.Sprintf("failed to create output folder %s: %s", path, err.Error())))
+			}
+			b, err := json.Marshal(schema)
+			fmt.Println(fmt.Sprintf("Writing file: %s/_schema.json", path))
+			ioutil.WriteFile(fmt.Sprintf("%s/_schema.json", path), b, 0644)
 		}
 	}
-
-	fmt.Println("CotentType successfully migrated")
+	fmt.Println("ContentType successfully migrated")
 }
 
 func formatContentType() {
