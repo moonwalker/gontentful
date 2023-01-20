@@ -24,8 +24,6 @@ func TransformModel(model *ContentType) (*content.Schema, error) {
 		cf := &content.Field{
 			ID:        item.ID,
 			Label:     item.Name,
-			Reference: item.Type == "Link",
-			List:      item.Type == "Array",
 			Localized: item.Localized,
 			Disabled:  item.Disabled,
 		}
@@ -44,12 +42,7 @@ func TransformModel(model *ContentType) (*content.Schema, error) {
 			})
 		}
 
-		transformField(cf, item.Type, item.LinkType, item.Validations)
-
-		if item.Type == "Array" {
-			// overwrite/extend properties with the items props, there could be validations on the field as well as the items
-			transformField(cf, item.Items.Type, item.Items.LinkType, item.Items.Validations)
-		}
+		transformField(cf, item.Type, item.LinkType, item.Validations, item.Items)
 
 		schema.Fields = append(schema.Fields, cf)
 	}
@@ -57,7 +50,7 @@ func TransformModel(model *ContentType) (*content.Schema, error) {
 	return schema, nil
 }
 
-func transformField(cf *content.Field, fieldType string, linkType string, validations []*FieldValidation) {
+func transformField(cf *content.Field, fieldType string, linkType string, validations []*FieldValidation, items *FieldTypeArrayItem) {
 	switch fieldType {
 	case "Symbol":
 		cf.Type = "text"
@@ -82,43 +75,42 @@ func transformField(cf *content.Field, fieldType string, linkType string, valida
 			cf.Type = getFieldLinkContentType(validations)
 		}
 		break
+	case "Array":
+		cf.List = true
+		transformField(cf, items.Type, items.LinkType, items.Validations, nil)
+		break
 	}
 
 	for _, v := range validations {
 		if v.Unique {
-			cv := &content.Validation{
+			cf.Validations = append(cf.Validations, &content.Validation{
 				Type:  "unique",
 				Value: true,
-			}
-			cf.Validations = append(cf.Validations, cv)
+			})
 		}
 		if v.In != nil {
-			cv := &content.Validation{
+			cf.Validations = append(cf.Validations, &content.Validation{
 				Type:  "in",
 				Value: v.In,
-			}
-			cf.Validations = append(cf.Validations, cv)
+			})
 		}
 		if v.Size != nil {
-			cv := &content.Validation{
+			cf.Validations = append(cf.Validations, &content.Validation{
 				Type:  "size",
 				Value: *v.Size,
-			}
-			cf.Validations = append(cf.Validations, cv)
+			})
 		}
 		if v.Range != nil {
-			cv := &content.Validation{
+			cf.Validations = append(cf.Validations, &content.Validation{
 				Type:  "range",
 				Value: *v.Range,
-			}
-			cf.Validations = append(cf.Validations, cv)
+			})
 		}
 		if v.Regexp != nil {
-			cv := &content.Validation{
+			cf.Validations = append(cf.Validations, &content.Validation{
 				Type:  "regexp",
 				Value: *v.Regexp,
-			}
-			cf.Validations = append(cf.Validations, cv)
+			})
 		}
 	}
 }
