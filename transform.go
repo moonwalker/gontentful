@@ -24,17 +24,10 @@ func TransformModel(model *ContentType) (*content.Schema, error) {
 		cf := &content.Field{
 			ID:        item.ID,
 			Label:     item.Name,
+			Reference: item.Type == "Link",
+			List:      item.Type == "Array",
 			Localized: item.Localized,
 			Disabled:  item.Disabled,
-			List:      item.Type == "Array",
-			Reference: item.Type == "Link",
-		}
-
-		if item.Required {
-			cf.Validations = append(cf.Validations, &content.Validation{
-				Type:  "required",
-				Value: true,
-			})
 		}
 
 		if item.DefaultValue != nil {
@@ -42,6 +35,13 @@ func TransformModel(model *ContentType) (*content.Schema, error) {
 				cf.DefaultValue = dv
 				break
 			}
+		}
+
+		if item.Required {
+			cf.Validations = append(cf.Validations, &content.Validation{
+				Type:  "required",
+				Value: true,
+			})
 		}
 
 		if item.Type == "Array" {
