@@ -44,10 +44,11 @@ func TransformModel(model *ContentType) (*content.Schema, error) {
 			})
 		}
 
+		transformField(cf, item.Type, item.LinkType, item.Validations)
+
 		if item.Type == "Array" {
+			// overwrite/extend properties with the items props, there could be validations on the field as well as the items
 			transformField(cf, item.Items.Type, item.Items.LinkType, item.Items.Validations)
-		} else {
-			transformField(cf, item.Type, item.LinkType, item.Validations)
 		}
 
 		schema.Fields = append(schema.Fields, cf)
@@ -101,21 +102,21 @@ func transformField(cf *content.Field, fieldType string, linkType string, valida
 		if v.Size != nil {
 			cv := &content.Validation{
 				Type:  "size",
-				Value: v.Size,
+				Value: *v.Size,
 			}
 			cf.Validations = append(cf.Validations, cv)
 		}
 		if v.Range != nil {
 			cv := &content.Validation{
 				Type:  "range",
-				Value: v.Range,
+				Value: *v.Range,
 			}
 			cf.Validations = append(cf.Validations, cv)
 		}
 		if v.Regexp != nil {
 			cv := &content.Validation{
 				Type:  "regexp",
-				Value: v.Regexp,
+				Value: *v.Regexp,
 			}
 			cf.Validations = append(cf.Validations, cv)
 		}
