@@ -1,6 +1,7 @@
 package gontentful
 
 const pgTemplate = `
+{{- if not $.ContentTypePublish }}
 {{- if $.SchemaName -}}
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
@@ -24,6 +25,7 @@ CREATE TABLE IF NOT EXISTS _asset (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS _asset__sys_id__locale ON _asset (_sys_id, _locale);
 --
+{{ end -}}
 {{ range $tblidx, $tbl := $.Tables }}
 --
 {{- if $.DropTables }}

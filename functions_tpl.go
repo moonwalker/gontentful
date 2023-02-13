@@ -17,6 +17,7 @@ SELECT DISTINCT refs.tablename FROM refs;
 `
 
 const pgFuncTemplate = `
+{{- if not $.ContentTypePublish }}
 CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 --
 DROP TYPE IF EXISTS _filter CASCADE;
@@ -35,6 +36,7 @@ BEGIN
 	END IF;
 END $$;
 --
+{{ end -}}
 {{ range $i, $t := $.Tables }}
 {{- if $.DropTables }}
 DROP FUNCTION IF EXISTS {{ .TableName }}_view CASCADE;

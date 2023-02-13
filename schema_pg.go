@@ -96,18 +96,19 @@ type PGSQLDependency struct {
 }
 
 type PGSQLSchema struct {
-	SchemaName     string
-	Locales        []*Locale
-	Tables         []*PGSQLTable
-	ConTables      []*PGSQLTable
-	References     []*PGSQLReference
-	Dependencies   []*PGSQLDependency
-	Functions      []*PGSQLProcedure
-	DeleteTriggers []*PGSQLDeleteTrigger
-	AssetTableName string
-	AssetColumns   []string
-	DropTables     bool
-	ContentSchema  string
+	SchemaName         string
+	Locales            []*Locale
+	Tables             []*PGSQLTable
+	ConTables          []*PGSQLTable
+	References         []*PGSQLReference
+	Dependencies       []*PGSQLDependency
+	Functions          []*PGSQLProcedure
+	DeleteTriggers     []*PGSQLDeleteTrigger
+	AssetTableName     string
+	AssetColumns       []string
+	DropTables         bool
+	ContentTypePublish bool
+	ContentSchema      string
 }
 
 type PGSQLDeleteTrigger struct {
