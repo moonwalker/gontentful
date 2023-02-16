@@ -28,7 +28,7 @@ const (
 	configPath = "moonbase.yaml"
 )
 
-var accessToken = "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" // os.Getenv("GITHUB_TOKEN")
+var accessToken = os.Getenv("GITHUB_TOKEN")
 
 type Config struct {
 	WorkDir string `json:"workdir" yaml:"workdir"`
