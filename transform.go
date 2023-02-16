@@ -2,6 +2,7 @@ package gontentful
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/moonwalker/moonbase/pkg/content"
@@ -249,18 +250,61 @@ func FormatSchema(schema *content.Schema) (*ContentType, error) {
 	return ct, nil
 }
 
-func TransformEntry(model *Entry) (*content.ContentData, error) {
-	data := &content.ContentData{
-		ID:     model.Sys.ID,
-		Fields: model.Fields,
-	}
-	data.Fields["Version"] = model.Sys.Version
-	data.Fields["CreatedAt"] = model.Sys.CreatedAt
-	data.Fields["UpdatedAt"] = model.Sys.UpdatedAt
+func TransformEntry(locales *Locales, model *Entry) (map[string]*content.ContentData, error) {
+	res := make(map[string]*content.ContentData, 0)
+	for _, loc := range locales.Items {
+		data := &content.ContentData{
+			ID:     model.Sys.ID,
+			Fields: make(map[string]interface{}),
+		}
 
-	return data, nil
+		for fn, fv := range model.Fields {
+			locValues, ok := fv.(map[string]interface{})
+			if !ok {
+				continue // no locale value, continue
+			}
+
+			data.Fields[fn] = locValues[strings.ToLower(loc.Code)]
+			if data.Fields[fn] == nil {
+				data.Fields[fn] = locValues[defaultLocale]
+			}
+		}
+
+		data.Fields["Version"] = model.Sys.Version
+		data.Fields["CreatedAt"] = model.Sys.CreatedAt
+		data.Fields["UpdatedAt"] = model.Sys.UpdatedAt
+		res[strings.ToLower(loc.Code)] = data
+	}
+
+	return res, nil
 }
 
-func FormatData(data *content.ContentData) (*Entry, error) {
-	panic("not implemented")
+func FormatData(contentType string, id string, contents map[string]content.ContentData) (*Entry, error) {
+	e := &Entry{
+		Sys: &Sys{
+			ID:        id,
+			Type:      "Entry",
+			CreatedAt: contents[defaultLocale].Fields["CreatedAt"].(string),
+			UpdatedAt: contents[defaultLocale].Fields["UpdatedAt"].(string),
+			ContentType: &ContentType{
+				Sys: &Sys{
+					Type:     "Link",
+					LinkType: "ContentType",
+					ID:       contentType,
+				},
+			},
+		},
+		Fields: make(map[string]interface{}),
+	}
+
+	for loc, data := range contents {
+		for fn, fv := range data.Fields {
+			if e.Fields[fn] == nil {
+				e.Fields[fn] = make(map[string]interface{})
+			}
+			e.Fields[fn].(map[string]interface{})[loc] = fv
+		}
+	}
+
+	return e, nil
 }

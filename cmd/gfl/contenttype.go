@@ -11,44 +11,10 @@ import (
 
 	"github.com/moonwalker/gontentful"
 	"github.com/moonwalker/moonbase/pkg/content"
-	"github.com/spf13/cobra"
 )
-
-var (
-	contentTypeMigrateCmd = &cobra.Command{
-		Use:   "migrateContentType",
-		Short: "migrate content type",
-		PreRun: func(cmd *cobra.Command, args []string) {
-			if direction == "toContentful" {
-				cmd.MarkPersistentFlagRequired("repo")
-			} else {
-				rootCmd.MarkPersistentFlagRequired("space")
-				rootCmd.MarkPersistentFlagRequired("token")
-				rootCmd.MarkPersistentFlagRequired("cma")
-			}
-		},
-		Run: func(cmd *cobra.Command, args []string) {
-			switch direction {
-			case "toContentful":
-				formatContentType()
-			case "fromContentful":
-				transformContentType()
-			}
-		},
-	}
-)
-
-func init() {
-	// contentType to migrate
-	contentTypeMigrateCmd.Flags().StringVarP(&contentType, "contentModel", "m", "", "type of the content to migrate")
-	contentTypeMigrateCmd.Flags().StringVarP(&repo, "repo", "r", "", "repo of the content to migrate")
-	contentTypeMigrateCmd.PersistentFlags().StringVarP(&direction, "direction", "d", "", "directions: <fromContentful|toContentful>")
-	contentTypeMigrateCmd.MarkPersistentFlagRequired("direction")
-	rootCmd.AddCommand(contentTypeMigrateCmd)
-}
 
 func transformContentType() {
-	fmt.Println("ContentType migration started")
+	fmt.Println("ContentType transforming started")
 
 	opts := &gontentful.ClientOptions{
 		SpaceID:       spaceID,
@@ -98,7 +64,7 @@ func transformContentType() {
 			ioutil.WriteFile(fmt.Sprintf("%s/_schema.json", path), b, 0644)
 		}
 	}
-	fmt.Println("ContentType successfully migrated")
+	fmt.Println("ContentType successfully transformed")
 }
 
 func formatContentType() {

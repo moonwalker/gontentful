@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,53 +10,28 @@ import (
 	"math"
 	"net/url"
 	"os"
-	"regexp"
+	"path/filepath"
 	"strings"
 	"sync"
 
+	"github.com/google/go-github/v48/github"
 	"github.com/moonwalker/gontentful"
-	"github.com/spf13/cobra"
+	"github.com/moonwalker/moonbase/pkg/content"
+	gh "github.com/moonwalker/moonbase/pkg/github"
+	"gopkg.in/yaml.v3"
 )
 
-const queryLimit = 1000
-
-var (
-	direction,
-	contentType,
-	repo string
-	snake = regexp.MustCompile(`([_ ]\w)`)
+const (
+	queryLimit = 1000
+	owner      = "moonwalker"
+	branch     = ""
+	configPath = "moonbase.yaml"
 )
 
-var (
-	contentMigrateCmd = &cobra.Command{
-		Use:   "migrateContent",
-		Short: "migrate content",
-		PreRun: func(cmd *cobra.Command, args []string) {
-			if direction == "toContentful" {
-				cmd.MarkPersistentFlagRequired("repo")
-			} else {
-				rootCmd.MarkPersistentFlagRequired("space")
-				rootCmd.MarkPersistentFlagRequired("token")
-			}
-		},
-		Run: func(cmd *cobra.Command, args []string) {
-			switch direction {
-			case "toContentful":
-				formatContent()
-			case "fromContentful":
-				transformContent()
-			}
-		},
-	}
-)
+var accessToken = "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" // os.Getenv("GITHUB_TOKEN")
 
-func init() {
-	// type of the content to migrate
-	contentMigrateCmd.Flags().StringVarP(&contentType, "contentModel", "m", "", "type of the content to migrate")
-	contentMigrateCmd.Flags().StringVarP(&repo, "repo", "r", "", "repo of the content to migrate")
-	contentMigrateCmd.PersistentFlags().StringVarP(&direction, "direction", "d", "", "directions: <fromContentful|toContentful>")
-	contentMigrateCmd.MarkPersistentFlagRequired("direction")
-	rootCmd.AddCommand(contentMigrateCmd)
+type Config struct {
+	WorkDir string `json:"workdir" yaml:"workdir"`
 }
 
 func transformContent() {
@@ -82,31 +58,41 @@ func transformContent() {
 		log.Fatal(errors.New(fmt.Sprintf("failed to fetch entries: %s", err.Error())))
 	}
 
+	locales, err := cli.Locales.GetLocales()
+	if err != nil {
+		log.Fatal(errors.New(fmt.Sprintf("failed to fetch locales: %s", err.Error())))
+	}
+
 	if res.Total > 0 {
 		for _, item := range res.Items {
 			if item.Sys.Type != "Entry" {
 				continue
 			}
-			e, err := gontentful.TransformEntry(item)
+			entries, err := gontentful.TransformEntry(locales, item)
 			if err != nil {
 				log.Fatal(errors.New(fmt.Sprintf("failed to transform entry: %s", err.Error())))
 			}
-			b, err := json.Marshal(e)
-			if err != nil {
-				log.Fatal(errors.New(fmt.Sprintf("failed to marshal entry: %s", err.Error())))
-			}
-			ct := contentType
-			if len(ct) == 0 {
-				ct = toCamelCase(item.Sys.ContentType.Sys.ID)
-			}
 
-			path := fmt.Sprintf("./output/%s", ct)
-			err = os.MkdirAll(path, os.ModePerm)
-			if err != nil {
-				log.Fatal(errors.New(fmt.Sprintf("failed to create output folder %s: %s", path, err.Error())))
+			for l, e := range entries {
+				b, err := json.Marshal(e)
+				if err != nil {
+					log.Fatal(errors.New(fmt.Sprintf("failed to marshal entry: %s", err.Error())))
+				}
+				ct := contentType
+				if len(ct) == 0 {
+					ct = toCamelCase(item.Sys.ContentType.Sys.ID)
+				}
+
+				path := fmt.Sprintf("./output/%s", ct)
+				err = os.MkdirAll(path, os.ModePerm)
+				if err != nil {
+					log.Fatal(errors.New(fmt.Sprintf("failed to create output folder %s: %s", path, err.Error())))
+				}
+
+				fn := fmt.Sprintf("%s_%s", item.Sys.ID, l)
+				fmt.Println(fmt.Sprintf("Writing file: %s/%s.json", path, fn))
+				ioutil.WriteFile(fmt.Sprintf("%s/%s.json", path, fn), b, 0644)
 			}
-			fmt.Println(fmt.Sprintf("Writing file: %s/%s.json", path, item.Sys.ID))
-			ioutil.WriteFile(fmt.Sprintf("%s/%s.json", path, item.Sys.ID), b, 0644)
 		}
 	}
 
@@ -116,7 +102,110 @@ func transformContent() {
 func formatContent() {
 	fmt.Println("Content formatting started")
 
+	ctx := context.Background()
+	cfg := getConfig(ctx, accessToken, owner, repo, branch)
+
+	localizedData := make(map[string]map[string]content.ContentData)
+
+	path := filepath.Join(cfg.WorkDir, contentType)
+	rcs, _, err := gh.GetContentsRecursive(ctx, accessToken, owner, repo, branch, path)
+	if err != nil {
+		log.Fatal(errors.New(fmt.Sprintf("failed to get json(s) from github: %s", err.Error())))
+	}
+
+	for _, rc := range rcs {
+		id, loc, err := parseFileName(*rc.Name)
+		if err != nil {
+			fmt.Println(fmt.Sprintf("Skipping file: %s Err: %s", *rc.Path, err.Error()))
+			continue
+		}
+
+		ghc, err := rc.GetContent()
+		if err != nil {
+			log.Fatal(errors.New(fmt.Sprintf("RepositoryContent.GetContent failed: %s", err.Error())))
+		}
+
+		data := content.ContentData{}
+		err = json.Unmarshal([]byte(ghc), &data)
+		if err != nil {
+			log.Fatal(errors.New(fmt.Sprintf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error())))
+		}
+
+		if localizedData[id] == nil {
+			localizedData[id] = make(map[string]content.ContentData)
+		}
+		localizedData[id][loc] = data
+	}
+
+	entries := &gontentful.Entries{
+		Sys: &gontentful.Sys{
+			Type: "Array",
+		},
+	}
+	for id, locData := range localizedData {
+		entry, err := gontentful.FormatData(contentType, id, locData)
+		if err != nil {
+			log.Fatal(errors.New(fmt.Sprintf("failed to format file content: %s", err.Error())))
+		}
+		entries.Items = append(entries.Items, entry)
+	}
+	entries.Total = len(entries.Items)
+
+	fmt.Println(fmt.Sprintf("%+v", *entries))
 	fmt.Println("Content successfully formatted")
+}
+
+func getJsonsRecursive(ctx context.Context, owner string, repo string, branch string, path string) (resp []*github.RepositoryContent, err error) {
+	var rcs []*github.RepositoryContent
+	rcs, _, err = gh.GetTree(ctx, accessToken, owner, repo, branch, path)
+	if err != nil {
+		log.Fatal(errors.New(fmt.Sprintf("failed to get json(s) from github: %s", err.Error())))
+	}
+
+	for _, rc := range rcs {
+		if *rc.Type == "dir" {
+			var rcsr []*github.RepositoryContent
+			rcsr, err = getJsonsRecursive(ctx, owner, repo, branch, *rc.Path)
+			if err != nil {
+				return
+			}
+			resp = append(resp, rcsr...)
+		} else {
+			resp = append(resp, rc)
+		}
+	}
+
+	return
+}
+
+func parseFileName(fn string) (string, string, error) {
+	ext := filepath.Ext(fn)
+	if ext != ".json" {
+		return "", "", errors.New(fmt.Sprintf("incorrect file format: %s", ext))
+	}
+
+	s := strings.Split(strings.TrimSuffix(fn, ext), "_")
+	if len(s) != 2 || len(s[0]) == 0 || len(s[1]) == 0 {
+		return "", "", errors.New(fmt.Sprintf("incorrect filename: %s", fn))
+	}
+
+	return s[0], s[1], nil
+}
+
+func getConfig(ctx context.Context, accessToken string, owner string, repo string, ref string) *Config {
+	data, _, _ := gh.GetBlob(ctx, accessToken, owner, repo, ref, configPath)
+	return parseConfig(data)
+}
+
+func parseConfig(data []byte) *Config {
+	cfg := &Config{}
+
+	err := yaml.Unmarshal(data, cfg)
+	if err != nil {
+		json.Unmarshal(data, cfg)
+	}
+
+	return cfg
 }
 
 func GetContentTypeEntries(cli *gontentful.Client, contenType string) (*gontentful.Entries, error) {
@@ -170,7 +259,6 @@ func GetAllEntries(cli *gontentful.Client) (*gontentful.Entries, error) {
 
 	_, err := cli.Spaces.SyncPaged("", func(sr *gontentful.SyncResponse) error {
 		for _, item := range sr.Items {
-			fmt.Print(fmt.Sprintf(""))
 			res.Items = append(res.Items, item)
 		}
 		return nil
@@ -188,6 +276,7 @@ func createQuery(contentType string, limit int, page int) url.Values {
 		"content_type": []string{contentType},
 		"limit":        []string{fmt.Sprint(limit)},
 		"skip":         []string{fmt.Sprint(limit * page)},
+		"locale":       []string{"*"},
 		"include":      []string{"0"},
 	}
 }
