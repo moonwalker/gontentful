@@ -247,20 +247,31 @@ func GetDirectorySha(ctx context.Context, accessToken string, owner string, repo
 }
 
 func getDirectorySha(ctx context.Context, githubClient *github.Client, owner string, repo string, ref string, path string) (string, *github.Response, error) {
-	parentPath := filepath.Dir(path)
-	_, dc, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, parentPath, &github.RepositoryContentGetOptions{
-		Ref: ref,
-	})
+	if len(path) > 0 {
+		parentPath := filepath.Dir(path)
+		_, dc, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, parentPath, &github.RepositoryContentGetOptions{
+			Ref: ref,
+		})
+		if err != nil {
+			return "", resp, err
+		}
+
+		for _, te := range dc {
+			if *te.Type == "dir" && *te.Path == path {
+				return *te.SHA, resp, err
+			}
+		}
+		return "", resp, err
+	}
+
+	br, resp, err := githubClient.Repositories.GetBranch(ctx, owner, repo, ref, false)
 	if err != nil {
 		return "", resp, err
 	}
 
-	for _, te := range dc {
-		if *te.Type == "dir" && *te.Path == path {
-			return *te.SHA, resp, err
-		}
+	if br.Commit != nil {
+		return *br.Commit.SHA, resp, err
 	}
-
 	return "", resp, err
 }
 
@@ -272,6 +283,9 @@ func GetContentsRecursive(ctx context.Context, accessToken string, owner string,
 		return nil, resp, err
 	}
 
+	if sha == "" {
+		sha = "main"
+	}
 	tree, resp, err := githubClient.Git.GetTree(ctx, owner, repo, sha, true)
 	if err != nil {
 		return nil, resp, err

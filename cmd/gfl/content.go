@@ -14,7 +14,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/go-github/v48/github"
 	"github.com/moonwalker/gontentful"
 	"github.com/moonwalker/moonbase/pkg/content"
 	gh "github.com/moonwalker/moonbase/pkg/github"
@@ -24,8 +23,9 @@ import (
 const (
 	queryLimit = 1000
 	owner      = "moonwalker"
-	branch     = ""
+	branch     = "main"
 	configPath = "moonbase.yaml"
+	include    = 0
 )
 
 var accessToken = os.Getenv("GITHUB_TOKEN")
@@ -102,27 +102,86 @@ func transformContent() {
 func formatContent() {
 	fmt.Println("Content formatting started")
 
+	schemas, localizedData := getContentLocalized(contentType)
+	entries := &gontentful.Entries{
+		Sys: &gontentful.Sys{
+			Type: "Array",
+		},
+	}
+
+	includes := make(map[string]string)
+	for ct, locData := range localizedData {
+		for id, _ := range locData {
+			entry, entryRefs, err := gontentful.FormatData(ct, id, schemas, localizedData)
+			if err != nil {
+				log.Fatal(errors.New(fmt.Sprintf("failed to format file content: %s", err.Error())))
+			}
+			mergeMaps(includes, entryRefs)
+			entries.Items = append(entries.Items, entry)
+		}
+	}
+	entries.Total = len(entries.Items)
+
+	if include > 0 && len(includes) > 0 {
+		if entries.Includes == nil {
+			entries.Includes = &gontentful.Include{}
+		}
+
+		includedEntries, err := formatIncludesRecursive(includes, include, schemas, localizedData)
+		if err != nil {
+			log.Fatal(errors.New(fmt.Sprintf("failed to fetch includes list: %s", err.Error())))
+		}
+		entries.Includes.Entry = includedEntries
+	}
+
+	// tmp debug
+	/*b, err := json.Marshal(*entries)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	ioutil.WriteFile("/tmp/entries.json", b, 0644)*/
+
+	fmt.Println("Content successfully formatted")
+}
+
+func getContentLocalized(ct string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, accessToken, owner, repo, branch)
+	localizedData := make(map[string]map[string]map[string]content.ContentData)
+	schemas := make(map[string]*content.Schema)
 
-	localizedData := make(map[string]map[string]content.ContentData)
-
-	path := filepath.Join(cfg.WorkDir, contentType)
+	path := filepath.Join(cfg.WorkDir, ct)
 	rcs, _, err := gh.GetContentsRecursive(ctx, accessToken, owner, repo, branch, path)
 	if err != nil {
 		log.Fatal(errors.New(fmt.Sprintf("failed to get json(s) from github: %s", err.Error())))
 	}
 
 	for _, rc := range rcs {
-		id, loc, err := parseFileName(*rc.Name)
-		if err != nil {
-			fmt.Println(fmt.Sprintf("Skipping file: %s Err: %s", *rc.Path, err.Error()))
-			continue
+		ect := extractContentype(*rc.Path)
+		if localizedData[ect] == nil {
+			localizedData[ect] = make(map[string]map[string]content.ContentData)
 		}
+		ld := localizedData[ect]
 
 		ghc, err := rc.GetContent()
 		if err != nil {
 			log.Fatal(errors.New(fmt.Sprintf("RepositoryContent.GetContent failed: %s", err.Error())))
+		}
+
+		if *rc.Name == content.JsonSchemaName {
+			m := &content.Schema{}
+			err = json.Unmarshal([]byte(ghc), m)
+			if err != nil {
+				log.Fatal((errors.New((fmt.Sprintf("failed to unmarshal schema %s: %s", ect, err.Error())))))
+			}
+			schemas[ect] = m
+			continue
+		}
+
+		id, loc, err := parseFileName(*rc.Name)
+		if err != nil {
+			fmt.Println(fmt.Sprintf("Skipping file: %s Err: %s", *rc.Path, err.Error()))
+			continue
 		}
 
 		data := content.ContentData{}
@@ -131,51 +190,62 @@ func formatContent() {
 			log.Fatal(errors.New(fmt.Sprintf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error())))
 		}
 
-		if localizedData[id] == nil {
-			localizedData[id] = make(map[string]content.ContentData)
+		if ld[id] == nil {
+			ld[id] = make(map[string]content.ContentData)
 		}
-		localizedData[id][loc] = data
+		ld[id][loc] = data
 	}
 
-	entries := &gontentful.Entries{
-		Sys: &gontentful.Sys{
-			Type: "Array",
-		},
-	}
-	for id, locData := range localizedData {
-		entry, err := gontentful.FormatData(contentType, id, locData)
+	return schemas, localizedData
+}
+
+func formatIncludesRecursive(entryRefs map[string]string, include int, schemas map[string]*content.Schema, localizedData map[string]map[string]map[string]content.ContentData) ([]*gontentful.Entry, error) {
+	includes := make([]*gontentful.Entry, 0)
+
+	include--
+
+	for id, ct := range entryRefs {
+		if ct == "_asset" {
+			continue
+		}
+		e, er, err := gontentful.FormatData(ct, id, schemas, localizedData)
 		if err != nil {
 			log.Fatal(errors.New(fmt.Sprintf("failed to format file content: %s", err.Error())))
 		}
-		entries.Items = append(entries.Items, entry)
-	}
-	entries.Total = len(entries.Items)
-
-	fmt.Println(fmt.Sprintf("%+v", *entries))
-	fmt.Println("Content successfully formatted")
-}
-
-func getJsonsRecursive(ctx context.Context, owner string, repo string, branch string, path string) (resp []*github.RepositoryContent, err error) {
-	var rcs []*github.RepositoryContent
-	rcs, _, err = gh.GetTree(ctx, accessToken, owner, repo, branch, path)
-	if err != nil {
-		log.Fatal(errors.New(fmt.Sprintf("failed to get json(s) from github: %s", err.Error())))
-	}
-
-	for _, rc := range rcs {
-		if *rc.Type == "dir" {
-			var rcsr []*github.RepositoryContent
-			rcsr, err = getJsonsRecursive(ctx, owner, repo, branch, *rc.Path)
-			if err != nil {
-				return
+		includes = append(includes, e)
+		if len(er) > 0 && include > 0 {
+			// fetch schema and data if needed
+			for _, ct := range er {
+				if schemas[ct] == nil {
+					isc, ild := getContentLocalized(ct)
+					mergeMaps(schemas, isc)
+					mergeMaps(localizedData, ild)
+				}
 			}
-			resp = append(resp, rcsr...)
-		} else {
-			resp = append(resp, rc)
+
+			en, err := formatIncludesRecursive(er, include, schemas, localizedData)
+			if err != nil {
+				return nil, err
+			}
+			includes = append(includes, en...)
 		}
 	}
 
-	return
+	return includes, nil
+}
+
+func mergeMaps[M ~map[K]V, K comparable, V any](dst M, src M) {
+	for k, v := range src {
+		dst[k] = v
+	}
+}
+
+func extractContentype(path string) string {
+	items := strings.Split(path, "/")
+	if len(items) > 1 {
+		return items[len(items)-2]
+	}
+	return ""
 }
 
 func parseFileName(fn string) (string, string, error) {

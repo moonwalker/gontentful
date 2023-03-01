@@ -276,6 +276,28 @@ func FormatSchema(schema *content.Schema) (*ContentType, error) {
 		ct.Fields = append(ct.Fields, ctf)
 	}
 
+	ct.Sys = &Sys{
+		ID:      schema.ID,
+		Version: schema.Version,
+	}
+	if schema.CreatedAt != nil {
+		ct.Sys.CreatedAt = schema.CreatedAt.String()
+	}
+	if schema.UpdatedAt != nil {
+		ct.Sys.UpdatedAt = schema.UpdatedAt.String()
+	}
+
+	ct.Sys.CreatedBy = &Entry{
+		Sys: &Sys{
+			ID: schema.CreatedBy,
+		},
+	}
+	ct.Sys.UpdatedBy = &Entry{
+		Sys: &Sys{
+			ID: schema.CreatedBy,
+		},
+	}
+
 	return ct, nil
 }
 
@@ -293,9 +315,32 @@ func TransformEntry(locales *Locales, model *Entry) (map[string]*content.Content
 				continue // no locale value, continue
 			}
 
-			data.Fields[fn] = locValues[strings.ToLower(loc.Code)]
+			locValue := locValues[strings.ToLower(loc.Code)]
+			if locValue == nil {
+				locValue = locValues[defaultLocale]
+			}
+
+			if lsysl, ok := locValue.([]interface{}); ok {
+				for _, lsyso := range lsysl {
+					if lsys, ok := lsyso.(map[string]interface{}); ok {
+						sid := getSysID(lsys)
+						if sid == nil {
+							break
+						}
+						if data.Fields[fn] == nil {
+							data.Fields[fn] = make([]interface{}, 0)
+						}
+						data.Fields[fn] = append(data.Fields[fn].([]interface{}), sid)
+					}
+				}
+			} else {
+				if lsys, ok := locValue.(map[string]interface{}); ok {
+					data.Fields[fn] = getSysID(lsys)
+				}
+			}
+
 			if data.Fields[fn] == nil {
-				data.Fields[fn] = locValues[defaultLocale]
+				data.Fields[fn] = locValue
 			}
 		}
 
@@ -308,7 +353,37 @@ func TransformEntry(locales *Locales, model *Entry) (map[string]*content.Content
 	return res, nil
 }
 
-func FormatData(contentType string, id string, contents map[string]content.ContentData) (*Entry, error) {
+func getSysID(lsys map[string]interface{}) interface{} {
+	if sys, ok := lsys["sys"].(map[string]interface{}); ok {
+		if sid, ok := sys["id"].(string); ok {
+			return sid
+		}
+	}
+	return nil
+}
+
+func FormatData(contentType string, id string, schemas map[string]*content.Schema, locData map[string]map[string]map[string]content.ContentData) (*Entry, map[string]string, error) {
+	schema := schemas[contentType]
+	contents := locData[contentType][id]
+
+	refFields := make(map[string]*content.Field, 0)
+	for _, sf := range schema.Fields {
+		if sf.Reference {
+			refFields[sf.ID] = sf
+		}
+	}
+
+	entry, includes, err := formatEntry(id, contentType, contents, refFields)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return entry, includes, nil
+}
+
+func formatEntry(id string, contentType string, contents map[string]content.ContentData, refFields map[string]*content.Field) (*Entry, map[string]string, error) {
+	includes := make(map[string]string)
+
 	e := &Entry{
 		Sys: &Sys{
 			ID:        id,
@@ -331,9 +406,36 @@ func FormatData(contentType string, id string, contents map[string]content.Conte
 			if e.Fields[fn] == nil {
 				e.Fields[fn] = make(map[string]interface{})
 			}
-			e.Fields[fn].(map[string]interface{})[loc] = fv
+
+			if rf := refFields[fn]; rf != nil {
+				if rf.List {
+					if rl, ok := fv.([]interface{}); ok {
+						refList := make([]*Sys, 0)
+						for _, r := range rl {
+							if rid, ok := r.(string); ok {
+								refList = append(refList, &Sys{
+									Type:     "Link",
+									LinkType: "Entry",
+									ID:       rid,
+								})
+								includes[rid] = rf.Type
+							}
+						}
+						e.Fields[fn].(map[string]interface{})[loc] = refList
+					}
+				} else {
+					e.Fields[fn].(map[string]interface{})[loc] = &Sys{
+						Type:     "Link",
+						LinkType: "Entry",
+						ID:       fv.(string),
+					}
+					includes[fv.(string)] = rf.Type
+				}
+			} else {
+				e.Fields[fn].(map[string]interface{})[loc] = fv
+			}
 		}
 	}
 
-	return e, nil
+	return e, includes, nil
 }

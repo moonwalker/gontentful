@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
 )
 
@@ -27,6 +28,8 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	godotenv.Load()
+
 	rootCmd.PersistentFlags().StringVarP(&spaceID, "space", "s", "", "cf space id (required)")
 	rootCmd.PersistentFlags().StringVarP(&cdnToken, "token", "t", "", "cdn token (required)")
 	rootCmd.PersistentFlags().StringVarP(&cmaToken, "cma", "c", "", "cma token (required)")
