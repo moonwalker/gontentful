@@ -1,7 +1,6 @@
 package gontentful
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -117,28 +116,31 @@ func transformField(cf *content.Field, fieldType string, linkType string, valida
 	}
 }
 
-func transformToContentfulField(cf *ContentTypeField, fieldType string, validations []*content.Validation, list bool, reference bool) {
-	for _, v := range validations {
+func transformValidationFields(fType string, vals []*content.Validation, ctf *ContentTypeField) []*FieldValidation {
+	fVals := make([]*FieldValidation, 0)
+	for _, v := range vals {
 		if v.Type == "unique" && v.Value == true {
-			cf.Validations = append(cf.Validations, &FieldValidation{
+			fVals = append(fVals, &FieldValidation{
 				Unique: true,
 			})
 		}
+
 		if v.Type == "required" && v.Value == true {
-			cf.Required = true
+			ctf.Required = true
 		} else {
-			cf.Required = false
+			ctf.Required = false
 		}
+
 		if v.Type == "in" {
-			fmt.Println("Validations has In value type.", v.Value)
 			strarr := make([]string, 0)
 			for _, i := range v.Value.([]interface{}) {
 				strarr = append(strarr, i.(string))
 			}
-			cf.Validations = append(cf.Validations, &FieldValidation{
+			fVals = append(fVals, &FieldValidation{
 				In: strarr,
 			})
 		}
+
 		if v.Type == "size" {
 			m, _ := v.Value.(map[string]interface{})
 			rv := &RangeValidation{}
@@ -150,61 +152,89 @@ func transformToContentfulField(cf *ContentTypeField, fieldType string, validati
 					rv.Max = v.(*int)
 				}
 			}
-			cf.Validations = append(cf.Validations, &FieldValidation{
+			fVals = append(fVals, &FieldValidation{
 				Size: rv,
 			})
 		}
+
 		if v.Type == "regexp" {
 			m, _ := v.Value.(map[string]interface{})
 			rv := &RegexpValidation{}
 			for k, v := range m {
 				if k == "pattern" {
-					rv.Pattern = v.(int)
+					rv.Pattern = int(v.(float64))
 				}
 				if k == "flags" {
-					rv.Flags = v.(int)
+					rv.Flags = int(v.(float64))
 				}
 			}
-			cf.Validations = append(cf.Validations, &FieldValidation{
+			fVals = append(fVals, &FieldValidation{
 				Regexp: rv,
 			})
 		}
 	}
+	return fVals
+}
 
-	switch fieldType {
-	case "text":
-		cf.Type = "Symbol"
-		break
-	case "bool":
-		cf.Type = "Boolean"
-		break
-	case "int":
-		cf.Type = "Integer"
-		break
-	case "float":
-		cf.Type = "Number"
-		break
-	case "longtext":
-		cf.Type = "Text"
-		break
-	case "_asset":
-		cf.LinkType = "Asset"
-	}
+func transformToContentfulField(cf *ContentTypeField, fieldType string, validations []*content.Validation, list bool, reference bool) {
+	cf.Type = GetContentfulType(fieldType)
 
 	if list {
-		fmt.Println("Is List:", fieldType)
 		cf.Type = "Array"
-		cf.Items = &FieldTypeArrayItem{
-			Type:     "Link",
-			LinkType: "Entry",
+		cf.Items = &FieldTypeArrayItem{}
+		if reference {
+			cf.Items.Type = "Link"
+			cf.Items.Validations = append(cf.Validations, &FieldValidation{
+				LinkContentType: append(make([]string, 0), fieldType),
+			})
+			if fieldType == "_asset" {
+				cf.Items.LinkType = "Asset"
+			} else {
+				cf.Items.LinkType = "Entry"
+			}
+		} else {
+			cf.Items.Type = GetContentfulType(fieldType)
+			cf.Items.Validations = transformValidationFields(cf.Items.Type, validations, cf)
 		}
-	}
-	if reference {
+	} else if !list && reference {
 		cf.Type = "Link"
-		cf.Validations = append(cf.Validations, &FieldValidation{
-			LinkContentType: append(make([]string, 0), fieldType),
-		})
+		if len(cf.Validations) > 0 {
+			cf.Validations = append(cf.Validations, &FieldValidation{
+				LinkContentType: append(make([]string, 0), fieldType),
+			})
+		}
+		if fieldType == "_asset" {
+			cf.LinkType = "Asset"
+		} else {
+			cf.LinkType = "Entry"
+		}
+	} else {
+		cf.Validations = transformValidationFields(cf.Type, validations, cf)
 	}
+}
+
+func GetContentfulType(fieldType string) string {
+	returnVal := ""
+	switch fieldType {
+	case "text":
+		returnVal = "Symbol"
+		break
+	case "bool":
+		returnVal = "Boolean"
+		break
+	case "int":
+		returnVal = "Integer"
+		break
+	case "float":
+		returnVal = "Number"
+		break
+	case "longtext":
+		returnVal = "Text"
+		break
+	case "_asset":
+		returnVal = "Asset"
+	}
+	return returnVal
 }
 
 func FormatSchema(schema *content.Schema) (*ContentType, error) {
@@ -212,6 +242,22 @@ func FormatSchema(schema *content.Schema) (*ContentType, error) {
 		Name:         schema.Name,
 		Description:  schema.Description,
 		DisplayField: schema.Fields[0].ID,
+		Sys: &Sys{
+			ID:        schema.ID,
+			Version:   schema.Version,
+			CreatedAt: schema.CreatedAt.String(),
+			UpdatedAt: schema.UpdatedAt.String(),
+			CreatedBy: &Entry{
+				Sys: &Sys{
+					ID: schema.CreatedBy,
+				},
+			},
+			UpdatedBy: &Entry{
+				Sys: &Sys{
+					ID: schema.CreatedBy,
+				},
+			},
+		},
 	}
 
 	for _, f := range schema.Fields {
@@ -228,23 +274,6 @@ func FormatSchema(schema *content.Schema) (*ContentType, error) {
 		transformToContentfulField(ctf, f.Type, f.Validations, f.List, f.Reference)
 
 		ct.Fields = append(ct.Fields, ctf)
-	}
-
-	ct.Sys = &Sys{
-		ID:        schema.ID,
-		Version:   schema.Version,
-		CreatedAt: schema.CreatedAt.String(),
-		UpdatedAt: schema.UpdatedAt.String(),
-	}
-	ct.Sys.CreatedBy = &Entry{
-		Sys: &Sys{
-			ID: schema.CreatedBy,
-		},
-	}
-	ct.Sys.UpdatedBy = &Entry{
-		Sys: &Sys{
-			ID: schema.CreatedBy,
-		},
 	}
 
 	return ct, nil

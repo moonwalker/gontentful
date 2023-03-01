@@ -94,7 +94,7 @@ func formatContentType() {
 		if err != nil {
 			log.Fatal((errors.New((fmt.Sprintf("Error formatting gontenful schema %s: %s", s, err.Error())))))
 		}
-		// TODO: Do something with the formatted schema - push to contentful??
+		// TODO: Do something with the formatted schema - sync with contentful??
 		// For testing:
 		b, err := json.Marshal(t)
 		if err != nil {
