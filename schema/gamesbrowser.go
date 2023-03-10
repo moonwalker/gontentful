@@ -80,13 +80,10 @@ CREATE TABLE IF NOT EXISTS _csv_upload (
 	count integer not null default 0,
 	type text,
 	success bool not null default FALSE,
-	reason text,
 	created timestamp without time zone default now(),
-	created_by text not null default 'system'
+	created_by text not null default 'system',
+	reason text
 );
-
-ALTER TABLE _csv_upload ADD COLUMN IF NOT EXISTS reason text NULL;
-
 
 CREATE TABLE IF NOT EXISTS _studio_excluded_market (
 	studio text primary key,
