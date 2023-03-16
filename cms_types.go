@@ -1,0 +1,55 @@
+package gontentful
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
+	"path/filepath"
+
+	"github.com/moonwalker/moonbase/pkg/content"
+	gh "github.com/moonwalker/moonbase/pkg/github"
+)
+
+var schemaName = "_schema.json"
+
+func GetCMSSchemas(repo string, ct string) (*ContentTypes, error) {
+	ctx := context.Background()
+	cfg := getConfig(ctx, accessToken, owner, repo, branch)
+
+	path := filepath.Join(cfg.WorkDir, ct)
+	res, _, err := gh.GetContentsRecursive(ctx, accessToken, owner, repo, branch, path)
+	if err != nil {
+		log.Fatal(errors.New(fmt.Sprintf("Failed to get schemas from github: %s", err.Error())))
+	}
+
+	schemas := &ContentTypes{
+		Total: len(res),
+		Limit: 0,
+		Skip:  0,
+		Items: make([]*ContentType, 0),
+	}
+
+	for _, rc := range res {
+		ect := extractContentype(*rc.Path)
+
+		if *rc.Name == schemaName {
+			ghc, err := rc.GetContent()
+			if err != nil {
+				log.Fatal(errors.New(fmt.Sprintf("RepositoryContent.GetContent failed: %s", err.Error())))
+			}
+			m := &content.Schema{}
+			_ = json.Unmarshal([]byte(ghc), m)
+			if err != nil {
+				log.Fatal(errors.New(fmt.Sprintf("Failed to unmarshal schema %s: %s", ect, err.Error())))
+			}
+			t, err := FormatSchema(m)
+			if err != nil {
+				log.Fatal(fmt.Sprintf("Failed to format schema: %s", err.Error()))
+			}
+			schemas.Items = append(schemas.Items, t)
+		}
+	}
+	return schemas, nil
+}
