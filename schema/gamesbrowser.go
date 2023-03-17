@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS _csv_upload (
 	reason text
 );
 
-ALTER TABLE _csv_upload ADD COLUMN reason text;
+ALTER TABLE _csv_upload ADD COLUMN IF NOT EXISTS reason text;
 
 CREATE TABLE IF NOT EXISTS _studio_excluded_market (
 	studio text primary key,
