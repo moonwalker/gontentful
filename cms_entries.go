@@ -27,7 +27,7 @@ const (
 
 var accessToken = os.Getenv("GITHUB_TOKEN")
 
-func GetCMSEntries(contentType string, repo string, include int) (*Entries, error) {
+func GetCMSEntries(contentType string, repo string, include int) (*Entries, *ContentTypes, error) {
 	schemas, localizedData := getContentLocalized(repo, contentType)
 	entries := &Entries{
 		Sys: &Sys{
@@ -60,6 +60,19 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, erro
 		entries.Includes.Entry = includedEntries
 	}
 
+	cts := make([]*ContentType, 0)
+	for _, schema := range schemas {
+		t, err := FormatSchema(schema)
+		if err != nil {
+			log.Fatal(fmt.Sprintf("Failed to format schema: %s", err.Error()))
+		}
+		cts = append(cts, t)
+	}
+	contentTypes := &ContentTypes{
+		Total: len(cts),
+		Items: cts,
+	}
+
 	// tmp debug
 	/*b, err := json.Marshal(*entries)
 	if err != nil {
@@ -67,7 +80,7 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, erro
 	}
 	ioutil.WriteFile("/tmp/entries.json", b, 0644)*/
 
-	return entries, nil
+	return entries, contentTypes, nil
 }
 
 func getContentLocalized(repo string, ct string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData) {
