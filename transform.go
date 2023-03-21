@@ -146,10 +146,12 @@ func transformValidationFields(fType string, vals []*content.Validation, ctf *Co
 			rv := &RangeValidation{}
 			for k, v := range m {
 				if k == "min" {
-					rv.Min = v.(*int)
+					i := int(v.(float64))
+					rv.Min = &i
 				}
 				if k == "max" {
-					rv.Max = v.(*int)
+					i := int(v.(float64))
+					rv.Max = &i
 				}
 			}
 			fVals = append(fVals, &FieldValidation{
