@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS _game_history (
 );
 
 CREATE TABLE IF NOT EXISTS _csv_upload (
+	id SERIAL PRIMARY KEY,
 	timestamp text,
 	csv text not null,
 	count integer not null default 0,
@@ -86,6 +87,16 @@ CREATE TABLE IF NOT EXISTS _csv_upload (
 );
 
 ALTER TABLE _csv_upload ADD COLUMN IF NOT EXISTS reason text;
+DO $$
+BEGIN
+	IF NOT EXISTS (SELECT column_name FROM information_schema.columns 
+		WHERE table_schema = '{{ $.SchemaName }}' 
+			AND table_name = '_csv_upload' 
+			AND column_name = 'id') THEN
+		ALTER TABLE _csv_upload ADD COLUMN IF NOT EXISTS id SERIAL PRIMARY KEY;
+END IF;
+END $$;
+
 
 CREATE TABLE IF NOT EXISTS _studio_excluded_market (
 	studio text primary key,
