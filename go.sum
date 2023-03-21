@@ -28,6 +28,8 @@ github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyua
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
 github.com/moonwalker/moonbase v0.0.0-20230214095548-265bc334950c h1:HuDj66Ffr3ZOLOcnIylexEOWrcDljhszwbkFhIi631E=
 github.com/moonwalker/moonbase v0.0.0-20230214095548-265bc334950c/go.mod h1:daKNDL3JtrWaITFm79GlS9kH1MruJnXebYjK5kMXh3w=
+github.com/moonwalker/moonbase v0.0.0-20230321190241-808995ba89b8 h1:KjwqPwDcW1Ot0/x4VAwX9LnbaS7r609o41ATuA79AEo=
+github.com/moonwalker/moonbase v0.0.0-20230321190241-808995ba89b8/go.mod h1:daKNDL3JtrWaITFm79GlS9kH1MruJnXebYjK5kMXh3w=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/spf13/cobra v1.6.1 h1:o94oiPyS4KD1mPy2fmcYYHHfCxLqYjJOhGsCHFZtEzA=
 github.com/spf13/cobra v1.6.1/go.mod h1:IOw/AERYS7UzyrGinqmz6HLUo219MORXGxhbaJUqzrY=

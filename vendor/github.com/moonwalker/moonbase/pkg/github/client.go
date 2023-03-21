@@ -1,9 +1,18 @@
 package github
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/go-github/v48/github"
 	"golang.org/x/oauth2"
@@ -275,7 +284,7 @@ func getDirectorySha(ctx context.Context, githubClient *github.Client, owner str
 	return "", resp, err
 }
 
-func GetContentsRecursive(ctx context.Context, accessToken string, owner string, repo string, ref string, path string) ([]*github.RepositoryContent, *github.Response, error) {
+func GetContentsRecursive_old(ctx context.Context, accessToken string, owner string, repo string, ref string, path string) ([]*github.RepositoryContent, *github.Response, error) {
 	githubClient := ghClient(ctx, accessToken)
 
 	sha, resp, err := getDirectorySha(ctx, githubClient, owner, repo, ref, path)
@@ -302,5 +311,147 @@ func GetContentsRecursive(ctx context.Context, accessToken string, owner string,
 		}
 	}
 
+	return rcs, resp, nil
+}
+
+func GetArchivedContents(ctx context.Context, accessToken string, owner string, repo string, ref string, path string) ([]*github.RepositoryContent, *github.Response, error) {
+	githubClient := ghClient(ctx, accessToken)
+
+	url, resp, err := githubClient.Repositories.GetArchiveLink(ctx, owner, repo, github.Tarball, nil, false)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	res, err := http.Get(url.String())
+	if err != nil {
+		return nil, resp, err
+	}
+	defer res.Body.Close()
+
+	dir, err := os.MkdirTemp("", "git-archive")
+	if err != nil {
+		return nil, resp, err
+	}
+	defer os.RemoveAll(dir)
+
+	rcs := make([]*github.RepositoryContent, 0)
+
+	uncompressedStream, err := gzip.NewReader(res.Body)
+	if err != nil {
+		return nil, resp, fmt.Errorf("gzip NewReader failed: %s", err.Error())
+	}
+
+	tarReader := tar.NewReader(uncompressedStream)
+
+	for {
+		header, err := tarReader.Next()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return nil, resp, fmt.Errorf("tarReader Next() failed: %s", err.Error())
+		}
+
+		if header.Typeflag == tar.TypeReg {
+			fi := strings.Index(header.Name, "/")
+			li := strings.LastIndex(header.Name, "/")
+			path := header.Name[fi:]
+			name := header.Name[li:]
+			bs, err := ioutil.ReadAll(tarReader)
+			if err != nil {
+				return nil, resp, fmt.Errorf("tarReader ReadAll() failed: %s", err.Error())
+			}
+			content := string(bs)
+			rcs = append(rcs, &github.RepositoryContent{
+				Name:    &name,
+				Path:    &path,
+				Content: &content,
+			})
+		}
+	}
+
+	return rcs, resp, nil
+}
+
+func GetContentsRecursive(ctx context.Context, accessToken string, owner string, repo string, ref string, path string) ([]*github.RepositoryContent, *github.Response, error) {
+	githubClient := ghClient(ctx, accessToken)
+
+	_, rc, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{
+		Ref: ref,
+	})
+	if err != nil {
+		return nil, resp, err
+	}
+
+	rcs := make([]*github.RepositoryContent, 0)
+	for _, c := range rc {
+		if *c.Type == "file" {
+			b, err := downloadFile(*c.DownloadURL)
+			if err != nil {
+				return nil, resp, err
+			}
+			content := string(b)
+			if strings.Contains(content, "Not found") {
+				log.Fatal("couldn't download file")
+			}
+			c.Content = &content
+			rcs = append(rcs, c)
+		}
+		if *c.Type == "dir" {
+			rcr, _, err := GetContentsRecursive(ctx, accessToken, owner, repo, ref, *c.Path)
+			if err != nil {
+				return nil, resp, err
+			}
+			rcs = append(rcs, rcr...)
+		}
+	}
+
+	return rcs, resp, nil
+}
+
+func downloadFile(downloadURL string) ([]byte, error) {
+	resp, err := http.Get(downloadURL)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func GetSchemasRecursive(ctx context.Context, accessToken string, owner string, repo string, ref, string, path string) ([]*github.RepositoryContent, *github.Response, error) {
+	githubClient := ghClient(ctx, accessToken)
+
+	sha, resp, err := getDirectorySha(ctx, githubClient, owner, repo, ref, path)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	if sha == "" {
+		sha = "main"
+	}
+
+	tree, resp, err := githubClient.Git.GetTree(ctx, owner, repo, sha, true)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	rcs := make([]*github.RepositoryContent, 0)
+	for _, te := range tree.Entries {
+		if *te.Type == "blob" && strings.Contains(*te.Path, "_schema.json") {
+			rc, _, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, filepath.Join(path, *te.Path), &github.RepositoryContentGetOptions{})
+			if err != nil {
+				return nil, resp, err
+			}
+			rcs = append(rcs, rc)
+		}
+	}
 	return rcs, resp, nil
 }
