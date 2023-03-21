@@ -344,9 +344,9 @@ func TransformEntry(locales *Locales, model *Entry) (map[string]*content.Content
 			}
 		}
 
-		data.Fields["Version"] = model.Sys.Version
-		data.Fields["CreatedAt"] = model.Sys.CreatedAt
-		data.Fields["UpdatedAt"] = model.Sys.UpdatedAt
+		//data.Fields["version"] = model.Sys.Version
+		//data.Fields["createdAt"] = model.Sys.CreatedAt
+		//data.Fields["updatedAt"] = model.Sys.UpdatedAt
 		res[strings.ToLower(loc.Code)] = data
 	}
 
