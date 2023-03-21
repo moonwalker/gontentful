@@ -153,7 +153,7 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 	var rcs []*github.RepositoryContent
 	var err error
 	if false && len(ct) > 0 {
-		rcs, _, err = gh.GetContentsRecursive(ctx, accessToken, owner, repo, branch, path)
+		rcs, _, err = gh.GetArchivedContents(ctx, accessToken, owner, repo, branch, path)
 		if err != nil {
 			log.Fatal(errors.New(fmt.Sprintf("failed to get json(s) from github: %s", err.Error())))
 		}
