@@ -97,7 +97,7 @@ func transformContent() {
 func formatContent() {
 	fmt.Println("Content formatting started")
 
-	entries, err := gontentful.GetCMSEntries(contentType, repo, include)
+	entries, _, err := gontentful.GetCMSEntries(contentType, repo, include)
 	if err != nil {
 		log.Fatal(errors.New(fmt.Sprintf("failed to format file content: %s", err.Error())))
 	}

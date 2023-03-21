@@ -344,9 +344,9 @@ func TransformEntry(locales *Locales, model *Entry) (map[string]*content.Content
 			}
 		}
 
-		//data.Fields["version"] = model.Sys.Version
-		//data.Fields["createdAt"] = model.Sys.CreatedAt
-		//data.Fields["updatedAt"] = model.Sys.UpdatedAt
+		//data.Fields["Version"] = model.Sys.Version
+		//data.Fields["CreatedAt"] = model.Sys.CreatedAt
+		//data.Fields["UpdatedAt"] = model.Sys.UpdatedAt
 		res[strings.ToLower(loc.Code)] = data
 	}
 
@@ -386,10 +386,10 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 
 	e := &Entry{
 		Sys: &Sys{
-			ID:        id,
-			Type:      "Entry",
-			CreatedAt: contents[defaultLocale].Fields["CreatedAt"].(string),
-			UpdatedAt: contents[defaultLocale].Fields["UpdatedAt"].(string),
+			ID:   id,
+			Type: "Entry",
+			//CreatedAt: contents[defaultLocale].Fields["CreatedAt"].(string),
+			//UpdatedAt: contents[defaultLocale].Fields["UpdatedAt"].(string),
 			ContentType: &ContentType{
 				Sys: &Sys{
 					Type:     "Link",
@@ -401,8 +401,27 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 		Fields: make(map[string]interface{}),
 	}
 
+	cat := contents[defaultLocale].Fields["CreatedAt"]
+	if cat == nil {
+		cat = time.Now().Format("2006-01-02T15:04:05")
+	}
+	e.Sys.CreatedAt = cat.(string)
+	uat := contents[defaultLocale].Fields["UpdatedAt"]
+	if uat == nil {
+		uat = time.Now().Format("2006-01-02T15:04:05")
+	}
+	e.Sys.CreatedAt = uat.(string)
+
 	for loc, data := range contents {
 		for fn, fv := range data.Fields {
+			/*if fn == "jurisdiction" || fn == "icon" || fn == "icons" {
+				fmt.Println(fn, fv)
+				continue
+			}*/
+			if fv == nil {
+				//fmt.Println("nil value", contentType, data.ID, loc, fn, fv)
+				continue
+			}
 			if e.Fields[fn] == nil {
 				e.Fields[fn] = make(map[string]interface{})
 			}
@@ -410,25 +429,28 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 			if rf := refFields[fn]; rf != nil {
 				if rf.List {
 					if rl, ok := fv.([]interface{}); ok {
-						refList := make([]*Sys, 0)
+						//refList := make([]*Sys, 0)
+						refList := make([]string, 0)
 						for _, r := range rl {
 							if rid, ok := r.(string); ok {
-								refList = append(refList, &Sys{
+								/*refList = append(refList, &Sys{
 									Type:     "Link",
 									LinkType: "Entry",
 									ID:       rid,
-								})
+								})*/
+								refList = append(refList, rid)
 								includes[rid] = rf.Type
 							}
 						}
 						e.Fields[fn].(map[string]interface{})[loc] = refList
 					}
 				} else {
-					e.Fields[fn].(map[string]interface{})[loc] = &Sys{
+					/*e.Fields[fn].(map[string]interface{})[loc] = &Sys{
 						Type:     "Link",
 						LinkType: "Entry",
 						ID:       fv.(string),
-					}
+					}*/
+					e.Fields[fn].(map[string]interface{})[loc] = fv.(string)
 					includes[fv.(string)] = rf.Type
 				}
 			} else {
