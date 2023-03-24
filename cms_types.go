@@ -17,7 +17,7 @@ func GetCMSSchemas(repo string, ct string) (*ContentTypes, error) {
 	cfg := getConfig(ctx, accessToken, owner, repo, branch)
 
 	path := filepath.Join(cfg.WorkDir, ct)
-	res, _, err := gh.GetSchemasRecursive(ctx, accessToken, owner, repo, "", branch, path)
+	res, _, err := gh.GetSchemasRecursive(ctx, accessToken, owner, repo, branch, path)
 	if err != nil {
 		log.Fatal(errors.New(fmt.Sprintf("Failed to get schemas from github: %s", err.Error())))
 	}
