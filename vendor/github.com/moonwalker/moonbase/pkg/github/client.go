@@ -426,7 +426,7 @@ func downloadFile(downloadURL string) ([]byte, error) {
 	return b, nil
 }
 
-func GetSchemasRecursive(ctx context.Context, accessToken string, owner string, repo string, ref, string, path string) ([]*github.RepositoryContent, *github.Response, error) {
+func GetSchemasRecursive(ctx context.Context, accessToken string, owner string, repo string, ref string, path string) ([]*github.RepositoryContent, *github.Response, error) {
 	githubClient := ghClient(ctx, accessToken)
 
 	sha, resp, err := getDirectorySha(ctx, githubClient, owner, repo, ref, path)
@@ -445,7 +445,7 @@ func GetSchemasRecursive(ctx context.Context, accessToken string, owner string, 
 
 	rcs := make([]*github.RepositoryContent, 0)
 	for _, te := range tree.Entries {
-		if *te.Type == "blob" && strings.Contains(*te.Path, "_schema.json") {
+		if *te.Type == "blob" && strings.HasSuffix(*te.Path, "/_schema.json") {
 			rc, _, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, filepath.Join(path, *te.Path), &github.RepositoryContentGetOptions{})
 			if err != nil {
 				return nil, resp, err
