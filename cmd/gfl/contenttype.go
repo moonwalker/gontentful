@@ -74,51 +74,7 @@ func formatContentType() {
 		log.Fatal(fmt.Sprintf("Error in GetCMSSchemas: %s", err.Error()))
 	}
 
-	for _, ct := range cts.Items {
-		b, err := json.Marshal(ct)
-		if err != nil {
-			fmt.Println("Error marhsalling schema for testing", err.Error())
-		}
-		ioutil.WriteFile(fmt.Sprintf("./input/%s/test.json", ct.Name), b, 0644)
-		fmt.Println("Schema to push to contentful: ", ct)
-
-	}
-	// sPath := "./input"
-
-	// paths := make([]string, 0)
-	// if len(contentType) > 0 {
-	// 	paths = append(paths, fmt.Sprintf("%s/%s/_schema.json", sPath, contentType))
-	// } else {
-	// 	p := readDir(fmt.Sprintf("%s", sPath))
-	// 	for _, d := range p {
-	// 		if d.IsDir() {
-	// 			paths = append(paths, fmt.Sprintf("%s/%s/_schema.json", sPath, d.Name()))
-	// 		}
-	// 	}
-	// }
-
-	// for _, s := range paths {
-	// 	f, err := ioutil.ReadFile(s)
-	// 	if err != nil {
-	// 		log.Fatal(errors.New(fmt.Sprintf("Failed to read file %s: %s", s, err.Error())))
-	// 	}
-	// 	m := content.Schema{}
-	// 	_ = json.Unmarshal([]byte(f), &m)
-	// 	t, err := gontentful.FormatSchema(&m)
-	// 	if err != nil {
-	// 		log.Fatal((errors.New((fmt.Sprintf("Error formatting gontenful schema %s: %s", s, err.Error())))))
-	// 	}
-	// 	// TODO: Do something with the formatted schema - sync with contentful??
-	// 	// For testing:
-	// 	b, err := json.Marshal(t)
-	// 	if err != nil {
-	// 		fmt.Println("Error marshalling schema for testing.", err.Error())
-	// 	}
-	// 	ioutil.WriteFile(fmt.Sprintf("%s/%s/test.json", sPath, t.Name), b, 0644)
-	// 	fmt.Println("Schema to push to contentful: ", *t)
-	// }
-
-	fmt.Println("ContentType successfully formatted")
+	fmt.Println(fmt.Sprintf("%v schemas successfully formatted for content sync.", len(cts.Items)))
 }
 
 func readDir(path string) []fs.DirEntry {

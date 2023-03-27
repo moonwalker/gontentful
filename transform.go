@@ -245,21 +245,29 @@ func FormatSchema(schema *content.Schema) (*ContentType, error) {
 		Description:  schema.Description,
 		DisplayField: schema.Fields[0].ID,
 		Sys: &Sys{
-			ID:        schema.ID,
-			Version:   schema.Version,
-			CreatedAt: schema.CreatedAt.String(),
-			UpdatedAt: schema.UpdatedAt.String(),
-			CreatedBy: &Entry{
-				Sys: &Sys{
-					ID: schema.CreatedBy,
-				},
-			},
-			UpdatedBy: &Entry{
-				Sys: &Sys{
-					ID: schema.CreatedBy,
-				},
-			},
+			ID:      schema.ID,
+			Version: schema.Version,
 		},
+	}
+	if schema.CreatedAt != nil {
+		ct.Sys.CreatedAt = schema.CreatedAt.String()
+	}
+	if schema.UpdatedAt != nil {
+		ct.Sys.UpdatedAt = schema.UpdatedAt.String()
+	}
+	if schema.CreatedBy != "" {
+		ct.Sys.CreatedBy = &Entry{
+			Sys: &Sys{
+				ID: schema.CreatedBy,
+			},
+		}
+	}
+	if schema.UpdatedBy != "" {
+		ct.Sys.UpdatedBy = &Entry{
+			Sys: &Sys{
+				ID: schema.UpdatedBy,
+			},
+		}
 	}
 
 	for _, f := range schema.Fields {
