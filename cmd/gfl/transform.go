@@ -45,7 +45,7 @@ var (
 
 func init() {
 	// contentType to migrate
-	transformCmd.Flags().BoolVarP(&ctTransform, "contentType", "f", false, "content type transform")
+	transformCmd.Flags().BoolVarP(&ctTransform, "ct", "f", false, "content type transform")
 	transformCmd.Flags().StringVarP(&contentType, "contentModel", "m", "", "type of the content to migrate")
 	transformCmd.Flags().StringVarP(&repo, "repo", "r", "", "repo of the content to migrate")
 	transformCmd.PersistentFlags().StringVarP(&direction, "direction", "d", "", "directions: <fromcf|tocf>")
