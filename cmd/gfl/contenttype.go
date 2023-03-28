@@ -12,6 +12,10 @@ import (
 	"github.com/moonwalker/moonbase/pkg/content"
 )
 
+const (
+	schemaFile = "_schema.json"
+)
+
 func transformContentType() {
 	fmt.Println("ContentType transforming started")
 
@@ -59,8 +63,9 @@ func transformContentType() {
 				log.Fatal(fmt.Errorf("failed to create output folder %s: %s", path, err.Error()))
 			}
 			b, _ := json.Marshal(schema)
-			fmt.Printf("Writing file: %s/_schema.json", path)
-			ioutil.WriteFile(fmt.Sprintf("%s/_schema.json", path), b, 0644)
+			f := fmt.Sprintf("%s/%s", path, schemaFile)
+			fmt.Printf("Writing file: %s", f)
+			ioutil.WriteFile(f, b, 0644)
 			fmt.Printf("\033[2K")
 			fmt.Println()
 			fmt.Printf("\033[1A")
@@ -90,8 +95,9 @@ func transformContentType() {
 		log.Fatalf("failed to create output folder %s: %s", path, err.Error())
 	}
 	b, _ := json.Marshal(schema)
-	fmt.Printf("Writing file: %s/_schema.json", path)
-	ioutil.WriteFile(fmt.Sprintf("%s/_schema.json", path), b, 0644)
+	f := fmt.Sprintf("%s/%s", path, schemaFile)
+	fmt.Printf("Writing file: %s", f)
+	ioutil.WriteFile(f, b, 0644)
 	fmt.Printf("\033[2K")
 	fmt.Println()
 	fmt.Printf("\033[1A")

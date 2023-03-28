@@ -85,8 +85,9 @@ func transformContent() {
 				}
 
 				fn := fmt.Sprintf("%s_%s", item.Sys.ID, l)
-				fmt.Printf("Writing file: %s/%s.json", path, strings.ToLower(fn))
-				ioutil.WriteFile(fmt.Sprintf("%s/%s.json", path, strings.ToLower(fn)), b, 0644)
+				f := fmt.Sprintf("%s/%s.json", path, strings.ToLower(fn))
+				fmt.Printf("Writing file: %s", f)
+				ioutil.WriteFile(f, b, 0644)
 				fmt.Printf("\033[2K")
 				fmt.Println()
 				fmt.Printf("\033[1A")
@@ -94,7 +95,7 @@ func transformContent() {
 		}
 	}
 
-	fmt.Println("\r\nContent successfully transformed")
+	fmt.Println("Content successfully transformed")
 }
 
 func formatContent() {
