@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -13,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/moonwalker/gontentful"
+	"github.com/moonwalker/moonbase/pkg/content"
 )
 
 const (
@@ -22,8 +22,6 @@ const (
 	configPath = "moonbase.yaml"
 	include    = 0
 )
-
-var accessToken = os.Getenv("GITHUB_TOKEN")
 
 type Config struct {
 	WorkDir string `json:"workdir" yaml:"workdir"`
@@ -50,38 +48,40 @@ func transformContent() {
 		res, err = GetAllEntries(cli)
 	}
 	if err != nil {
-		log.Fatal(errors.New(fmt.Sprintf("failed to fetch entries: %s", err.Error())))
+		log.Fatal(fmt.Errorf("failed to fetch entries: %s", err.Error()))
 	}
 
 	locales, err := cli.Locales.GetLocales()
 	if err != nil {
-		log.Fatal(errors.New(fmt.Sprintf("failed to fetch locales: %s", err.Error())))
+		log.Fatal(fmt.Errorf("failed to fetch locales: %s", err.Error()))
 	}
 
 	if res.Total > 0 {
 		for _, item := range res.Items {
-			if item.Sys.Type != "Entry" {
-				continue
-			}
-			entries, err := gontentful.TransformEntry(locales, item)
+			var entries map[string]*content.ContentData
+			entries, err = gontentful.TransformEntry(locales, item)
 			if err != nil {
-				log.Fatal(errors.New(fmt.Sprintf("failed to transform entry: %s", err.Error())))
+				log.Fatal(fmt.Errorf("failed to transform entry: %s", err.Error()))
+			}
+
+			ct := contentType
+
+			if item.Sys.Type == "Asset" {
+				ct = "_asset"
+			} else if item.Sys.Type == "Entry" && len(ct) == 0 {
+				ct = toCamelCase(item.Sys.ContentType.Sys.ID)
 			}
 
 			for l, e := range entries {
 				b, err := json.Marshal(e)
 				if err != nil {
-					log.Fatal(errors.New(fmt.Sprintf("failed to marshal entry: %s", err.Error())))
-				}
-				ct := contentType
-				if len(ct) == 0 {
-					ct = toCamelCase(item.Sys.ContentType.Sys.ID)
+					log.Fatal(fmt.Errorf("failed to marshal entry: %s", err.Error()))
 				}
 
 				path := fmt.Sprintf("./output/%s", ct)
 				err = os.MkdirAll(path, os.ModePerm)
 				if err != nil {
-					log.Fatal(errors.New(fmt.Sprintf("failed to create output folder %s: %s", path, err.Error())))
+					log.Fatal(fmt.Errorf("failed to create output folder %s: %s", path, err.Error()))
 				}
 
 				fn := fmt.Sprintf("%s_%s", item.Sys.ID, l)
@@ -99,7 +99,7 @@ func formatContent() {
 
 	entries, _, err := gontentful.GetCMSEntries(contentType, repo, include)
 	if err != nil {
-		log.Fatal(errors.New(fmt.Sprintf("failed to format file content: %s", err.Error())))
+		log.Fatal(fmt.Errorf("failed to format file content: %s", err.Error()))
 	}
 
 	fmt.Println("Entries count:", len(entries.Items))
@@ -130,7 +130,7 @@ func GetContentTypeEntries(cli *gontentful.Client, contenType string) (*gontentf
 	}
 
 	if first.Total > first.Limit && first.Total > 0 && first.Limit > 0 {
-		rest := int(math.Floor(float64(first.Total / first.Limit)))
+		rest := int(first.Total / first.Limit)
 		if math.Mod(float64(first.Total), float64(first.Limit)) == 0 {
 			rest = rest - 1
 		}
@@ -164,9 +164,7 @@ func GetAllEntries(cli *gontentful.Client) (*gontentful.Entries, error) {
 	res := &gontentful.Entries{}
 
 	_, err := cli.Spaces.SyncPaged("", func(sr *gontentful.SyncResponse) error {
-		for _, item := range sr.Items {
-			res.Items = append(res.Items, item)
-		}
+		res.Items = append(res.Items, sr.Items...)
 		return nil
 	})
 	if err != nil {

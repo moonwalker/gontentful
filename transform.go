@@ -113,6 +113,9 @@ func transformField(cf *content.Field, fieldType string, linkType string, valida
 		cf.List = true
 		transformField(cf, items.Type, items.LinkType, items.Validations, nil)
 		break
+	case "Object":
+		cf.Type = "json"
+		break
 	}
 }
 

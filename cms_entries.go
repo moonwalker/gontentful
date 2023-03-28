@@ -3,7 +3,6 @@ package gontentful
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -42,7 +41,7 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 		for id, _ := range locData {
 			entry, entryRefs, err := FormatData(ct, id, schemas, localizedData)
 			if err != nil {
-				log.Fatal(errors.New(fmt.Sprintf("failed to format file content: %s", err.Error())))
+				log.Fatal(fmt.Errorf("failed to format file content: %s", err.Error()))
 			}
 			mergeMaps(includes, entryRefs)
 			entries.Items = append(entries.Items, entry)
@@ -57,7 +56,7 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 
 		includedEntries, err := formatIncludesRecursive(repo, includes, include, schemas, localizedData)
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprintf("failed to fetch includes list: %s", err.Error())))
+			log.Fatal(fmt.Errorf("failed to fetch includes list: %s", err.Error()))
 		}
 		entries.Includes.Entry = includedEntries
 	}
@@ -97,7 +96,7 @@ func getContentLocalized_old(repo string, ct string) (map[string]*content.Schema
 	path := filepath.Join(cfg.WorkDir, ct)
 	rcs, _, err := gh.GetContentsRecursive_old(ctx, accessToken, owner, repo, branch, path)
 	if err != nil {
-		log.Fatal(errors.New(fmt.Sprintf("failed to get json(s) from github: %s", err.Error())))
+		log.Fatal(fmt.Errorf("failed to get json(s) from github: %s", err.Error()))
 	}
 
 	for _, rc := range rcs {
@@ -109,14 +108,14 @@ func getContentLocalized_old(repo string, ct string) (map[string]*content.Schema
 
 		ghc, err := rc.GetContent()
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprintf("RepositoryContent.GetContent failed: %s", err.Error())))
+			log.Fatal(fmt.Errorf("RepositoryContent.GetContent failed: %s", err.Error()))
 		}
 
 		if *rc.Name == content.JsonSchemaName {
 			m := &content.Schema{}
 			err = json.Unmarshal([]byte(ghc), m)
 			if err != nil {
-				log.Fatal((errors.New((fmt.Sprintf("failed to unmarshal schema %s: %s", ect, err.Error())))))
+				log.Fatal(fmt.Errorf("failed to unmarshal schema %s: %s", ect, err.Error()))
 			}
 			schemas[ect] = m
 			continue
@@ -131,7 +130,7 @@ func getContentLocalized_old(repo string, ct string) (map[string]*content.Schema
 		data := content.ContentData{}
 		err = json.Unmarshal([]byte(ghc), &data)
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprintf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error())))
+			log.Fatal(fmt.Errorf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error()))
 		}
 
 		if ld[id] == nil {
@@ -152,16 +151,15 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 	path := filepath.Join(cfg.WorkDir, ct)
 	var rcs []*github.RepositoryContent
 	var err error
-	if false && len(ct) > 0 {
+	if len(ct) == 0 {
 		rcs, _, err = gh.GetArchivedContents(ctx, accessToken, owner, repo, branch, path)
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprintf("failed to get json(s) from github: %s", err.Error())))
+			log.Fatal(fmt.Errorf("failed to get json(s) from github: %s", err.Error()))
 		}
 	} else {
-		localPath := "/Users/rolandhelli/Development/src/github.com/moonwalker/cms-test"
-		rcs, err = GetLocalContentsRecursive(localPath)
+		rcs, _, err = gh.GetContentsRecursive(ctx, accessToken, owner, repo, branch, path)
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprintf("failed to get json(s) from local repo: %s", err.Error())))
+			log.Fatal(fmt.Errorf("failed to get json(s) from github: %s", err.Error()))
 		}
 	}
 
@@ -176,7 +174,7 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 			m := &content.Schema{}
 			err = json.Unmarshal([]byte(*rc.Content), m)
 			if err != nil {
-				log.Fatal((errors.New((fmt.Sprintf("failed to unmarshal schema %s: %s", ect, err.Error())))))
+				log.Fatal(fmt.Errorf("failed to unmarshal schema %s: %s", ect, err.Error()))
 			}
 			schemas[ect] = m
 			continue
@@ -191,7 +189,7 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 		data := content.ContentData{}
 		err = json.Unmarshal([]byte(*rc.Content), &data)
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprintf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error())))
+			log.Fatal(fmt.Errorf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error()))
 		}
 
 		if ld[id] == nil {
@@ -242,10 +240,6 @@ func formatIncludesRecursive(repo string, entryRefs map[string]string, include i
 	include--
 
 	for id, ct := range entryRefs {
-		if ct == "_asset" {
-			continue
-		}
-
 		// fetch schema and data if needed
 		if schemas[ct] == nil {
 			isc, ild := getContentLocalized(repo, ct)
@@ -260,7 +254,7 @@ func formatIncludesRecursive(repo string, entryRefs map[string]string, include i
 
 		e, er, err := FormatData(ct, id, schemas, localizedData)
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprintf("failed to format file content: %s", err.Error())))
+			log.Fatal(fmt.Errorf("failed to format file content: %s", err.Error()))
 		}
 
 		includes = append(includes, e)

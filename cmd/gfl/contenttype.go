@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
@@ -10,6 +9,7 @@ import (
 	"os"
 
 	"github.com/moonwalker/gontentful"
+	"github.com/moonwalker/moonbase/pkg/content"
 )
 
 func transformContentType() {
@@ -44,25 +44,52 @@ func transformContentType() {
 		types, err = cli.ContentTypes.GetCMATypes()
 	}
 	if err != nil {
-		log.Fatal(errors.New(fmt.Sprintf("failed to fetch content type(s): %s", err.Error())))
+		log.Fatal(fmt.Errorf("failed to fetch content type(s): %s", err.Error()))
 	}
 
 	if types.Total > 0 {
 		for _, item := range types.Items {
 			schema, err := gontentful.TransformModel(item)
 			if err != nil {
-				log.Fatal(errors.New(fmt.Sprintf("failed to transform model: %s", err.Error())))
+				log.Fatal(fmt.Errorf("failed to transform model: %s", err.Error()))
 			}
 			path := fmt.Sprintf("./output/%s", item.Sys.ID)
 			err = os.MkdirAll(path, os.ModePerm)
 			if err != nil {
-				log.Fatal(errors.New(fmt.Sprintf("failed to create output folder %s: %s", path, err.Error())))
+				log.Fatal(fmt.Errorf("failed to create output folder %s: %s", path, err.Error()))
 			}
 			b, err := json.Marshal(schema)
 			fmt.Println(fmt.Sprintf("Writing file: %s/_schema.json", path))
 			ioutil.WriteFile(fmt.Sprintf("%s/_schema.json", path), b, 0644)
 		}
 	}
+	// _assets schema
+	aid := "_asset"
+	schema := &content.Schema{
+		ID:   aid,
+		Name: "Asset",
+		Fields: []*content.Field{
+			&content.Field{
+				ID:    "file",
+				Label: "File",
+				Type:  "json",
+			},
+			&content.Field{
+				ID:    "title",
+				Label: "Title",
+				Type:  "text",
+			},
+		},
+	}
+	path := fmt.Sprintf("./output/%s", aid)
+	err = os.MkdirAll(path, os.ModePerm)
+	if err != nil {
+		log.Fatal(fmt.Errorf("failed to create output folder %s: %s", path, err.Error()))
+	}
+	b, err := json.Marshal(schema)
+	fmt.Println(fmt.Sprintf("Writing file: %s/_schema.json", path))
+	ioutil.WriteFile(fmt.Sprintf("%s/_schema.json", path), b, 0644)
+
 	fmt.Println("ContentType successfully transformed")
 }
 
@@ -80,7 +107,7 @@ func formatContentType() {
 func readDir(path string) []fs.DirEntry {
 	dirEntry, err := os.ReadDir(path)
 	if err != nil {
-		log.Fatal(errors.New(fmt.Sprintf("Failed to read input directory: %s", err.Error())))
+		log.Fatal(fmt.Errorf("Failed to read input directory: %s", err.Error()))
 	}
 
 	return dirEntry
