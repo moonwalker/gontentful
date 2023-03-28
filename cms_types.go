@@ -3,7 +3,6 @@ package gontentful
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"path/filepath"
@@ -18,7 +17,7 @@ func GetCMSSchemas(repo string, ct string) (*ContentTypes, error) {
 	path := filepath.Join(cfg.WorkDir, ct)
 	res, _, err := gh.GetSchemasRecursive(ctx, accessToken, owner, repo, branch, path)
 	if err != nil {
-		log.Fatal(errors.New(fmt.Sprintf("Failed to get schemas from github: %s", err.Error())))
+		log.Fatal(fmt.Errorf("Failed to get schemas from github: %s", err.Error()))
 	}
 
 	schemas := &ContentTypes{
@@ -33,16 +32,16 @@ func GetCMSSchemas(repo string, ct string) (*ContentTypes, error) {
 
 		ghc, err := rc.GetContent()
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprintf("RepositoryContent.GetContent failed: %s", err.Error())))
+			log.Fatal(fmt.Errorf("RepositoryContent.GetContent failed: %s", err.Error()))
 		}
 		m := &content.Schema{}
 		_ = json.Unmarshal([]byte(ghc), m)
 		if err != nil {
-			log.Fatal(errors.New(fmt.Sprintf("Failed to unmarshal schema %s: %s", ect, err.Error())))
+			log.Fatal(fmt.Errorf("Failed to unmarshal schema %s: %s", ect, err.Error()))
 		}
 		t, err := FormatSchema(m)
 		if err != nil {
-			log.Fatal(fmt.Sprintf("Failed to format schema: %s", err.Error()))
+			log.Fatal(fmt.Errorf("Failed to format schema: %s", err.Error()))
 		}
 		schemas.Items = append(schemas.Items, t)
 	}
