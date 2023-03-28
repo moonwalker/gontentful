@@ -48,12 +48,12 @@ func transformContent() {
 		res, err = GetAllEntries(cli)
 	}
 	if err != nil {
-		log.Fatal(fmt.Errorf("failed to fetch entries: %s", err.Error()))
+		log.Fatalf("failed to fetch entries: %s", err.Error())
 	}
 
 	locales, err := cli.Locales.GetLocales()
 	if err != nil {
-		log.Fatal(fmt.Errorf("failed to fetch locales: %s", err.Error()))
+		log.Fatalf("failed to fetch locales: %s", err.Error())
 	}
 
 	if res.Total > 0 {
@@ -75,23 +75,26 @@ func transformContent() {
 			for l, e := range entries {
 				b, err := json.Marshal(e)
 				if err != nil {
-					log.Fatal(fmt.Errorf("failed to marshal entry: %s", err.Error()))
+					log.Fatalf("failed to marshal entry: %s", err.Error())
 				}
 
 				path := fmt.Sprintf("./output/%s", ct)
 				err = os.MkdirAll(path, os.ModePerm)
 				if err != nil {
-					log.Fatal(fmt.Errorf("failed to create output folder %s: %s", path, err.Error()))
+					log.Fatalf("failed to create output folder %s: %s", path, err.Error())
 				}
 
 				fn := fmt.Sprintf("%s_%s", item.Sys.ID, l)
-				fmt.Println(fmt.Sprintf("Writing file: %s/%s.json", path, fn))
-				ioutil.WriteFile(fmt.Sprintf("%s/%s.json", path, fn), b, 0644)
+				fmt.Printf("Writing file: %s/%s.json", path, strings.ToLower(fn))
+				ioutil.WriteFile(fmt.Sprintf("%s/%s.json", path, strings.ToLower(fn)), b, 0644)
+				fmt.Printf("\033[2K")
+				fmt.Println()
+				fmt.Printf("\033[1A")
 			}
 		}
 	}
 
-	fmt.Println("Content successfully transformed")
+	fmt.Println("\r\nContent successfully transformed")
 }
 
 func formatContent() {
@@ -99,7 +102,7 @@ func formatContent() {
 
 	entries, _, err := gontentful.GetCMSEntries(contentType, repo, include)
 	if err != nil {
-		log.Fatal(fmt.Errorf("failed to format file content: %s", err.Error()))
+		log.Fatalf("failed to format file content: %s", err.Error())
 	}
 
 	fmt.Println("Entries count:", len(entries.Items))

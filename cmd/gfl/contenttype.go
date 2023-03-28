@@ -44,7 +44,7 @@ func transformContentType() {
 		types, err = cli.ContentTypes.GetCMATypes()
 	}
 	if err != nil {
-		log.Fatal(fmt.Errorf("failed to fetch content type(s): %s", err.Error()))
+		log.Fatalf("failed to fetch content type(s): %s", err.Error())
 	}
 
 	if types.Total > 0 {
@@ -58,9 +58,12 @@ func transformContentType() {
 			if err != nil {
 				log.Fatal(fmt.Errorf("failed to create output folder %s: %s", path, err.Error()))
 			}
-			b, err := json.Marshal(schema)
-			fmt.Println(fmt.Sprintf("Writing file: %s/_schema.json", path))
+			b, _ := json.Marshal(schema)
+			fmt.Printf("Writing file: %s/_schema.json", path)
 			ioutil.WriteFile(fmt.Sprintf("%s/_schema.json", path), b, 0644)
+			fmt.Printf("\033[2K")
+			fmt.Println()
+			fmt.Printf("\033[1A")
 		}
 	}
 	// _assets schema
@@ -69,12 +72,12 @@ func transformContentType() {
 		ID:   aid,
 		Name: "Asset",
 		Fields: []*content.Field{
-			&content.Field{
+			{
 				ID:    "file",
 				Label: "File",
 				Type:  "json",
 			},
-			&content.Field{
+			{
 				ID:    "title",
 				Label: "Title",
 				Type:  "text",
@@ -84,12 +87,14 @@ func transformContentType() {
 	path := fmt.Sprintf("./output/%s", aid)
 	err = os.MkdirAll(path, os.ModePerm)
 	if err != nil {
-		log.Fatal(fmt.Errorf("failed to create output folder %s: %s", path, err.Error()))
+		log.Fatalf("failed to create output folder %s: %s", path, err.Error())
 	}
-	b, err := json.Marshal(schema)
-	fmt.Println(fmt.Sprintf("Writing file: %s/_schema.json", path))
+	b, _ := json.Marshal(schema)
+	fmt.Printf("Writing file: %s/_schema.json", path)
 	ioutil.WriteFile(fmt.Sprintf("%s/_schema.json", path), b, 0644)
-
+	fmt.Printf("\033[2K")
+	fmt.Println()
+	fmt.Printf("\033[1A")
 	fmt.Println("ContentType successfully transformed")
 }
 
@@ -98,7 +103,7 @@ func formatContentType() {
 
 	cts, err := gontentful.GetCMSSchemas(repo, contentType)
 	if err != nil {
-		log.Fatal(fmt.Sprintf("Error in GetCMSSchemas: %s", err.Error()))
+		log.Fatalf("Error in GetCMSSchemas: %s", err.Error())
 	}
 
 	fmt.Println(fmt.Sprintf("%v schemas successfully formatted for content sync.", len(cts.Items)))
@@ -107,7 +112,7 @@ func formatContentType() {
 func readDir(path string) []fs.DirEntry {
 	dirEntry, err := os.ReadDir(path)
 	if err != nil {
-		log.Fatal(fmt.Errorf("Failed to read input directory: %s", err.Error()))
+		log.Fatalf("Failed to read input directory: %s", err.Error())
 	}
 
 	return dirEntry
