@@ -8,6 +8,7 @@ import (
 )
 
 const (
+	CONTENT_TYPE         = "ContentType"
 	DELETED_CONTENT_TYPE = "DeletedContentType"
 )
 
