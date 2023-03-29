@@ -20,7 +20,7 @@ func NewPGDelete(schemaName string, sys *Sys) *PGDelete {
 	if sys.Type == DELETED_ENTRY {
 		tableName = toSnakeCase(sys.ContentType.Sys.ID)
 	} else if sys.Type == DELETED_ASSET {
-		tableName = assetTableName
+		tableName = ASSET_TABLE_NAME
 	}
 	return &PGDelete{
 		SchemaName: schemaName,

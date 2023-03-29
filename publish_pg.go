@@ -71,7 +71,7 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 		}
 		break
 	case ASSET:
-		q.TableName = assetTableName
+		q.TableName = ASSET_TABLE_NAME
 		for _, oLoc := range space.Locales {
 			fieldValues := make(map[string]interface{})
 			locTitle := item.Fields["title"][oLoc.Code]

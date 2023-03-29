@@ -6,13 +6,13 @@ import (
 )
 
 const (
-	ASSET         = "Asset"
-	DELETED_ASSET = "DeletedAsset"
+	ASSET            = "Asset"
+	DELETED_ASSET    = "DeletedAsset"
+	ASSET_TABLE_NAME = "_asset"
 )
 
 var (
-	assetColumns   = []string{"title", "description", "file_name", "content_type", "url"}
-	assetTableName = "_asset"
+	assetColumns = []string{"title", "description", "file_name", "content_type", "url"}
 )
 
 type AssetsService service

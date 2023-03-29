@@ -338,7 +338,7 @@ func getFieldLinkContentType(validations []*FieldValidation) string {
 
 func getFieldLinkType(linkType string, validations []*FieldValidation) string {
 	if linkType == ASSET {
-		return assetTableName
+		return ASSET_TABLE_NAME
 	}
 	if linkType == ENTRY {
 		lct := getFieldLinkContentType(validations)
@@ -476,14 +476,14 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 
 	if field.LinkType == ASSET {
 		col.IsAsset = true
-		assetJoinAlias := getJoinAlias(path, columnName, assetTableName)
+		assetJoinAlias := getJoinAlias(path, columnName, ASSET_TABLE_NAME)
 		if path == "" {
 			col.JoinAlias = tableName
 		} else {
 			col.JoinAlias = assetJoinAlias
 		}
 		col.Reference = &PGSQLProcedureReference{
-			TableName:  assetTableName,
+			TableName:  ASSET_TABLE_NAME,
 			ForeignKey: toSnakeCase(field.ID),
 			JoinAlias:  assetJoinAlias,
 			Localized:  col.Localized,
@@ -521,7 +521,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 	} else if field.Items != nil {
 		if field.Items.LinkType == ASSET {
 			col.ConTableName = getConTableName(tableName, toSnakeCase(field.ID))
-			assetJoinAlias := getJoinAlias(path, columnName, assetTableName)
+			assetJoinAlias := getJoinAlias(path, columnName, ASSET_TABLE_NAME)
 			if path == "" {
 				col.JoinAlias = tableName
 			} else {
@@ -529,7 +529,7 @@ func NewPGSQLProcedureColumn(columnName string, field *ContentTypeField, items m
 			}
 			col.IsAsset = true
 			col.Reference = &PGSQLProcedureReference{
-				TableName:  assetTableName,
+				TableName:  ASSET_TABLE_NAME,
 				ForeignKey: toSnakeCase(field.ID),
 				JoinAlias:  assetJoinAlias,
 				Localized:  col.Localized,

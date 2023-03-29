@@ -102,7 +102,7 @@ func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entr
 			appendTables(schema, item, tableName, columnsByContentType[contentType].fieldColumns, columnsByContentType[contentType].columnReferences, columnsByContentType[contentType].localizedColumns, !initSync)
 			break
 		case ASSET:
-			appendTables(schema, item, assetTableName, assetColumns, nil, localizedAssetColumns, !initSync)
+			appendTables(schema, item, ASSET_TABLE_NAME, assetColumns, nil, localizedAssetColumns, !initSync)
 			break
 			// case DELETED_ENTRY:
 			// 	contentType := item.Sys.ContentType.Sys.ID
