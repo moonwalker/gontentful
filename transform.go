@@ -337,13 +337,21 @@ func TransformEntry(locales *Locales, model *Entry) (map[string]*content.Content
 			}
 		}
 
-		//data.Fields["Version"] = model.Sys.Version
-		data.Fields["createdAt"] = model.Sys.CreatedAt
-		data.Fields["updatedAt"] = model.Sys.UpdatedAt
+		data.CreatedAt = getSysDate(model.Sys.CreatedAt)
+		data.CreatedBy = "admin"
+		data.UpdatedAt = getSysDate(model.Sys.UpdatedAt)
+		data.UpdatedBy = "admin"
+		data.Version = model.Sys.Version
 		res[strings.ToLower(loc.Code)] = data
 	}
 
 	return res, nil
+}
+
+func getSysDate(date string) *time.Time {
+	var t time.Time
+	t, _ = time.Parse(time.RFC3339, date)
+	return &t
 }
 
 func getSysID(lsys map[string]interface{}) interface{} {
