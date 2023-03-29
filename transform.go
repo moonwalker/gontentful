@@ -279,6 +279,7 @@ func FormatSchema(schema *content.Schema) (*ContentType, error) {
 	if schema.UpdatedAt != nil {
 		ct.Sys.UpdatedAt = schema.UpdatedAt.String()
 	}
+
 	ct.Sys.CreatedBy = &Entry{
 		Sys: &Sys{
 			ID: schema.CreatedBy,
@@ -336,13 +337,21 @@ func TransformEntry(locales *Locales, model *Entry) (map[string]*content.Content
 			}
 		}
 
-		//data.Fields["Version"] = model.Sys.Version
-		//data.Fields["CreatedAt"] = model.Sys.CreatedAt
-		//data.Fields["UpdatedAt"] = model.Sys.UpdatedAt
+		data.CreatedAt = getSysDate(model.Sys.CreatedAt)
+		data.CreatedBy = "admin"
+		data.UpdatedAt = getSysDate(model.Sys.UpdatedAt)
+		data.UpdatedBy = "admin"
+		data.Version = model.Sys.Version
 		res[strings.ToLower(loc.Code)] = data
 	}
 
 	return res, nil
+}
+
+func getSysDate(date string) *time.Time {
+	var t time.Time
+	t, _ = time.Parse(time.RFC3339, date)
+	return &t
 }
 
 func getSysID(lsys map[string]interface{}) interface{} {
@@ -376,12 +385,16 @@ func FormatData(contentType string, id string, schemas map[string]*content.Schem
 func formatEntry(id string, contentType string, contents map[string]content.ContentData, refFields map[string]*content.Field) (*Entry, map[string]string, error) {
 	includes := make(map[string]string)
 
+	sysType := "Entry"
+	if contentType == "_asset" {
+		sysType = "Asset"
+	}
+
 	e := &Entry{
 		Sys: &Sys{
-			ID:   id,
-			Type: "Entry",
-			//CreatedAt: contents[defaultLocale].Fields["CreatedAt"].(string),
-			//UpdatedAt: contents[defaultLocale].Fields["UpdatedAt"].(string),
+			ID:      id,
+			Type:    sysType,
+			Version: contents[defaultLocale].Version,
 			ContentType: &ContentType{
 				Sys: &Sys{
 					Type:     "Link",
@@ -393,25 +406,16 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 		Fields: make(map[string]interface{}),
 	}
 
-	cat := contents[defaultLocale].Fields["CreatedAt"]
-	if cat == nil {
-		cat = time.Now().Format("2006-01-02T15:04:05")
+	if contents[defaultLocale].CreatedAt != nil {
+		e.Sys.CreatedAt = contents[defaultLocale].CreatedAt.String()
 	}
-	e.Sys.CreatedAt = cat.(string)
-	uat := contents[defaultLocale].Fields["UpdatedAt"]
-	if uat == nil {
-		uat = time.Now().Format("2006-01-02T15:04:05")
+	if contents[defaultLocale].UpdatedAt != nil {
+		e.Sys.UpdatedAt = contents[defaultLocale].UpdatedAt.String()
 	}
-	e.Sys.CreatedAt = uat.(string)
 
 	for loc, data := range contents {
 		for fn, fv := range data.Fields {
-			/*if fn == "jurisdiction" || fn == "icon" || fn == "icons" {
-				fmt.Println(fn, fv)
-				continue
-			}*/
 			if fv == nil {
-				//fmt.Println("nil value", contentType, data.ID, loc, fn, fv)
 				continue
 			}
 			if e.Fields[fn] == nil {
@@ -421,15 +425,9 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 			if rf := refFields[fn]; rf != nil {
 				if rf.List {
 					if rl, ok := fv.([]interface{}); ok {
-						//refList := make([]*Sys, 0)
 						refList := make([]string, 0)
 						for _, r := range rl {
 							if rid, ok := r.(string); ok {
-								/*refList = append(refList, &Sys{
-									Type:     "Link",
-									LinkType: "Entry",
-									ID:       rid,
-								})*/
 								refList = append(refList, rid)
 								includes[rid] = rf.Type
 							}
@@ -437,11 +435,6 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 						e.Fields[fn].(map[string]interface{})[loc] = refList
 					}
 				} else {
-					/*e.Fields[fn].(map[string]interface{})[loc] = &Sys{
-						Type:     "Link",
-						LinkType: "Entry",
-						ID:       fv.(string),
-					}*/
 					e.Fields[fn].(map[string]interface{})[loc] = fv.(string)
 					includes[fv.(string)] = rf.Type
 				}
