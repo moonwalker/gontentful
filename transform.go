@@ -392,10 +392,9 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 
 	e := &Entry{
 		Sys: &Sys{
-			ID:   id,
-			Type: sysType,
-			//CreatedAt: contents[defaultLocale].Fields["CreatedAt"].(string),
-			//UpdatedAt: contents[defaultLocale].Fields["UpdatedAt"].(string),
+			ID:      id,
+			Type:    sysType,
+			Version: contents[defaultLocale].Version,
 			ContentType: &ContentType{
 				Sys: &Sys{
 					Type:     "Link",
@@ -407,16 +406,12 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 		Fields: make(map[string]interface{}),
 	}
 
-	cat := contents[defaultLocale].Fields["createdAt"]
-	if cat == nil {
-		cat = time.Now().Format("2006-01-02T15:04:05")
+	if contents[defaultLocale].CreatedAt != nil {
+		e.Sys.CreatedAt = contents[defaultLocale].CreatedAt.String()
 	}
-	e.Sys.CreatedAt = cat.(string)
-	uat := contents[defaultLocale].Fields["updatedAt"]
-	if uat == nil {
-		uat = time.Now().Format("2006-01-02T15:04:05")
+	if contents[defaultLocale].UpdatedAt != nil {
+		e.Sys.UpdatedAt = contents[defaultLocale].UpdatedAt.String()
 	}
-	e.Sys.CreatedAt = uat.(string)
 
 	for loc, data := range contents {
 		for fn, fv := range data.Fields {
