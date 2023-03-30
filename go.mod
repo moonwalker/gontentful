@@ -7,7 +7,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.7
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/moonwalker/moonbase v0.0.0-20230330090941-423f0baa0a06
+	github.com/moonwalker/moonbase v0.0.0-20230330143541-7058aef3e89d
 	github.com/spf13/cobra v1.6.1
 	gopkg.in/yaml.v3 v3.0.1
 )
