@@ -5,12 +5,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	gh "github.com/moonwalker/moonbase/pkg/github"
 	"gopkg.in/yaml.v3"
 )
+
+func getAccessToken() string {
+	ght := os.Getenv("GITHUB_TOKEN")
+	if len(ght) == 0 {
+		ght = os.Getenv("GH_TOKEN")
+	}
+	return ght
+}
 
 func parseFileName(fn string) (string, string, error) {
 	ext := filepath.Ext(fn)
@@ -26,13 +35,16 @@ func parseFileName(fn string) (string, string, error) {
 	return s[0], s[1], nil
 }
 
-func getConfig(ctx context.Context, accessToken string, owner string, repo string, ref string) *Config {
+func getConfig(ctx context.Context, owner string, repo string, ref string) *Config {
+	accessToken := getAccessToken()
 	data, _, _ := gh.GetBlob(ctx, accessToken, owner, repo, ref, configPath)
-	return parseConfig(data)
+	return parseConfig(data, accessToken)
 }
 
-func parseConfig(data []byte) *Config {
-	cfg := &Config{}
+func parseConfig(data []byte, token string) *Config {
+	cfg := &Config{
+		Token: token,
+	}
 
 	err := yaml.Unmarshal(data, cfg)
 	if err != nil {

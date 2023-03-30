@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 )
 
 type Config struct {
+	Token   string
 	WorkDir string `json:"workdir" yaml:"workdir"`
 }
 
@@ -26,8 +26,6 @@ const (
 	configPath = "moonbase.yaml"
 	include    = 0
 )
-
-var accessToken = os.Getenv("GITHUB_TOKEN")
 
 func GetCMSEntries(contentType string, repo string, include int) (*Entries, *ContentTypes, error) {
 	schemas, localizedData := getContentLocalized(repo, contentType)
@@ -90,10 +88,10 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 
 func GetPublishedEntry(repo string, contentType string, prefix string) (*PublishedEntry, error) {
 	ctx := context.Background()
-	cfg := getConfig(ctx, accessToken, owner, repo, branch)
+	cfg := getConfig(ctx, owner, repo, branch)
 	path := filepath.Join(cfg.WorkDir, contentType)
 
-	rcs, _, err := gh.GetAllLocaleContents(ctx, accessToken, owner, repo, branch, path, prefix)
+	rcs, _, err := gh.GetAllLocaleContents(ctx, cfg.Token, owner, repo, branch, path, prefix)
 	if err != nil {
 		return nil, err
 	}
@@ -133,12 +131,12 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 
 func getContentLocalized_old(repo string, ct string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData) {
 	ctx := context.Background()
-	cfg := getConfig(ctx, accessToken, owner, repo, branch)
+	cfg := getConfig(ctx, owner, repo, branch)
 	localizedData := make(map[string]map[string]map[string]content.ContentData)
 	schemas := make(map[string]*content.Schema)
 
 	path := filepath.Join(cfg.WorkDir, ct)
-	rcs, _, err := gh.GetContentsRecursive_old(ctx, accessToken, owner, repo, branch, path)
+	rcs, _, err := gh.GetContentsRecursive_old(ctx, cfg.Token, owner, repo, branch, path)
 	if err != nil {
 		log.Fatalf("failed to get json(s) from github: %s", err.Error())
 	}
@@ -188,7 +186,7 @@ func getContentLocalized_old(repo string, ct string) (map[string]*content.Schema
 
 func getContentLocalized(repo string, ct string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData) {
 	ctx := context.Background()
-	cfg := getConfig(ctx, accessToken, owner, repo, branch)
+	cfg := getConfig(ctx, owner, repo, branch)
 	localizedData := make(map[string]map[string]map[string]content.ContentData)
 	schemas := make(map[string]*content.Schema)
 
@@ -196,12 +194,12 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 	var rcs []*github.RepositoryContent
 	var err error
 	if len(ct) == 0 {
-		rcs, _, err = gh.GetArchivedContents(ctx, accessToken, owner, repo, branch, path)
+		rcs, _, err = gh.GetArchivedContents(ctx, cfg.Token, owner, repo, branch, path)
 		if err != nil {
 			log.Fatalf("failed to get json(s) from github: %s", err.Error())
 		}
 	} else {
-		rcs, _, err = gh.GetContentsRecursive(ctx, accessToken, owner, repo, branch, path)
+		rcs, _, err = gh.GetContentsRecursive(ctx, cfg.Token, owner, repo, branch, path)
 		if err != nil {
 			log.Fatalf("failed to get json(s) from github: %s", err.Error())
 		}
@@ -209,6 +207,9 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 
 	for _, rc := range rcs {
 		ect := extractContentype(*rc.Path)
+		if ect == content.ImageFolder {
+			continue
+		}
 		if localizedData[ect] == nil {
 			localizedData[ect] = make(map[string]map[string]content.ContentData)
 		}

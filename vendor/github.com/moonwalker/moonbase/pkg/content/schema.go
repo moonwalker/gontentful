@@ -4,7 +4,10 @@ import (
 	"time"
 )
 
-const JsonSchemaName = "_schema.json"
+const (
+	JsonSchemaName = "_schema.json"
+	ImageFolder    = "_images"
+)
 
 type Asset struct {
 	ID          string     `json:"id,omitempty"`
