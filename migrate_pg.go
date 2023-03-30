@@ -16,7 +16,7 @@ const (
 	copyTableTpl = `INSERT INTO %[1]s.%[3]s SELECT * FROM %[2]s.%[3]s;`
 )
 
-func MigratePGSQL(databaseURL string, newSchemaName string, locales []*Locale, types []*ContentType, entries []*Entry, syncToken string, createFunctions bool) error {
+func MigratePGSQL(databaseURL string, newSchemaName string, locales []*Locale, types []*ContentType, cmaTypes []*ContentType, entries []*Entry, syncToken string, createFunctions bool) error {
 
 	// 0) drop newSchema if exists
 	drop := NewPGDrop(newSchemaName)
@@ -26,7 +26,7 @@ func MigratePGSQL(databaseURL string, newSchemaName string, locales []*Locale, t
 	}
 
 	// 1) re-create schema
-	schema := NewPGSQLSchema(newSchemaName, locales, "", types, 0)
+	schema := NewPGSQLSchema(newSchemaName, locales, "", cmaTypes, 0)
 	err = schema.Exec(databaseURL)
 	if err != nil {
 		return err
@@ -64,7 +64,7 @@ func MigratePGSQL(databaseURL string, newSchemaName string, locales []*Locale, t
 	return nil
 }
 
-func MigrateGamesPGSQL(databaseURL string, newSchemaName string, contentSchemaName string, locales []*Locale, types []*ContentType, entries []*Entry, syncToken string) error {
+func MigrateGamesPGSQL(databaseURL string, newSchemaName string, contentSchemaName string, locales []*Locale, types []*ContentType, cmaTypes []*ContentType, entries []*Entry, syncToken string) error {
 
 	// 0) drop newSchema if exists
 	drop := NewPGDrop(newSchemaName)
@@ -74,7 +74,7 @@ func MigrateGamesPGSQL(databaseURL string, newSchemaName string, contentSchemaNa
 	}
 
 	// 1) re-create schema
-	schema := NewPGSQLSchema(newSchemaName, locales, "", types, 0)
+	schema := NewPGSQLSchema(newSchemaName, locales, "", cmaTypes, 0)
 	schema.ContentSchema = contentSchemaName
 	err = schema.Exec(databaseURL)
 	if err != nil {
