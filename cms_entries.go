@@ -224,7 +224,7 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 			continue
 		}
 
-		id, loc, err := parseFileName(*rc.Name)
+		_, loc, err := parseFileName(*rc.Name)
 		if err != nil {
 			//fmt.Println(fmt.Sprintf("Skipping file: %s Err: %s", *rc.Path, err.Error()))
 			continue
@@ -236,10 +236,10 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 			log.Fatalf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error())
 		}
 
-		if ld[id] == nil {
-			ld[id] = make(map[string]content.ContentData)
+		if ld[data.ID] == nil {
+			ld[data.ID] = make(map[string]content.ContentData)
 		}
-		ld[id][loc] = data
+		ld[data.ID][loc] = data
 	}
 
 	return schemas, localizedData
