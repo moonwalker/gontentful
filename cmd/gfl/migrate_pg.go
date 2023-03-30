@@ -44,12 +44,12 @@ var pgMigrateCmd = &cobra.Command{
 		}
 		log.Println("get types done")
 
-		log.Println("get cma types...")
-		cmaTypes, err := client.ContentTypes.GetCMATypes()
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Println("get cma types done")
+		// log.Println("get cma types...")
+		// cmaTypes, err := client.ContentTypes.GetCMATypes()
+		// if err != nil {
+		// 	log.Fatal(err)
+		// }
+		// log.Println("get cma types done")
 
 		log.Println("get data...")
 		res, err := client.Spaces.Sync("")
@@ -59,7 +59,7 @@ var pgMigrateCmd = &cobra.Command{
 		log.Println("get data done")
 
 		log.Println("migrate database...")
-		err = gontentful.MigratePGSQL(migrateDatabaseURL, schemaName, space.Locales, types.Items, cmaTypes.Items, res.Items, res.Token, false)
+		err = gontentful.MigratePGSQL(migrateDatabaseURL, schemaName, space.Locales, types.Items, res.Items, res.Token, false)
 		if err != nil {
 			log.Fatal(err)
 		}
