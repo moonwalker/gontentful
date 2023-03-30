@@ -119,19 +119,18 @@ func transformField(cf *content.Field, fieldType string, linkType string, valida
 	}
 }
 
-func transformValidationFields(fType string, vals []*content.Validation, ctf *ContentTypeField) []*FieldValidation {
-	fVals := make([]*FieldValidation, 0)
+func transformValidationFields(vals []*content.Validation) ([]*FieldValidation, bool) {
+	cfValidations := make([]*FieldValidation, 0)
+	required := false
 	for _, v := range vals {
 		if v.Type == "unique" && v.Value == true {
-			fVals = append(fVals, &FieldValidation{
+			cfValidations = append(cfValidations, &FieldValidation{
 				Unique: true,
 			})
 		}
 
 		if v.Type == "required" && v.Value == true {
-			ctf.Required = true
-		} else {
-			ctf.Required = false
+			required = true
 		}
 
 		if v.Type == "in" {
@@ -139,7 +138,7 @@ func transformValidationFields(fType string, vals []*content.Validation, ctf *Co
 			for _, i := range v.Value.([]interface{}) {
 				strarr = append(strarr, i.(string))
 			}
-			fVals = append(fVals, &FieldValidation{
+			cfValidations = append(cfValidations, &FieldValidation{
 				In: strarr,
 			})
 		}
@@ -157,7 +156,7 @@ func transformValidationFields(fType string, vals []*content.Validation, ctf *Co
 					rv.Max = &i
 				}
 			}
-			fVals = append(fVals, &FieldValidation{
+			cfValidations = append(cfValidations, &FieldValidation{
 				Size: rv,
 			})
 		}
@@ -173,48 +172,48 @@ func transformValidationFields(fType string, vals []*content.Validation, ctf *Co
 					rv.Flags = int(v.(float64))
 				}
 			}
-			fVals = append(fVals, &FieldValidation{
+			cfValidations = append(cfValidations, &FieldValidation{
 				Regexp: rv,
 			})
 		}
 	}
-	return fVals
+	return cfValidations, required
 }
 
 func transformToContentfulField(cf *ContentTypeField, fieldType string, validations []*content.Validation, list bool, reference bool) {
-	cf.Type = GetContentfulType(fieldType)
 
+	cfVals, required := transformValidationFields(validations)
+	if required {
+		cf.Required = true
+	}
 	if list {
 		cf.Type = "Array"
 		cf.Items = &FieldTypeArrayItem{}
+
 		if reference {
 			cf.Items.Type = "Link"
-			cf.Items.Validations = append(cf.Validations, &FieldValidation{
-				LinkContentType: append(make([]string, 0), fieldType),
-			})
+			cf.Items.LinkType = "Entry"
 			if fieldType == "_asset" {
 				cf.Items.LinkType = "Asset"
-			} else {
-				cf.Items.LinkType = "Entry"
 			}
-		} else {
-			cf.Items.Type = GetContentfulType(fieldType)
-			cf.Items.Validations = transformValidationFields(cf.Items.Type, validations, cf)
-		}
-	} else if !list && reference {
-		cf.Type = "Link"
-		if len(cf.Validations) > 0 {
-			cf.Validations = append(cf.Validations, &FieldValidation{
+			cf.Items.Validations = append(cfVals, &FieldValidation{
 				LinkContentType: append(make([]string, 0), fieldType),
 			})
+		} else {
+			cf.Items.Type = GetContentfulType(fieldType)
 		}
+	} else if reference {
+		cf.Type = "Link"
+		cf.LinkType = "Entry"
 		if fieldType == "_asset" {
 			cf.LinkType = "Asset"
-		} else {
-			cf.LinkType = "Entry"
 		}
+		cf.Validations = append(cfVals, &FieldValidation{
+			LinkContentType: append(make([]string, 0), fieldType),
+		})
 	} else {
-		cf.Validations = transformValidationFields(cf.Type, validations, cf)
+		cf.Type = GetContentfulType(fieldType)
+		cf.Validations = cfVals
 	}
 }
 
@@ -252,27 +251,6 @@ func FormatSchema(schema *content.Schema) (*ContentType, error) {
 			Version: schema.Version,
 		},
 	}
-
-	for _, f := range schema.Fields {
-		ctf := &ContentTypeField{
-			ID:        f.ID,
-			Name:      f.Label,
-			Localized: f.Localized,
-			Disabled:  f.Disabled,
-		}
-		if f.DefaultValue != nil {
-			ctf.DefaultValue = make(map[string]interface{})
-			ctf.DefaultValue["en"] = f.DefaultValue
-		}
-		transformToContentfulField(ctf, f.Type, f.Validations, f.List, f.Reference)
-
-		ct.Fields = append(ct.Fields, ctf)
-	}
-
-	ct.Sys = &Sys{
-		ID:      schema.ID,
-		Version: schema.Version,
-	}
 	if schema.CreatedAt != nil {
 		ct.Sys.CreatedAt = schema.CreatedAt.Format(time.RFC3339Nano)
 	}
@@ -289,6 +267,25 @@ func FormatSchema(schema *content.Schema) (*ContentType, error) {
 		Sys: &Sys{
 			ID: schema.CreatedBy,
 		},
+	}
+
+	for _, f := range schema.Fields {
+		ctf := &ContentTypeField{
+			ID:          f.ID,
+			Name:        f.Label,
+			Localized:   f.Localized,
+			Disabled:    f.Disabled,
+			Required:    false,
+			Omitted:     false,
+			Validations: make([]*FieldValidation, 0),
+		}
+		if f.DefaultValue != nil {
+			ctf.DefaultValue = make(map[string]interface{})
+			ctf.DefaultValue["en"] = f.DefaultValue
+		}
+		transformToContentfulField(ctf, f.Type, f.Validations, f.List, f.Reference)
+
+		ct.Fields = append(ct.Fields, ctf)
 	}
 
 	return ct, nil
