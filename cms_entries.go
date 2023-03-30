@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"path/filepath"
 	"time"
 
@@ -28,7 +27,10 @@ const (
 )
 
 func GetCMSEntries(contentType string, repo string, include int) (*Entries, *ContentTypes, error) {
-	schemas, localizedData := getContentLocalized(repo, contentType)
+	schemas, localizedData, err := getContentLocalized(repo, contentType)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get content localized: %s", err.Error())
+	}
 	entries := &Entries{
 		Sys: &Sys{
 			Type: "Array",
@@ -40,7 +42,7 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 		for id, _ := range locData {
 			entry, entryRefs, err := FormatData(ct, id, schemas, localizedData)
 			if err != nil {
-				log.Fatalf("failed to format file content: %s", err.Error())
+				return nil, nil, fmt.Errorf("failed to format file content: %s", err.Error())
 			}
 			mergeMaps(includes, entryRefs)
 			entries.Items = append(entries.Items, entry)
@@ -55,7 +57,7 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 
 		includedEntries, err := formatIncludesRecursive(repo, includes, include, schemas, localizedData)
 		if err != nil {
-			log.Fatalf("failed to fetch includes list: %s", err.Error())
+			return nil, nil, fmt.Errorf("failed to fetch includes list: %s", err.Error())
 		}
 		entries.Includes.Entry = includedEntries
 	}
@@ -67,7 +69,7 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 		}
 		t, err := FormatSchema(schema)
 		if err != nil {
-			log.Fatal(fmt.Sprintf("Failed to format schema: %s", err.Error()))
+			return nil, nil, fmt.Errorf("failed to format schema: %s", err.Error())
 		}
 		cts = append(cts, t)
 	}
@@ -93,7 +95,7 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 
 	rcs, _, err := gh.GetAllLocaleContents(ctx, cfg.Token, owner, repo, branch, path, prefix)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
 	}
 	fields := make(map[string]map[string]interface{})
 	var sys *Sys
@@ -106,7 +108,7 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 		data := content.ContentData{}
 		err = json.Unmarshal([]byte(*rc.Content), &data)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to unmarshal content data: %s", err.Error())
 		}
 		for k, v := range data.Fields {
 			if fields[k] == nil {
@@ -195,13 +197,13 @@ func GetLocalContentsRecursive(path string) ([]*github.RepositoryContent, error)
 	resp := make([]*github.RepositoryContent, 0)
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
-		log.Fatal(err)
+		return nil, fmt.Errorf("failed to read dir at %s: %s", path, err.Error())
 	}
 	for _, f := range files {
 		if f.IsDir() {
 			fs, err := GetLocalContentsRecursive(fmt.Sprintf("%s/%s", path, f.Name()))
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to get local contents recursive: %s", err.Error())
 			}
 			resp = append(resp, fs...)
 		} else {
@@ -209,7 +211,7 @@ func GetLocalContentsRecursive(path string) ([]*github.RepositoryContent, error)
 			fPath := fmt.Sprintf("%s/%s", path, f.Name())
 			fc, err := ioutil.ReadFile(fPath)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to read file at %s: %s", path, err.Error())
 			}
 			fContent := string(fc)
 			rc := &github.RepositoryContent{
