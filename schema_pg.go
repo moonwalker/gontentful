@@ -120,10 +120,10 @@ var schemaFuncMap = template.FuncMap{
 	"fmtLocale": fmtLocale,
 }
 
-func NewPGSQLSchema(schemaName string, space *Space, contentTypeFilter string, items []*ContentType, includeDepth int64) *PGSQLSchema {
+func NewPGSQLSchema(schemaName string, locales []*Locale, contentTypeFilter string, items []*ContentType, includeDepth int64) *PGSQLSchema {
 	schema := &PGSQLSchema{
 		SchemaName:     schemaName,
-		Locales:        space.Locales,
+		Locales:        locales,
 		Tables:         make([]*PGSQLTable, 0),
 		ConTables:      make([]*PGSQLTable, 0),
 		References:     make([]*PGSQLReference, 0),

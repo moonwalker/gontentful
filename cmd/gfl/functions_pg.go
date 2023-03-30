@@ -64,7 +64,7 @@ var pgFuncCmd = &cobra.Command{
 		}
 
 		log.Println("creating postgres schema...")
-		schema := gontentful.NewPGSQLSchema(schemaName, space, "", cmaTypes.Items, includeDepth)
+		schema := gontentful.NewPGSQLSchema(schemaName, space.Locales, "", cmaTypes.Items, includeDepth)
 
 		if storeToFile {
 			s, err := json.Marshal(schema)

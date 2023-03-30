@@ -68,12 +68,12 @@ type PGSyncConTable struct {
 	Rows      [][]interface{}
 }
 
-func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entries []*Entry, initSync bool) *PGSyncSchema {
+func NewPGSyncSchema(schemaName string, locales []*Locale, types []*ContentType, entries []*Entry, initSync bool) *PGSyncSchema {
 
 	defLocale := defaultLocale
-	if len(space.Locales) > 0 {
-		defLocale = space.Locales[0].Code
-		for _, loc := range space.Locales {
+	if len(locales) > 0 {
+		defLocale = locales[0].Code
+		for _, loc := range locales {
 			if loc.Default {
 				defLocale = strings.ToLower(loc.Code)
 				break
@@ -83,7 +83,7 @@ func NewPGSyncSchema(schemaName string, space *Space, types []*ContentType, entr
 
 	schema := &PGSyncSchema{
 		SchemaName:       schemaName,
-		Locales:          space.Locales,
+		Locales:          locales,
 		DefaultLocale:    defLocale,
 		Tables:           make(map[string]*PGSyncTable),
 		Deleted:          make(map[string]*PGDeletedTable),
