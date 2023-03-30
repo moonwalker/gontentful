@@ -143,6 +143,9 @@ CREATE TABLE IF NOT EXISTS _provider_studio_required_fields (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS game_sys_id ON _game_content (sys_id);
+
+ALTER TABLE _game_meta ALTER COLUMN release_date TYPE DATE USING TO_DATE(release_date, 'DD/MM/YYYY');
+UPDATE _game_meta SET release_date = NULL WHERE release_date = '0001-01-01 BC';
 `
 
 // ALTER TABLE _game_meta DROP CONSTRAINT IF EXISTS gamesbrowser_content_fkey;
