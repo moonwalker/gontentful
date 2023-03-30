@@ -119,8 +119,8 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 		if sys == nil {
 			sys = &Sys{
 				ID:        data.ID,
-				CreatedAt: data.CreatedAt.Format(time.RFC3339),
-				UpdatedAt: data.UpdatedAt.Format(time.RFC3339),
+				CreatedAt: data.CreatedAt.Format(time.RFC3339Nano),
+				UpdatedAt: data.UpdatedAt.Format(time.RFC3339Nano),
 				Version:   data.Version,
 			}
 		}

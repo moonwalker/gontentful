@@ -8,8 +8,8 @@ import (
 )
 
 func TransformModel(model *ContentType) (*content.Schema, error) {
-	createdAt, _ := time.Parse(time.RFC3339, model.Sys.CreatedAt)
-	updatedAt, _ := time.Parse(time.RFC3339, model.Sys.UpdatedAt)
+	createdAt, _ := time.Parse(time.RFC3339Nano, model.Sys.CreatedAt)
+	updatedAt, _ := time.Parse(time.RFC3339Nano, model.Sys.UpdatedAt)
 	schema := &content.Schema{
 		ID:          model.Sys.ID,
 		Name:        model.Name,
@@ -274,10 +274,10 @@ func FormatSchema(schema *content.Schema) (*ContentType, error) {
 		Version: schema.Version,
 	}
 	if schema.CreatedAt != nil {
-		ct.Sys.CreatedAt = schema.CreatedAt.String()
+		ct.Sys.CreatedAt = schema.CreatedAt.Format(time.RFC3339Nano)
 	}
 	if schema.UpdatedAt != nil {
-		ct.Sys.UpdatedAt = schema.UpdatedAt.String()
+		ct.Sys.UpdatedAt = schema.UpdatedAt.Format(time.RFC3339Nano)
 	}
 
 	ct.Sys.CreatedBy = &Entry{
@@ -350,7 +350,7 @@ func TransformEntry(locales *Locales, model *Entry) (map[string]*content.Content
 
 func getSysDate(date string) *time.Time {
 	var t time.Time
-	t, _ = time.Parse(time.RFC3339, date)
+	t, _ = time.Parse(time.RFC3339Nano, date)
 	return &t
 }
 
@@ -407,10 +407,10 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 	}
 
 	if contents[defaultLocale].CreatedAt != nil {
-		e.Sys.CreatedAt = contents[defaultLocale].CreatedAt.Format(time.RFC3339)
+		e.Sys.CreatedAt = contents[defaultLocale].CreatedAt.Format(time.RFC3339Nano)
 	}
 	if contents[defaultLocale].UpdatedAt != nil {
-		e.Sys.UpdatedAt = contents[defaultLocale].UpdatedAt.Format(time.RFC3339)
+		e.Sys.UpdatedAt = contents[defaultLocale].UpdatedAt.Format(time.RFC3339Nano)
 	}
 
 	for loc, data := range contents {
