@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/google/go-github/v48/github"
 	"github.com/moonwalker/moonbase/pkg/content"
@@ -87,7 +88,7 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 	return entries, contentTypes, nil
 }
 
-func GetPublishFields(repo string, contentType string, prefix string) (PublishFields, error) {
+func GetPublishedEntry(repo string, contentType string, prefix string) (*PublishedEntry, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, accessToken, owner, repo, branch)
 	path := filepath.Join(cfg.WorkDir, contentType)
@@ -97,7 +98,7 @@ func GetPublishFields(repo string, contentType string, prefix string) (PublishFi
 		return nil, err
 	}
 	fields := make(map[string]map[string]interface{})
-
+	var sys *Sys
 	for _, rc := range rcs {
 		_, loc, err := parseFileName(*rc.Name)
 		if err != nil {
@@ -115,8 +116,19 @@ func GetPublishFields(repo string, contentType string, prefix string) (PublishFi
 			}
 			fields[k][loc] = v
 		}
+		if sys == nil {
+			sys = &Sys{
+				ID:        data.ID,
+				CreatedAt: data.CreatedAt.Format(time.RFC3339),
+				UpdatedAt: data.UpdatedAt.Format(time.RFC3339),
+				Version:   data.Version,
+			}
+		}
 	}
-	return PublishFields(fields), nil
+	return &PublishedEntry{
+		Sys:    sys,
+		Fields: PublishFields(fields),
+	}, nil
 }
 
 func getContentLocalized_old(repo string, ct string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData) {
