@@ -407,10 +407,10 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 	}
 
 	if contents[defaultLocale].CreatedAt != nil {
-		e.Sys.CreatedAt = contents[defaultLocale].CreatedAt.String()
+		e.Sys.CreatedAt = contents[defaultLocale].CreatedAt.Format(time.RFC3339)
 	}
 	if contents[defaultLocale].UpdatedAt != nil {
-		e.Sys.UpdatedAt = contents[defaultLocale].UpdatedAt.String()
+		e.Sys.UpdatedAt = contents[defaultLocale].UpdatedAt.Format(time.RFC3339)
 	}
 
 	for loc, data := range contents {
