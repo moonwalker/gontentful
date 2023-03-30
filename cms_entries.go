@@ -129,62 +129,7 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 	}, nil
 }
 
-func getContentLocalized_old(repo string, ct string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData) {
-	ctx := context.Background()
-	cfg := getConfig(ctx, owner, repo, branch)
-	localizedData := make(map[string]map[string]map[string]content.ContentData)
-	schemas := make(map[string]*content.Schema)
-
-	path := filepath.Join(cfg.WorkDir, ct)
-	rcs, _, err := gh.GetContentsRecursive_old(ctx, cfg.Token, owner, repo, branch, path)
-	if err != nil {
-		log.Fatalf("failed to get json(s) from github: %s", err.Error())
-	}
-
-	for _, rc := range rcs {
-		ect := extractContentype(*rc.Path)
-		if localizedData[ect] == nil {
-			localizedData[ect] = make(map[string]map[string]content.ContentData)
-		}
-		ld := localizedData[ect]
-
-		ghc, err := rc.GetContent()
-		if err != nil {
-			log.Fatalf("RepositoryContent.GetContent failed: %s", err.Error())
-		}
-
-		if *rc.Name == content.JsonSchemaName {
-			m := &content.Schema{}
-			err = json.Unmarshal([]byte(ghc), m)
-			if err != nil {
-				log.Fatalf("failed to unmarshal schema %s: %s", ect, err.Error())
-			}
-			schemas[ect] = m
-			continue
-		}
-
-		id, loc, err := parseFileName(*rc.Name)
-		if err != nil {
-			//fmt.Println(fmt.Sprintf("Skipping file: %s Err: %s", *rc.Path, err.Error()))
-			continue
-		}
-
-		data := content.ContentData{}
-		err = json.Unmarshal([]byte(ghc), &data)
-		if err != nil {
-			log.Fatalf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error())
-		}
-
-		if ld[id] == nil {
-			ld[id] = make(map[string]content.ContentData)
-		}
-		ld[id][loc] = data
-	}
-
-	return schemas, localizedData
-}
-
-func getContentLocalized(repo string, ct string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData) {
+func getContentLocalized(repo string, ct string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
 	localizedData := make(map[string]map[string]map[string]content.ContentData)
@@ -196,12 +141,12 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 	if len(ct) == 0 {
 		rcs, _, err = gh.GetArchivedContents(ctx, cfg.Token, owner, repo, branch, path)
 		if err != nil {
-			log.Fatalf("failed to get json(s) from github: %s", err.Error())
+			return nil, nil, fmt.Errorf("failed to get json(s) from github: %s", err.Error())
 		}
 	} else {
 		rcs, _, err = gh.GetContentsRecursive(ctx, cfg.Token, owner, repo, branch, path)
 		if err != nil {
-			log.Fatalf("failed to get json(s) from github: %s", err.Error())
+			return nil, nil, fmt.Errorf("failed to get json(s) from github: %s", err.Error())
 		}
 	}
 
@@ -219,7 +164,7 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 			m := &content.Schema{}
 			err = json.Unmarshal([]byte(*rc.Content), m)
 			if err != nil {
-				log.Fatalf("failed to unmarshal schema %s: %s", ect, err.Error())
+				return nil, nil, fmt.Errorf("failed to unmarshal schema %s: %s", ect, err.Error())
 			}
 			schemas[ect] = m
 			continue
@@ -234,7 +179,7 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 		data := content.ContentData{}
 		err = json.Unmarshal([]byte(*rc.Content), &data)
 		if err != nil {
-			log.Fatalf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error())
+			return nil, nil, fmt.Errorf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error())
 		}
 
 		if ld[data.ID] == nil {
@@ -243,7 +188,7 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 		ld[data.ID][loc] = data
 	}
 
-	return schemas, localizedData
+	return schemas, localizedData, nil
 }
 
 func GetLocalContentsRecursive(path string) ([]*github.RepositoryContent, error) {
@@ -287,7 +232,10 @@ func formatIncludesRecursive(repo string, entryRefs map[string]string, include i
 	for id, ct := range entryRefs {
 		// fetch schema and data if needed
 		if schemas[ct] == nil {
-			isc, ild := getContentLocalized(repo, ct)
+			isc, ild, err := getContentLocalized(repo, ct)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get format localized: %s", err.Error())
+			}
 			if isc[ct] == nil || ild[ct] == nil {
 				fmt.Println(fmt.Sprintf("content %s was not found", ct))
 				continue
@@ -299,14 +247,14 @@ func formatIncludesRecursive(repo string, entryRefs map[string]string, include i
 
 		e, er, err := FormatData(ct, id, schemas, localizedData)
 		if err != nil {
-			log.Fatalf("failed to format file content: %s", err.Error())
+			return nil, fmt.Errorf("failed to format file content: %s", err.Error())
 		}
 
 		includes = append(includes, e)
 		if len(er) > 0 && include > 0 {
 			en, err := formatIncludesRecursive(repo, er, include, schemas, localizedData)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to get format includes recursive: %s", err.Error())
 			}
 			includes = append(includes, en...)
 		}
