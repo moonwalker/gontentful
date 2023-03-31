@@ -88,34 +88,26 @@ func transformField(cf *content.Field, fieldType string, linkType string, valida
 	switch fieldType {
 	case "Symbol":
 		cf.Type = "text"
-		break
 	case "Boolean":
 		cf.Type = "bool"
-		break
 	case "Integer":
 		cf.Type = "int"
-		break
 	case "Number":
 		cf.Type = "float"
-		break
 	case "Text":
 		cf.Type = "longtext"
-		break
 	case "Link":
 		cf.Reference = true
-		if linkType == "Asset" {
-			cf.Type = "_asset"
+		if linkType == ASSET {
+			cf.Type = ASSET_TABLE_NAME
 		} else {
 			cf.Type = getFieldLinkContentType(validations)
 		}
-		break
 	case "Array":
 		cf.List = true
 		transformField(cf, items.Type, items.LinkType, items.Validations, nil)
-		break
 	case "Object":
 		cf.Type = "json"
-		break
 	}
 }
 
@@ -222,21 +214,18 @@ func GetContentfulType(fieldType string) string {
 	switch fieldType {
 	case "text":
 		returnVal = "Symbol"
-		break
 	case "bool":
 		returnVal = "Boolean"
-		break
 	case "int":
 		returnVal = "Integer"
-		break
 	case "float":
 		returnVal = "Number"
-		break
 	case "longtext":
 		returnVal = "Text"
-		break
 	case "_asset":
 		returnVal = "Asset"
+	case "json":
+		returnVal = "Object"
 	}
 	return returnVal
 }
