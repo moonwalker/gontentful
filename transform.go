@@ -422,17 +422,25 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 			if rf := refFields[fn]; rf != nil {
 				if rf.List {
 					if rl, ok := fv.([]interface{}); ok {
-						refList := make([]string, 0)
+						refList := make([]*Sys, 0)
 						for _, r := range rl {
 							if rid, ok := r.(string); ok {
-								refList = append(refList, rid)
+								refList = append(refList, &Sys{
+									Type:     "Link",
+									LinkType: "Entry",
+									ID:       rid,
+								})
 								includes[rid] = rf.Type
 							}
 						}
 						e.Fields[fn].(map[string]interface{})[loc] = refList
 					}
 				} else {
-					e.Fields[fn].(map[string]interface{})[loc] = fv.(string)
+					e.Fields[fn].(map[string]interface{})[loc] = &Sys{
+						Type:     "Link",
+						LinkType: "Entry",
+						ID:       fv.(string),
+					}
 					includes[fv.(string)] = rf.Type
 				}
 			} else {
