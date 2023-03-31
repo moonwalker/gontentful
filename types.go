@@ -40,7 +40,7 @@ type Fields map[string]interface{}
 type Entry struct {
 	Sys    *Sys   `json:"sys"`
 	Locale string `json:"locale,omitempty"`
-	Fields Fields `json:"fields"` // fields are dynamic
+	Fields Fields `json:"fields,omitempty"` // fields are dynamic
 }
 
 type Space struct {
