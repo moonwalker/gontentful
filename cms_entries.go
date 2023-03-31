@@ -55,11 +55,12 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 			entries.Includes = &Include{}
 		}
 
-		includedEntries, err := formatIncludesRecursive(repo, includes, include, schemas, localizedData)
+		includedEntries, includedAssets, err := formatIncludesRecursive(repo, includes, include, schemas, localizedData)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to fetch includes list: %s", err.Error())
 		}
 		entries.Includes.Entry = includedEntries
+		entries.Includes.Asset = includedAssets
 	}
 
 	cts := make([]*ContentType, 0)
@@ -141,6 +142,8 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 	var rcs []*github.RepositoryContent
 	var err error
 	if len(ct) == 0 {
+		//localPath := fmt.Sprintf("/Users/rolandhelli/Development/src/github.com/moonwalker/%s", repo)
+		//rcs, err = GetLocalContentsRecursive(localPath)
 		rcs, _, err = gh.GetArchivedContents(ctx, cfg.Token, owner, repo, branch, path)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get json(s) from github: %s", err.Error())
@@ -226,8 +229,9 @@ func GetLocalContentsRecursive(path string) ([]*github.RepositoryContent, error)
 	return resp, nil
 }
 
-func formatIncludesRecursive(repo string, entryRefs map[string]string, include int, schemas map[string]*content.Schema, localizedData map[string]map[string]map[string]content.ContentData) ([]*Entry, error) {
+func formatIncludesRecursive(repo string, entryRefs map[string]string, include int, schemas map[string]*content.Schema, localizedData map[string]map[string]map[string]content.ContentData) ([]*Entry, []*Entry, error) {
 	includes := make([]*Entry, 0)
+	assets := make([]*Entry, 0)
 
 	include--
 
@@ -236,7 +240,7 @@ func formatIncludesRecursive(repo string, entryRefs map[string]string, include i
 		if schemas[ct] == nil {
 			isc, ild, err := getContentLocalized(repo, ct)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get format localized: %s", err.Error())
+				return nil, nil, fmt.Errorf("failed to get format localized: %s", err.Error())
 			}
 			if isc[ct] == nil || ild[ct] == nil {
 				fmt.Println(fmt.Sprintf("content %s was not found", ct))
@@ -249,18 +253,23 @@ func formatIncludesRecursive(repo string, entryRefs map[string]string, include i
 
 		e, er, err := FormatData(ct, id, schemas, localizedData)
 		if err != nil {
-			return nil, fmt.Errorf("failed to format file content: %s", err.Error())
+			return nil, nil, fmt.Errorf("failed to format file content: %s", err.Error())
 		}
 
-		includes = append(includes, e)
+		if ct == ASSET_TABLE_NAME {
+			assets = append(assets, e)
+		} else {
+			includes = append(includes, e)
+		}
 		if len(er) > 0 && include > 0 {
-			en, err := formatIncludesRecursive(repo, er, include, schemas, localizedData)
+			en, as, err := formatIncludesRecursive(repo, er, include, schemas, localizedData)
 			if err != nil {
-				return nil, fmt.Errorf("failed to get format includes recursive: %s", err.Error())
+				return nil, nil, fmt.Errorf("failed to get format includes recursive: %s", err.Error())
 			}
 			includes = append(includes, en...)
+			assets = append(includes, as...)
 		}
 	}
 
-	return includes, nil
+	return includes, assets, nil
 }
