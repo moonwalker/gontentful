@@ -400,7 +400,7 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 				},
 			},
 		},
-		Fields: make(map[string]interface{}),
+		Fields: Fields{},
 	}
 
 	if contents[defaultLocale].CreatedAt != nil {
