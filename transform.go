@@ -187,14 +187,14 @@ func transformToContentfulField(cf *ContentTypeField, fieldType string, validati
 		cf.Required = true
 	}
 	if list {
-		cf.Type = "Array"
+		cf.Type = ARRAY
 		cf.Items = &FieldTypeArrayItem{}
 
 		if reference {
-			cf.Items.Type = "Link"
-			cf.Items.LinkType = "Entry"
-			if fieldType == "_asset" {
-				cf.Items.LinkType = "Asset"
+			cf.Items.Type = LINK
+			cf.Items.LinkType = ENTRY
+			if fieldType == ASSET_TABLE_NAME {
+				cf.Items.LinkType = ASSET
 			}
 			cf.Items.Validations = append(cfVals, &FieldValidation{
 				LinkContentType: append(make([]string, 0), fieldType),
@@ -203,10 +203,10 @@ func transformToContentfulField(cf *ContentTypeField, fieldType string, validati
 			cf.Items.Type = GetContentfulType(fieldType)
 		}
 	} else if reference {
-		cf.Type = "Link"
-		cf.LinkType = "Entry"
-		if fieldType == "_asset" {
-			cf.LinkType = "Asset"
+		cf.Type = LINK
+		cf.LinkType = ENTRY
+		if fieldType == ASSET_TABLE_NAME {
+			cf.LinkType = ASSET
 		}
 		cf.Validations = append(cfVals, &FieldValidation{
 			LinkContentType: append(make([]string, 0), fieldType),
@@ -382,9 +382,9 @@ func FormatData(contentType string, id string, schemas map[string]*content.Schem
 func formatEntry(id string, contentType string, contents map[string]content.ContentData, refFields map[string]*content.Field) (*Entry, map[string]string, error) {
 	includes := make(map[string]string)
 
-	sysType := "Entry"
-	if contentType == "_asset" {
-		sysType = "Asset"
+	sysType := ENTRY
+	if contentType == ASSET_TABLE_NAME {
+		sysType = ASSET
 	}
 
 	e := &Entry{
@@ -394,13 +394,12 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 			Version: contents[defaultLocale].Version,
 			ContentType: &ContentType{
 				Sys: &Sys{
-					Type:     "Link",
-					LinkType: "ContentType",
+					Type:     LINK,
+					LinkType: CONTENT_TYPE,
 					ID:       contentType,
 				},
 			},
 		},
-		Fields: Fields{},
 	}
 
 	if contents[defaultLocale].CreatedAt != nil {
@@ -410,48 +409,51 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 		e.Sys.UpdatedAt = contents[defaultLocale].UpdatedAt.Format(time.RFC3339Nano)
 	}
 
+	fields := make(map[string]interface{})
+
 	for loc, data := range contents {
 		for fn, fv := range data.Fields {
 			if fv == nil {
 				continue
 			}
-			if e.Fields[fn] == nil {
-				e.Fields[fn] = make(map[string]interface{})
+			if fields[fn] == nil {
+				fields[fn] = make(map[string]interface{})
 			}
 
 			if rf := refFields[fn]; rf != nil {
 				if rf.List {
 					if rl, ok := fv.([]interface{}); ok {
-						refList := make([]Entry, 0)
+						refList := make([]interface{}, 0)
 						for _, r := range rl {
 							if rid, ok := r.(string); ok {
-								refList = append(refList, Entry{
-									Sys: &Sys{
-										Type:     "Link",
-										LinkType: "Entry",
-										ID:       rid,
-									},
-								})
+								esys := make(map[string]interface{})
+								esys["type"] = LINK
+								esys["linkType"] = ENTRY
+								esys["id"] = rid
+								es := make(map[string]interface{})
+								es["sys"] = esys
+								refList = append(refList, es)
 								includes[rid] = rf.Type
 							}
 						}
-						e.Fields[fn].(map[string]interface{})[loc] = refList
+						fields[fn].(map[string]interface{})[loc] = refList
 					}
 				} else {
-					e.Fields[fn].(map[string]interface{})[loc] = Entry{
-						Sys: &Sys{
-							Type:     "Link",
-							LinkType: "Entry",
-							ID:       fv.(string),
-						},
-					}
+					esys := make(map[string]interface{})
+					esys["type"] = LINK
+					esys["linkType"] = ENTRY
+					esys["id"] = fv
+					es := make(map[string]interface{})
+					es["sys"] = esys
+					fields[fn].(map[string]interface{})[loc] = es
 					includes[fv.(string)] = rf.Type
 				}
 			} else {
-				e.Fields[fn].(map[string]interface{})[loc] = fv
+				fields[fn].(map[string]interface{})[loc] = fv
 			}
 		}
 	}
+	e.Fields = fields
 
 	return e, includes, nil
 }

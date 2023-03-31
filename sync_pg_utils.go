@@ -142,7 +142,6 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 
 func convertFieldValue(v interface{}, t bool, locale string) interface{} {
 	switch f := v.(type) {
-
 	case map[string]interface{}:
 		if f["sys"] != nil {
 			s := convertSysID(f, t)
@@ -190,14 +189,13 @@ func convertFieldValue(v interface{}, t bool, locale string) interface{} {
 			return fmt.Sprintf("'%s'", strings.ReplaceAll(v.(string), "'", "''"))
 		}
 	}
-
 	return v
 }
 
 func convertSys(f map[string]interface{}, t bool, locale string) string {
 	s, ok := f["sys"].(map[string]interface{})
 	if ok {
-		if s["type"] == "Link" {
+		if s["type"] == LINK {
 			return fmtSysID(s["id"], t, locale)
 		}
 	}
@@ -214,7 +212,7 @@ func fmtSysID(id interface{}, t bool, l string) string {
 func convertSysID(f map[string]interface{}, t bool) string {
 	s, ok := f["sys"].(map[string]interface{})
 	if ok {
-		if s["type"] == "Link" {
+		if s["type"] == LINK {
 			if t {
 				return fmt.Sprintf("'%v'", s["id"])
 			} else {

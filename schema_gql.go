@@ -234,7 +234,7 @@ func getCollectionArgs(fields []*ContentTypeField) []*GraphQLResolverArg {
 }
 
 func isOwnField(field *ContentTypeField) string {
-	if field.Type == "Link" || field.Type == "Array" {
+	if field.Type == LINK || field.Type == ARRAY {
 		return ""
 	}
 	switch field.Type {
