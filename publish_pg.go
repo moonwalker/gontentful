@@ -19,12 +19,12 @@ type PGPublish struct {
 	Locales          []*Locale
 }
 
-func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, item *PublishedEntry) *PGPublish {
+func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentType, item *PublishedEntry) *PGPublish {
 
 	defLocale := defaultLocale
-	if len(space.Locales) > 0 {
-		defLocale = space.Locales[0].Code
-		for _, loc := range space.Locales {
+	if len(locales) > 0 {
+		defLocale = locales[0].Code
+		for _, loc := range locales {
 			if loc.Default {
 				defLocale = loc.Code
 			}
@@ -36,7 +36,7 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 		Rows:             make([]*PGSyncRow, 0),
 		ConTables:        make(map[string]*PGSyncConTable),
 		DeletedConTables: make(map[string]*PGSyncConTable),
-		Locales:          space.Locales,
+		Locales:          locales,
 	}
 
 	switch item.Sys.Type {
@@ -44,7 +44,7 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 		contentTypeColumns, columnReferences, localizedColumns := getContentTypeColumns(contentModel)
 		contentType := item.Sys.ContentType.Sys.ID
 		q.TableName = toSnakeCase(contentType)
-		for _, oLoc := range space.Locales {
+		for _, oLoc := range locales {
 			loc := strings.ToLower(oLoc.Code)
 			fieldValues := make(map[string]interface{})
 			id := fmtSysID(item.Sys.ID, true, loc)
@@ -72,7 +72,7 @@ func NewPGPublish(schemaName string, space *Space, contentModel *ContentType, it
 		break
 	case ASSET:
 		q.TableName = ASSET_TABLE_NAME
-		for _, oLoc := range space.Locales {
+		for _, oLoc := range locales {
 			fieldValues := make(map[string]interface{})
 			locTitle := item.Fields["title"][oLoc.Code]
 			if locTitle != nil {
