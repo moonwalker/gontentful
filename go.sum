@@ -44,6 +44,8 @@ github.com/moonwalker/moonbase v0.0.0-20230330090941-423f0baa0a06 h1:QiPrwoRU6G6
 github.com/moonwalker/moonbase v0.0.0-20230330090941-423f0baa0a06/go.mod h1:5YxljSkAmPqteO1HwFtQj/bkZ02CHMh5z1B6FtXh5rY=
 github.com/moonwalker/moonbase v0.0.0-20230330143541-7058aef3e89d h1:e4h3BSzI3kOO+7/0plWYudCxr6ZKnipHSHi86MJ2zHs=
 github.com/moonwalker/moonbase v0.0.0-20230330143541-7058aef3e89d/go.mod h1:5YxljSkAmPqteO1HwFtQj/bkZ02CHMh5z1B6FtXh5rY=
+github.com/moonwalker/moonbase v0.0.0-20230417152211-968ba50dd45a h1:Qu7WcCtVbItkWAdKY6qi/ME8yZXfu7g+Z91A0RAfZvo=
+github.com/moonwalker/moonbase v0.0.0-20230417152211-968ba50dd45a/go.mod h1:5YxljSkAmPqteO1HwFtQj/bkZ02CHMh5z1B6FtXh5rY=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/spf13/cobra v1.6.1 h1:o94oiPyS4KD1mPy2fmcYYHHfCxLqYjJOhGsCHFZtEzA=
 github.com/spf13/cobra v1.6.1/go.mod h1:IOw/AERYS7UzyrGinqmz6HLUo219MORXGxhbaJUqzrY=
