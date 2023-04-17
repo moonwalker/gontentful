@@ -68,11 +68,7 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 		if schema.ID == ASSET_TABLE_NAME {
 			continue
 		}
-		t, err := FormatSchema(schema)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to format schema: %s", err.Error())
-		}
-		cts = append(cts, t)
+		cts = append(cts, formatSchema(schema))
 	}
 	contentTypes := &ContentTypes{
 		Total: len(cts),

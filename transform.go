@@ -183,30 +183,28 @@ func transformToContentfulField(cf *ContentTypeField, fieldType string, validati
 		cf.Items = &FieldTypeArrayItem{}
 
 		if reference {
-			cf.Items.Type = LINK
-			cf.Items.LinkType = ENTRY
-			if fieldType == ASSET_TABLE_NAME {
-				cf.Items.LinkType = ASSET
-			}
-			cf.Items.Validations = append(cfVals, &FieldValidation{
-				LinkContentType: append(make([]string, 0), fieldType),
-			})
+			cf.Items.Type, cf.Items.LinkType, cf.Items.Validations = setReferenceField(cfVals, fieldType)
 		} else {
 			cf.Items.Type = GetContentfulType(fieldType)
 		}
 	} else if reference {
-		cf.Type = LINK
-		cf.LinkType = ENTRY
-		if fieldType == ASSET_TABLE_NAME {
-			cf.LinkType = ASSET
-		}
-		cf.Validations = append(cfVals, &FieldValidation{
-			LinkContentType: append(make([]string, 0), fieldType),
-		})
+		cf.Type, cf.LinkType, cf.Validations = setReferenceField(cfVals, fieldType)
 	} else {
 		cf.Type = GetContentfulType(fieldType)
 		cf.Validations = cfVals
 	}
+}
+
+func setReferenceField(cfVals []*FieldValidation, fieldType string) (t string, lt string, vs []*FieldValidation) {
+	t = LINK
+	lt = ENTRY
+	if fieldType == ASSET_TABLE_NAME {
+		lt = ASSET
+	}
+	vs = append(cfVals, &FieldValidation{
+		LinkContentType: append(make([]string, 0), fieldType),
+	})
+	return
 }
 
 func GetContentfulType(fieldType string) string {
@@ -230,7 +228,7 @@ func GetContentfulType(fieldType string) string {
 	return returnVal
 }
 
-func FormatSchema(schema *content.Schema) (*ContentType, error) {
+func formatSchema(schema *content.Schema) *ContentType {
 	ct := &ContentType{
 		Name:         schema.Name,
 		Description:  schema.Description,
@@ -277,7 +275,72 @@ func FormatSchema(schema *content.Schema) (*ContentType, error) {
 		ct.Fields = append(ct.Fields, ctf)
 	}
 
-	return ct, nil
+	return ct
+}
+
+func formatSchemaRecursive(schema *content.Schema) []*ContentType {
+	res := make([]*ContentType, 0)
+
+	ct := &ContentType{
+		Name:         schema.Name,
+		Description:  schema.Description,
+		DisplayField: schema.Fields[0].ID,
+		Sys: &Sys{
+			ID:      schema.ID,
+			Version: schema.Version,
+		},
+	}
+	if schema.CreatedAt != nil {
+		ct.Sys.CreatedAt = schema.CreatedAt.Format(time.RFC3339Nano)
+	}
+	if schema.UpdatedAt != nil {
+		ct.Sys.UpdatedAt = schema.UpdatedAt.Format(time.RFC3339Nano)
+	}
+
+	ct.Sys.CreatedBy = &Entry{
+		Sys: &Sys{
+			ID: schema.CreatedBy,
+		},
+	}
+	ct.Sys.UpdatedBy = &Entry{
+		Sys: &Sys{
+			ID: schema.CreatedBy,
+		},
+	}
+
+	for _, f := range schema.Fields {
+		ctf := &ContentTypeField{
+			ID:          f.ID,
+			Name:        f.Label,
+			Localized:   f.Localized,
+			Disabled:    f.Disabled,
+			Required:    false,
+			Omitted:     false,
+			Validations: make([]*FieldValidation, 0),
+		}
+		if f.DefaultValue != nil {
+			ctf.DefaultValue = make(map[string]interface{})
+			ctf.DefaultValue["en"] = f.DefaultValue
+		}
+		hasSchema := (f.Schema != nil)
+		isReference := f.Reference || hasSchema
+		fType := f.Type
+		if hasSchema {
+			fType = f.Schema.ID
+		}
+
+		transformToContentfulField(ctf, fType, f.Validations, f.List, isReference)
+
+		ct.Fields = append(ct.Fields, ctf)
+
+		if f.Schema != nil {
+			res = append(res, formatSchemaRecursive(f.Schema)...)
+		}
+	}
+
+	res = append(res, ct)
+
+	return res
 }
 
 func TransformEntry(locales *Locales, model *Entry) (map[string]*content.ContentData, error) {

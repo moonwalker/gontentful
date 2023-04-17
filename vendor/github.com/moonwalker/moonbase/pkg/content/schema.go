@@ -38,6 +38,7 @@ type Field struct {
 	Disabled     bool          `json:"disabled,omitempty"`
 	DefaultValue interface{}   `json:"defaultValue,omitempty"`
 	Validations  []*Validation `json:"validations,omitempty"`
+	Schema       *Schema       `json:"schema,omitempty"`
 }
 
 type Schema struct {
