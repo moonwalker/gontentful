@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/moonwalker/backend/pkg/log"
 )
 
 type PGMatViews struct {
@@ -127,7 +128,14 @@ func doRefresh(databaseURL string, schemaName string, tmpl *template.Template, p
 					wg.Done()
 					return
 				}
-				createMatView(tmpl, a, databaseURL, schemaName) // do the thing
+				err := createMatView(tmpl, a, databaseURL, schemaName) // do the thing
+				if err != nil {
+					log.Error("failed to refresh materialized view", log.Fields{
+						"schema":    schemaName,
+						"tableName": a.TableName,
+						"err":       err.Error(),
+					})
+				}
 			}
 		}()
 	}
