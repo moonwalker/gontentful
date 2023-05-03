@@ -416,7 +416,7 @@ func GetArchivedContents(ctx context.Context, accessToken string, owner string, 
 			fi := strings.Index(header.Name, "/")
 			li := strings.LastIndex(header.Name, "/")
 			path := header.Name[fi:]
-			name := header.Name[li:]
+			name := header.Name[li+1:]
 			bs, err := ioutil.ReadAll(tarReader)
 			if err != nil {
 				return nil, resp, fmt.Errorf("tarReader ReadAll() failed: %s", err.Error())
