@@ -16,17 +16,21 @@ const (
 	copyTableTpl = `INSERT INTO %[1]s.%[3]s SELECT * FROM %[2]s.%[3]s;`
 )
 
-func MigratePGSQL(databaseURL string, newSchemaName string, locales []*Locale, types []*ContentType, cmaTypes []*ContentType, entries []*Entry, syncToken string, createFunctions bool) error {
+func MigratePGSQL(databaseURL string, newSchemaName string, locales []*Locale, types []*ContentType, cmaTypes []*ContentType, entries []*Entry, syncToken string, createFunctions bool, incrementalMigration bool) error {
 
-	// 0) drop newSchema if exists
-	drop := NewPGDrop(newSchemaName)
-	err := drop.Exec(databaseURL)
-	if err != nil {
-		return err
+	var err error
+	if !incrementalMigration {
+		// 0) drop newSchema if exists
+		drop := NewPGDrop(newSchemaName)
+		err = drop.Exec(databaseURL)
+		if err != nil {
+			return err
+		}
 	}
 
 	// 1) re-create schema
 	schema := NewPGSQLSchema(newSchemaName, locales, "", cmaTypes, 0)
+	schema.DropTables = incrementalMigration
 	err = schema.Exec(databaseURL)
 	if err != nil {
 		return err

@@ -121,7 +121,49 @@ func CommitBlob(ctx context.Context, accessToken string, owner string, repo stri
 		return resp, err
 	}
 
-	tree, resp, err := getCommitTree(ctx, githubClient, owner, repo, *reference.Object.SHA, path, content)
+	tree, resp, err := getCommitTree(ctx, githubClient, owner, repo, *reference.Object.SHA, []BlobEntry{
+		{
+			Path:    path,
+			Content: content,
+		}})
+
+	resp, err = pushCommit(ctx, githubClient, reference, tree, owner, repo, commitMessage)
+	if err != nil {
+		return resp, err
+	}
+
+	return resp, nil
+}
+
+type BlobEntry struct {
+	Path    string
+	Content *string
+}
+
+func getCommitTree(ctx context.Context, githubClient *github.Client, owner string, repo string, sha string, items []BlobEntry) (*github.Tree, *github.Response, error) {
+	// Create a tree with what to commit.
+	entries := make([]*github.TreeEntry, 0)
+	for _, i := range items {
+		entries = append(entries, &github.TreeEntry{
+			Path:    github.String(i.Path),
+			Type:    github.String("blob"),
+			Mode:    github.String("100644"),
+			Content: i.Content,
+		})
+	}
+
+	return githubClient.Git.CreateTree(ctx, owner, repo, sha, entries)
+}
+
+func CommitBlobs(ctx context.Context, accessToken string, owner string, repo string, ref string, items []BlobEntry, commitMessage string) (*github.Response, error) {
+	githubClient := ghClient(ctx, accessToken)
+
+	reference, resp, err := githubClient.Git.GetRef(ctx, owner, repo, "refs/heads/"+ref)
+	if err != nil {
+		return resp, err
+	}
+
+	tree, resp, err := getCommitTree(ctx, githubClient, owner, repo, *reference.Object.SHA, items)
 	if err != nil {
 		return resp, err
 	}
@@ -132,21 +174,6 @@ func CommitBlob(ctx context.Context, accessToken string, owner string, repo stri
 	}
 
 	return resp, nil
-}
-
-// getCommitTree generates the tree to commit based on the given files and the commit of the ref
-func getCommitTree(ctx context.Context, githubClient *github.Client, owner string, repo string, sha string, path string, content *string) (*github.Tree, *github.Response, error) {
-	// Create a tree with what to commit.
-	entries := []*github.TreeEntry{
-		{
-			Path:    github.String(path),
-			Type:    github.String("blob"),
-			Mode:    github.String("100644"),
-			Content: content,
-		},
-	}
-
-	return githubClient.Git.CreateTree(ctx, owner, repo, sha, entries)
 }
 
 // pushCommit creates the commit in the given reference using the given tree
@@ -233,6 +260,36 @@ func DeleteFolder(ctx context.Context, accessToken string, owner string, repo st
 	}
 
 	return resp, nil
+}
+
+func DeleteFiles(ctx context.Context, accessToken string, owner string, repo string, ref string, path string, commitMessage string, fileNames []string) (*github.Response, error) {
+	githubClient := ghClient(ctx, accessToken)
+
+	_, rc, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{
+		Ref: ref,
+	})
+	if err != nil {
+		return resp, err
+	}
+
+	fn := make(map[string]bool)
+	for _, f := range fileNames {
+		fn[f] = true
+	}
+
+	items := make([]BlobEntry, 0)
+	for _, c := range rc {
+		if *c.Type == "file" && fn[*c.Name] {
+			items = append(items, BlobEntry{
+				Path:    *c.Path,
+				Content: nil,
+			})
+
+		}
+	}
+
+	resp, err = CommitBlobs(ctx, accessToken, owner, repo, ref, items, commitMessage)
+	return resp, err
 }
 
 func GetCommits(ctx context.Context, accessToken string, owner string, repo string, ref string) ([]*github.RepositoryCommit, *github.Response, error) {
@@ -359,7 +416,7 @@ func GetArchivedContents(ctx context.Context, accessToken string, owner string, 
 			fi := strings.Index(header.Name, "/")
 			li := strings.LastIndex(header.Name, "/")
 			path := header.Name[fi:]
-			name := header.Name[li+1:]
+			name := header.Name[li:]
 			bs, err := ioutil.ReadAll(tarReader)
 			if err != nil {
 				return nil, resp, fmt.Errorf("tarReader ReadAll() failed: %s", err.Error())
