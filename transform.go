@@ -11,14 +11,15 @@ func TransformModel(model *ContentType) (*content.Schema, error) {
 	createdAt, _ := time.Parse(time.RFC3339Nano, model.Sys.CreatedAt)
 	updatedAt, _ := time.Parse(time.RFC3339Nano, model.Sys.UpdatedAt)
 	schema := &content.Schema{
-		ID:          model.Sys.ID,
-		Name:        model.Name,
-		Description: model.Description,
-		CreatedAt:   &createdAt,
-		CreatedBy:   "admin@moonwalker.tech",
-		UpdatedAt:   &updatedAt,
-		UpdatedBy:   "admin@moonwalker.tech",
-		Version:     model.Sys.Version,
+		ID:           model.Sys.ID,
+		Name:         model.Name,
+		DisplayField: model.DisplayField,
+		Description:  model.Description,
+		CreatedAt:    &createdAt,
+		CreatedBy:    "admin@moonwalker.tech",
+		UpdatedAt:    &updatedAt,
+		UpdatedBy:    "admin@moonwalker.tech",
+		Version:      model.Sys.Version,
 	}
 
 	for _, item := range model.Fields {
@@ -232,7 +233,7 @@ func formatSchema(schema *content.Schema) *ContentType {
 	ct := &ContentType{
 		Name:         schema.Name,
 		Description:  schema.Description,
-		DisplayField: schema.Fields[0].ID,
+		DisplayField: schema.DisplayField,
 		Sys: &Sys{
 			ID:      schema.ID,
 			Version: schema.Version,
