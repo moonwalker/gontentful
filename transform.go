@@ -398,6 +398,56 @@ func TransformEntry(locales *Locales, model *Entry) (map[string]*content.Content
 	return res, nil
 }
 
+func TransformPublishedEntry(locales *Locales, model *PublishedEntry) (map[string]*content.ContentData, error) {
+	res := make(map[string]*content.ContentData, 0)
+	for _, loc := range locales.Items {
+		data := &content.ContentData{
+			ID:     model.Sys.ID,
+			Fields: make(map[string]interface{}),
+		}
+
+		for fn, fv := range model.Fields {
+			locValues := fv
+			locValue := locValues[strings.ToLower(loc.Code)]
+			if locValue == nil {
+				locValue = locValues[defaultLocale]
+			}
+
+			if lsysl, ok := locValue.([]interface{}); ok {
+				for _, lsyso := range lsysl {
+					if lsys, ok := lsyso.(map[string]interface{}); ok {
+						sid := getSysID(lsys)
+						if sid == nil {
+							break
+						}
+						if data.Fields[fn] == nil {
+							data.Fields[fn] = make([]interface{}, 0)
+						}
+						data.Fields[fn] = append(data.Fields[fn].([]interface{}), sid)
+					}
+				}
+			} else {
+				if lsys, ok := locValue.(map[string]interface{}); ok {
+					data.Fields[fn] = getSysID(lsys)
+				}
+			}
+
+			if data.Fields[fn] == nil {
+				data.Fields[fn] = locValue
+			}
+		}
+
+		data.CreatedAt = getSysDate(model.Sys.CreatedAt)
+		data.CreatedBy = "admin"
+		data.UpdatedAt = getSysDate(model.Sys.UpdatedAt)
+		data.UpdatedBy = "admin"
+		data.Version = model.Sys.Version
+		res[strings.ToLower(loc.Code)] = data
+	}
+
+	return res, nil
+}
+
 func getSysDate(date string) *time.Time {
 	var t time.Time
 	t, _ = time.Parse(time.RFC3339Nano, date)
