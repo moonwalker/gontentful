@@ -3,12 +3,12 @@ package gontentful
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/moonwalker/backend/pkg/log"
 )
 
 type PGMatViews struct {

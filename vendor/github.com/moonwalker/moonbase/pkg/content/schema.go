@@ -42,15 +42,16 @@ type Field struct {
 }
 
 type Schema struct {
-	ID          string     `json:"id,omitempty"`
-	Name        string     `json:"name,omitempty"`
-	Description string     `json:"description,omitempty"`
-	Fields      []*Field   `json:"fields,omitempty"`
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
-	CreatedBy   string     `json:"createdBy,omitempty"`
-	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
-	UpdatedBy   string     `json:"updatedBy,omitempty"`
-	Version     int        `json:"version,omitempty"`
+	ID           string     `json:"id,omitempty"`
+	Name         string     `json:"name,omitempty"`
+	DisplayField string     `json:"displayField,omitempty"`
+	Description  string     `json:"description,omitempty"`
+	Fields       []*Field   `json:"fields,omitempty"`
+	CreatedAt    *time.Time `json:"createdAt,omitempty"`
+	CreatedBy    string     `json:"createdBy,omitempty"`
+	UpdatedAt    *time.Time `json:"updatedAt,omitempty"`
+	UpdatedBy    string     `json:"updatedBy,omitempty"`
+	Version      int        `json:"version,omitempty"`
 }
 
 type ContentData struct {
