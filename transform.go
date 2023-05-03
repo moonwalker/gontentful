@@ -285,7 +285,7 @@ func formatSchemaRecursive(schema *content.Schema) []*ContentType {
 	ct := &ContentType{
 		Name:         schema.Name,
 		Description:  schema.Description,
-		DisplayField: schema.Fields[0].ID,
+		DisplayField: schema.DisplayField,
 		Sys: &Sys{
 			ID:      schema.ID,
 			Version: schema.Version,
