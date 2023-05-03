@@ -3,7 +3,6 @@ package gontentful
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"text/template"
@@ -45,9 +44,7 @@ func (s *PGMatViews) Exec(databaseURL string, schemaName string) error {
 		})
 	}
 
-	doRefresh(databaseURL, schemaName, tmpl, params)
-
-	return nil
+	return doRefresh(databaseURL, schemaName, tmpl, params)
 }
 
 func (s *PGMatViews) ExecPublish(databaseURL string, schemaName string, tableName string) (string, error) {
@@ -56,6 +53,9 @@ func (s *PGMatViews) ExecPublish(databaseURL string, schemaName string, tableNam
 	}
 
 	tableNames, err := getDependencies(databaseURL, schemaName, toSnakeCase(tableName))
+	if err != nil {
+		return "", err
+	}
 	tmpl, err := template.New("").Funcs(funcMap).Parse(pgRefreshMatViewsTemplate)
 	if err != nil {
 		return "", err
@@ -74,7 +74,10 @@ func (s *PGMatViews) ExecPublish(databaseURL string, schemaName string, tableNam
 		})
 	}
 
-	go doRefresh(databaseURL, schemaName, tmpl, params)
+	err = doRefresh(databaseURL, schemaName, tmpl, params)
+	if err != nil {
+		return "", err
+	}
 
 	return fmt.Sprintf("content types (%s) successfully refreshed for locales: %s", strings.Join(tableNames, ","), strings.Join(locales, ",")), nil
 }
@@ -114,9 +117,10 @@ func getDependencies(databaseURL string, schemaName string, tableName string) ([
 	return tableNames, nil
 }
 
-func doRefresh(databaseURL string, schemaName string, tmpl *template.Template, params []*PGMatView) {
+func doRefresh(databaseURL string, schemaName string, tmpl *template.Template, params []*PGMatView) error {
 	var ch = make(chan *PGMatView, len(params)) // This number 50 can be anything as long as it's larger than xthreads
 	var wg sync.WaitGroup
+	var rerr error
 
 	// This starts xthreads number of goroutines that wait for something to do
 	wg.Add(xthreads)
@@ -130,11 +134,7 @@ func doRefresh(databaseURL string, schemaName string, tmpl *template.Template, p
 				}
 				err := createMatView(tmpl, a, databaseURL, schemaName) // do the thing
 				if err != nil {
-					log.Error("failed to refresh materialized view", log.Fields{
-						"schema":    schemaName,
-						"tableName": a.TableName,
-						"err":       err.Error(),
-					})
+					rerr = fmt.Errorf("failed to refresh materialized view for %s on %s: %s", a.TableName, schemaName, err.Error())
 				}
 			}
 		}()
@@ -147,6 +147,8 @@ func doRefresh(databaseURL string, schemaName string, tmpl *template.Template, p
 
 	close(ch) // This tells the goroutines there's nothing else to do
 	wg.Wait() // Wait for the threads to finish
+
+	return rerr
 }
 
 func createMatView(tmpl *template.Template, mv *PGMatView, databaseURL string, schemaName string) error {
