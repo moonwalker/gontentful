@@ -31,37 +31,8 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get content localized: %s", err.Error())
 	}
-	entries := &Entries{
-		Sys: &Sys{
-			Type: "Array",
-		},
-	}
 
-	includes := make(map[string]string)
-	for ct, locData := range localizedData {
-		for id, _ := range locData {
-			entry, entryRefs, err := FormatData(ct, id, schemas, localizedData)
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to format file content: %s", err.Error())
-			}
-			mergeMaps(includes, entryRefs)
-			entries.Items = append(entries.Items, entry)
-		}
-	}
-	entries.Total = len(entries.Items)
-
-	if include > 0 && len(includes) > 0 {
-		if entries.Includes == nil {
-			entries.Includes = &Include{}
-		}
-
-		includedEntries, includedAssets, err := formatIncludesRecursive(repo, includes, include, schemas, localizedData)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to fetch includes list: %s", err.Error())
-		}
-		entries.Includes.Entry = includedEntries
-		entries.Includes.Asset = includedAssets
-	}
+	entries, err := createEntriesFromLocalizedData(repo, schemas, localizedData)
 
 	cts := make([]*ContentType, 0)
 	for _, schema := range schemas {
@@ -85,6 +56,69 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 	return entries, contentTypes, nil
 }
 
+func createEntriesFromLocalizedData(repo string, schemas map[string]*content.Schema, localizedData map[string]map[string]map[string]content.ContentData) (*Entries, error) {
+	entries := &Entries{
+		Sys: &Sys{
+			Type: "Array",
+		},
+	}
+
+	includes := make(map[string]string)
+	for ct, locData := range localizedData {
+		for id, _ := range locData {
+			entry, entryRefs, err := FormatData(ct, id, schemas, localizedData)
+			if err != nil {
+				return nil, fmt.Errorf("failed to format file content: %s", err.Error())
+			}
+			mergeMaps(includes, entryRefs)
+			entries.Items = append(entries.Items, entry)
+		}
+	}
+	entries.Total = len(entries.Items)
+
+	if include > 0 && len(includes) > 0 {
+		if entries.Includes == nil {
+			entries.Includes = &Include{}
+		}
+
+		includedEntries, includedAssets, err := formatIncludesRecursive(repo, includes, include, schemas, localizedData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch includes list: %s", err.Error())
+		}
+		entries.Includes.Entry = includedEntries
+		entries.Includes.Asset = includedAssets
+	}
+
+	return entries, nil
+}
+
+func GetCMSEntry(contentType string, repo string, prefix string, include int) (*Entries, error) {
+	ctx := context.Background()
+	cfg := getConfig(ctx, owner, repo, branch)
+	path := filepath.Join(cfg.WorkDir, contentType)
+
+	rcs, _, err := gh.GetAllLocaleContentsWithTree(ctx, cfg.Token, owner, repo, branch, path, prefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
+	}
+
+	schemas, localizedData, err := formatRepositoryContent(rcs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to format repository content: %s", err.Error())
+	}
+
+	for k, v := range schemas {
+		fmt.Println(k, *v)
+	}
+
+	entries, err := createEntriesFromLocalizedData(repo, schemas, localizedData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to format repository content: %s", err.Error())
+	}
+
+	return entries, nil
+}
+
 func GetPublishedEntry(repo string, contentType string, prefix string) (*PublishedEntry, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
@@ -94,6 +128,24 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
 	}
+
+	// get model schema
+	refFields := make(map[string]*content.Field, 0)
+	for _, rc := range rcs {
+		if *rc.Name == content.JsonSchemaName {
+			schema := &content.Schema{}
+			err = json.Unmarshal([]byte(*rc.Content), schema)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal schema %s: %s", contentType, err.Error())
+			}
+			for _, sf := range schema.Fields {
+				if sf.Reference {
+					refFields[sf.ID] = sf
+				}
+			}
+		}
+	}
+
 	fields := make(map[string]map[string]interface{})
 	var sys *Sys
 	for _, rc := range rcs {
@@ -111,7 +163,38 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 			if fields[k] == nil {
 				fields[k] = make(map[string]interface{})
 			}
-			fields[k][loc] = v
+			if rf := refFields[k]; rf != nil {
+				if fields[k] == nil {
+					fields[k] = make(map[string]interface{})
+				}
+				if rf.List {
+					if rl, ok := v.([]interface{}); ok {
+						refList := make([]interface{}, 0)
+						for _, r := range rl {
+							if rid, ok := r.(string); ok {
+								esys := make(map[string]interface{})
+								esys["type"] = LINK
+								esys["linkType"] = ENTRY
+								esys["id"] = rid
+								es := make(map[string]interface{})
+								es["sys"] = esys
+								refList = append(refList, es)
+							}
+						}
+						fields[k][loc] = refList
+					}
+				} else {
+					esys := make(map[string]interface{})
+					esys["type"] = LINK
+					esys["linkType"] = ENTRY
+					esys["id"] = v
+					es := make(map[string]interface{})
+					es["sys"] = esys
+					fields[k][loc] = es
+				}
+			} else {
+				fields[k][loc] = v
+			}
 		}
 		if sys == nil {
 			sys = &Sys{
@@ -131,8 +214,6 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 func getContentLocalized(repo string, ct string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
-	localizedData := make(map[string]map[string]map[string]content.ContentData)
-	schemas := make(map[string]*content.Schema)
 
 	path := filepath.Join(cfg.WorkDir, ct)
 	var rcs []*github.RepositoryContent
@@ -150,6 +231,16 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 			return nil, nil, fmt.Errorf("failed to get json(s) from github: %s", err.Error())
 		}
 	}
+
+	schemas, localizedData, err := formatRepositoryContent(rcs)
+
+	return schemas, localizedData, err
+}
+
+func formatRepositoryContent(rcs []*github.RepositoryContent) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData, error) {
+	localizedData := make(map[string]map[string]map[string]content.ContentData)
+	schemas := make(map[string]*content.Schema)
+	var err error
 
 	for _, rc := range rcs {
 		ect := extractContentype(*rc.Path)
@@ -180,6 +271,7 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 		data := content.ContentData{}
 		err = json.Unmarshal([]byte(*rc.Content), &data)
 		if err != nil {
+			fmt.Println("unmarshal err", *rc.Content)
 			return nil, nil, fmt.Errorf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error())
 		}
 

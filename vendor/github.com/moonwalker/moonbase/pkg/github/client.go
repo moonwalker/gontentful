@@ -481,7 +481,7 @@ func GetAllLocaleContents(ctx context.Context, accessToken string, owner string,
 
 	rcs := make([]*github.RepositoryContent, 0)
 	for _, c := range rc {
-		if *c.Type == "file" && strings.HasPrefix(*c.Name, prefix) {
+		if *c.Type == "file" && (strings.HasPrefix(*c.Name, prefix) || *c.Name == content.JsonSchemaName) {
 			b, err := downloadFile(*c.DownloadURL)
 			if err != nil {
 				return nil, resp, err
@@ -492,6 +492,39 @@ func GetAllLocaleContents(ctx context.Context, accessToken string, owner string,
 			}
 			c.Content = &content
 			rcs = append(rcs, c)
+		}
+	}
+
+	return rcs, resp, nil
+}
+
+func GetAllLocaleContentsWithTree(ctx context.Context, accessToken string, owner string, repo string, ref string, path string, prefix string) ([]*github.RepositoryContent, *github.Response, error) {
+	githubClient := ghClient(ctx, accessToken)
+	sha, resp, err := getDirectorySha(ctx, githubClient, owner, repo, ref, path)
+	if err != nil {
+		return nil, resp, err
+	}
+	if sha == "" {
+		sha = "main"
+	}
+	tree, resp, err := githubClient.Git.GetTree(ctx, owner, repo, sha, false)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	rcs := make([]*github.RepositoryContent, 0)
+	for _, te := range tree.Entries {
+		if *te.Type == "blob" && (strings.HasPrefix(*te.Path, prefix) || strings.HasSuffix(*te.Path, content.JsonSchemaName)) {
+			rc, _, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, filepath.Join(path, *te.Path), &github.RepositoryContentGetOptions{})
+			if err != nil {
+				return nil, resp, err
+			}
+			c, err := rc.GetContent()
+			if err != nil {
+				return nil, resp, err
+			}
+			rc.Content = &c
+			rcs = append(rcs, rc)
 		}
 	}
 
