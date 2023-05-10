@@ -3,6 +3,7 @@ package gontentful
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"text/template"
@@ -74,12 +75,9 @@ func (s *PGMatViews) ExecPublish(databaseURL string, schemaName string, tableNam
 		})
 	}
 
-	err = doRefresh(databaseURL, schemaName, tmpl, params)
-	if err != nil {
-		return "", err
-	}
+	go doRefresh(databaseURL, schemaName, tmpl, params)
 
-	return fmt.Sprintf("content types (%s) successfully refreshed for locales: %s", strings.Join(tableNames, ","), strings.Join(locales, ",")), nil
+	return fmt.Sprintf("refreshing content types (%s) materialized views started for locales: %s", strings.Join(tableNames, ","), strings.Join(locales, ",")), nil
 }
 
 func getDependencies(databaseURL string, schemaName string, tableName string) ([]string, error) {
@@ -134,7 +132,8 @@ func doRefresh(databaseURL string, schemaName string, tmpl *template.Template, p
 				}
 				err := createMatView(tmpl, a, databaseURL, schemaName) // do the thing
 				if err != nil {
-					rerr = fmt.Errorf("failed to refresh materialized view for %s on %s: %s", a.TableName, schemaName, err.Error())
+					log.Println(fmt.Errorf("failed to refresh materialized view for %s on %s: %s", a.TableName, schemaName, err.Error()))
+					rerr = fmt.Errorf("failed to refresh materialized views")
 				}
 			}
 		}()
