@@ -43,8 +43,8 @@ func transformContent() {
 	cli := gontentful.NewClient(opts)
 
 	var res *gontentful.Entries
-	var ctres *gontentful.ContentTypes
 	var err error
+
 	if len(contentType) > 0 {
 		res, err = GetContentTypeEntries(cli, contentType)
 	} else {
@@ -61,38 +61,39 @@ func transformContent() {
 	if err != nil {
 		log.Fatalf("failed to fetch locales: %s", err.Error())
 	}
-	defaultLocale := "en"
-	for _, l := range locales.Items {
-		if l.Default {
-			defaultLocale = l.Code
-			break
-		}
-	}
+	// defaultLocale := "en"
+	// for _, l := range locales.Items {
+	// 	if l.Default {
+	// 		defaultLocale = l.Code
+	// 		break
+	// 	}
+	// }
 
-	if len(contentType) > 0 {
-		var ctype *gontentful.ContentType
-		ctype, err = cli.ContentTypes.GetSingleCMA(contentType)
-		if err == nil {
-			ctres = &gontentful.ContentTypes{
-				Total: 1,
-				Items: []*gontentful.ContentType{ctype},
-			}
-		}
-	} else {
-		ctres, err = cli.ContentTypes.GetCMATypes()
-	}
-	if err != nil {
-		log.Fatalf("failed to fetch contenttypes: %s", err.Error())
-	}
-	if ctres.Total == 0 {
-		log.Fatalf("contenttype(s) not found: %s", contentType)
-	}
+	// var ctres *gontentful.ContentTypes
+	// if len(contentType) > 0 {
+	// 	var ctype *gontentful.ContentType
+	// 	ctype, err = cli.ContentTypes.GetSingleCMA(contentType)
+	// 	if err == nil {
+	// 		ctres = &gontentful.ContentTypes{
+	// 			Total: 1,
+	// 			Items: []*gontentful.ContentType{ctype},
+	// 		}
+	// 	}
+	// } else {
+	// 	ctres, err = cli.ContentTypes.GetCMATypes()
+	// }
+	// if err != nil {
+	// 	log.Fatalf("failed to fetch contenttypes: %s", err.Error())
+	// }
+	// if ctres.Total == 0 {
+	// 	log.Fatalf("contenttype(s) not found: %s", contentType)
+	// }
 
-	displayFields := make(map[string]string)
-	for _, ct := range ctres.Items {
-		displayFields[ct.Sys.ID] = ct.DisplayField
-	}
-	displayFields[gontentful.ASSET_TABLE_NAME] = gontentful.ASSET_DISPLAYFIELD
+	// displayFields := make(map[string]string)
+	// for _, ct := range ctres.Items {
+	// 	displayFields[ct.Sys.ID] = ct.DisplayField
+	// }
+	// displayFields[gontentful.ASSET_TABLE_NAME] = gontentful.ASSET_DISPLAYFIELD
 
 	for _, item := range res.Items {
 		var entries map[string]*content.ContentData
@@ -121,7 +122,8 @@ func transformContent() {
 				log.Fatalf("failed to create output folder %s: %s", path, err.Error())
 			}
 
-			fn := fmt.Sprintf("%s_%s", getDisplayField(item, displayFields[ct], defaultLocale), l)
+			//fn := fmt.Sprintf("%s_%s", getDisplayField(item, displayFields[ct], defaultLocale), l)
+			fn := fmt.Sprintf("%s_%s", item.Sys.ID, l)
 			f := fmt.Sprintf("%s/%s.json", path, strings.ToLower(fn))
 			fmt.Printf("Writing file: %s", f)
 			ioutil.WriteFile(f, b, 0644)
