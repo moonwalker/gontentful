@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gosimple/slug"
+
 	"github.com/moonwalker/gontentful"
 	"github.com/moonwalker/moonbase/pkg/content"
 )
@@ -41,6 +43,7 @@ func transformContent() {
 	cli := gontentful.NewClient(opts)
 
 	var res *gontentful.Entries
+	var ctres *gontentful.ContentTypes
 	var err error
 	if len(contentType) > 0 {
 		res, err = GetContentTypeEntries(cli, contentType)
@@ -50,48 +53,81 @@ func transformContent() {
 	if err != nil {
 		log.Fatalf("failed to fetch entries: %s", err.Error())
 	}
+	if res.Total == 0 {
+		log.Fatalf("entries not found: %s", contentType)
+	}
 
 	locales, err := cli.Locales.GetLocales()
 	if err != nil {
 		log.Fatalf("failed to fetch locales: %s", err.Error())
 	}
+	defaultLocale := "en"
+	for _, l := range locales.Items {
+		if l.Default {
+			defaultLocale = l.Code
+			break
+		}
+	}
 
-	if res.Total > 0 {
-		for _, item := range res.Items {
-			var entries map[string]*content.ContentData
-			entries, err = gontentful.TransformEntry(locales, item)
+	if len(contentType) > 0 {
+		var ctype *gontentful.ContentType
+		ctype, err = cli.ContentTypes.GetSingleCMA(contentType)
+		if err == nil {
+			ctres = &gontentful.ContentTypes{
+				Total: 1,
+				Items: []*gontentful.ContentType{ctype},
+			}
+		}
+	} else {
+		ctres, err = cli.ContentTypes.GetCMATypes()
+	}
+	if err != nil {
+		log.Fatalf("failed to fetch contenttypes: %s", err.Error())
+	}
+	if ctres.Total == 0 {
+		log.Fatalf("contenttype(s) not found: %s", contentType)
+	}
+
+	displayFields := make(map[string]string)
+	for _, ct := range ctres.Items {
+		displayFields[ct.Sys.ID] = ct.DisplayField
+	}
+	displayFields[gontentful.ASSET_TABLE_NAME] = gontentful.ASSET_DISPLAYFIELD
+
+	for _, item := range res.Items {
+		var entries map[string]*content.ContentData
+		entries, err = gontentful.TransformEntry(locales, item)
+		if err != nil {
+			log.Fatalf("failed to transform entry: %s", err.Error())
+		}
+
+		ct := contentType
+
+		if item.Sys.Type == gontentful.ASSET {
+			ct = gontentful.ASSET_TABLE_NAME
+		} else if item.Sys.Type == gontentful.ENTRY && len(ct) == 0 {
+			ct = toCamelCase(item.Sys.ContentType.Sys.ID)
+		}
+
+		for l, e := range entries {
+			b, err := json.Marshal(e)
 			if err != nil {
-				log.Fatal(fmt.Errorf("failed to transform entry: %s", err.Error()))
+				log.Fatalf("failed to marshal entry: %s", err.Error())
 			}
 
-			ct := contentType
-
-			if item.Sys.Type == "Asset" {
-				ct = "_asset"
-			} else if item.Sys.Type == "Entry" && len(ct) == 0 {
-				ct = toCamelCase(item.Sys.ContentType.Sys.ID)
+			path := fmt.Sprintf("./output/%s", ct)
+			err = os.MkdirAll(path, os.ModePerm)
+			if err != nil {
+				log.Fatalf("failed to create output folder %s: %s", path, err.Error())
 			}
 
-			for l, e := range entries {
-				b, err := json.Marshal(e)
-				if err != nil {
-					log.Fatalf("failed to marshal entry: %s", err.Error())
-				}
-
-				path := fmt.Sprintf("./output/%s", ct)
-				err = os.MkdirAll(path, os.ModePerm)
-				if err != nil {
-					log.Fatalf("failed to create output folder %s: %s", path, err.Error())
-				}
-
-				fn := fmt.Sprintf("%s_%s", item.Sys.ID, l)
-				f := fmt.Sprintf("%s/%s.json", path, strings.ToLower(fn))
-				fmt.Printf("Writing file: %s", f)
-				ioutil.WriteFile(f, b, 0644)
-				fmt.Printf("\033[2K")
-				fmt.Println()
-				fmt.Printf("\033[1A")
-			}
+			fn := fmt.Sprintf("%s_%s", getDisplayField(item, displayFields[ct], defaultLocale), l)
+			f := fmt.Sprintf("%s/%s.json", path, strings.ToLower(fn))
+			fmt.Printf("Writing file: %s", f)
+			ioutil.WriteFile(f, b, 0644)
+			fmt.Printf("\033[2K")
+			fmt.Println()
+			fmt.Printf("\033[1A")
 		}
 	}
 
@@ -193,4 +229,18 @@ func toCamelCase(s string) string {
 	return snake.ReplaceAllStringFunc(s, func(w string) string {
 		return strings.ToUpper(string(w[1]))
 	})
+}
+
+func getDisplayField(e *gontentful.Entry, displayField string, defaultLocale string) string {
+	for k, v := range e.Fields {
+		if k == displayField {
+			if i, ok := v.(map[string]interface{}); ok {
+				if s, ok := i[defaultLocale].(string); ok {
+					return slug.Make(s)
+				}
+			}
+			break
+		}
+	}
+	return e.Sys.ID
 }

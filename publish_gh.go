@@ -10,15 +10,17 @@ import (
 )
 
 type GHPublish struct {
-	FolderName string
-	Locales    *Locales
 	Entry      *PublishedEntry
+	FolderName string
+	FileName   string
+	Locales    *Locales
 }
 
-func NewGHPublish(sys *Sys, locales *Locales, entry *PublishedEntry) *GHPublish {
+func NewGHPublish(entry *PublishedEntry, fileName string, locales *Locales) *GHPublish {
 	folderName := entry.Sys.ContentType.Sys.ID
 	return &GHPublish{
 		FolderName: folderName,
+		FileName:   fileName,
 		Locales:    locales,
 		Entry:      entry,
 	}
@@ -36,7 +38,7 @@ func (s *GHPublish) Exec(repo string) error {
 	// upload to github
 	entries := make([]gh.BlobEntry, 0)
 	for l, c := range cd {
-		fileName := fmt.Sprintf("%s_%s.json", s.Entry.Sys.ID, l)
+		fileName := fmt.Sprintf("%s_%s.json", s.FileName, l)
 		contentBytes, err := json.Marshal(c)
 		if err != nil {
 			return err

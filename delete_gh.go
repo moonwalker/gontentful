@@ -10,20 +10,23 @@ import (
 
 type GHDelete struct {
 	FolderName string
+	FileName   string
 	SysID      string
 	Locales    []*Locale
 }
 
-func NewGHDelete(sys *Sys, locales *Locales) *GHDelete {
+func NewGHDelete(sys *Sys, filaName string, locales *Locales) *GHDelete {
 	folderName := ""
 	if sys.Type == DELETED_ENTRY {
 		folderName = sys.ContentType.Sys.ID
 	} else if sys.Type == DELETED_ASSET {
 		folderName = ASSET_TABLE_NAME
 	}
+
 	return &GHDelete{
 		FolderName: folderName,
 		SysID:      sys.ID,
+		FileName:   filaName,
 		Locales:    locales.Items,
 	}
 }
@@ -36,7 +39,7 @@ func (s *GHDelete) Exec(repo string) error {
 	fileNames := make([]string, 0)
 
 	for _, l := range s.Locales {
-		fileNames = append(fileNames, fmt.Sprintf("%s_%s.json", s.SysID, l.Code))
+		fileNames = append(fileNames, fmt.Sprintf("%s_%s.json", s.FileName, l.Code))
 	}
 
 	_, err := gh.DeleteFiles(ctx, cfg.Token, owner, repo, branch, path, "feat(content): delete files", fileNames)

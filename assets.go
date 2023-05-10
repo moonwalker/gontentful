@@ -6,9 +6,10 @@ import (
 )
 
 const (
-	ASSET            = "Asset"
-	DELETED_ASSET    = "DeletedAsset"
-	ASSET_TABLE_NAME = "_asset"
+	ASSET              = "Asset"
+	DELETED_ASSET      = "DeletedAsset"
+	ASSET_TABLE_NAME   = "_asset"
+	ASSET_DISPLAYFIELD = "title"
 )
 
 var (

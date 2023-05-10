@@ -64,9 +64,18 @@ func (s *ContentTypesService) Delete(contentType string) ([]byte, error) {
 	return s.client.delete(path)
 }
 
-func (s *ContentTypesService) GetSingleCMA(contentTypeId string) ([]byte, error) {
+func (s *ContentTypesService) GetSingleCMA(contentTypeId string) (*ContentType, error) {
 	path := fmt.Sprintf(pathContentType, s.client.Options.SpaceID, s.client.Options.EnvironmentID, contentTypeId)
-	return s.client.getCMA(path, nil)
+	data, err := s.client.getCMA(path, nil)
+	if err != nil {
+		return nil, err
+	}
+	res := &ContentType{}
+	err = json.Unmarshal(data, res)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 func (s *ContentTypesService) GetCMATypes() (*ContentTypes, error) {
@@ -76,7 +85,7 @@ func (s *ContentTypesService) GetCMATypes() (*ContentTypes, error) {
 		return nil, err
 	}
 	res := &ContentTypes{}
-	err = json.Unmarshal(data, &res)
+	err = json.Unmarshal(data, res)
 	if err != nil {
 		return nil, err
 	}
