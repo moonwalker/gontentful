@@ -1,5 +1,7 @@
 package github
 
+import "time"
+
 type Owner struct {
 	Name string `json:"name"`
 }
@@ -13,9 +15,11 @@ type Repository struct {
 }
 
 type Commit struct {
-	Added    []string `json:"added"`
-	Removed  []string `json:"removed"`
-	Modified []string `json:"modified"`
+	ID        string    `json:"id"`
+	Added     []string  `json:"added"`
+	Removed   []string  `json:"removed"`
+	Modified  []string  `json:"modified"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 type PushHookPayload struct {

@@ -556,14 +556,21 @@ func GetSchemasRecursive(ctx context.Context, accessToken string, owner string, 
 	if sha == "" {
 		sha = "main"
 	}
-	tree, resp, err := githubClient.Git.GetTree(ctx, owner, repo, sha, true)
+
+	tree, resp, err := githubClient.Git.GetTree(ctx, owner, repo, sha, false)
 	if err != nil {
 		return nil, resp, err
 	}
 
 	rcs := make([]*github.RepositoryContent, 0)
 	for _, te := range tree.Entries {
-		if *te.Type == "blob" && strings.HasSuffix(*te.Path, content.JsonSchemaName) {
+		if *te.Type == "tree" {
+			subTree, resp, err := githubClient.Git.GetTree(ctx, owner, repo, *te.SHA, false)
+			if err != nil {
+				return nil, resp, err
+			}
+			tree.Entries = append(tree.Entries, subTree.Entries...)
+		} else if *te.Type == "blob" && strings.HasSuffix(*te.Path, content.JsonSchemaName) {
 			rc, _, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, filepath.Join(path, *te.Path), &github.RepositoryContentGetOptions{})
 			if err != nil {
 				return nil, resp, err

@@ -8,7 +8,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.7
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/moonwalker/moonbase v0.0.0-20230503153829-2c8978f0864b
+	github.com/moonwalker/moonbase v0.0.0-20230512140607-57d2c79de321
 	github.com/spf13/cobra v1.6.1
 	gopkg.in/yaml.v3 v3.0.1
 )
