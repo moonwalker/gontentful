@@ -244,7 +244,7 @@ func formatRepositoryContent(rcs []*github.RepositoryContent) (map[string]*conte
 
 	for _, rc := range rcs {
 		ect := extractContentype(*rc.Path)
-		if ect == content.ImageFolder {
+		if ect == IMAGE_FOLDER_NAME {
 			continue
 		}
 		if localizedData[ect] == nil {

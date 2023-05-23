@@ -67,3 +67,8 @@ func extractContentype(path string) string {
 	}
 	return ""
 }
+
+func GetImageFileName(fileName string, sysId string, locale string) string {
+	ext := filepath.Ext(fileName)
+	return fmt.Sprintf("%s.%s-%s%s", fileName[:len(fileName)-len(ext)], sysId, locale, ext)
+}

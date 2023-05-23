@@ -2,10 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -18,11 +21,12 @@ import (
 )
 
 const (
-	queryLimit = 1000
-	owner      = "moonwalker"
-	branch     = "main"
-	configPath = "moonbase.yaml"
-	include    = 0
+	queryLimit   = 1000
+	owner        = "moonwalker"
+	branch       = "main"
+	configPath   = "moonbase.yaml"
+	include      = 0
+	outputFormat = "./_output/%s"
 )
 
 type Config struct {
@@ -95,6 +99,8 @@ func transformContent() {
 	}
 	displayFields[gontentful.ASSET_TABLE_NAME] = gontentful.ASSET_DISPLAYFIELD
 
+	imageURLs := make(map[string]string)
+
 	for _, item := range res.Items {
 		var entries map[string]*content.ContentData
 		entries, err = gontentful.TransformEntry(locales, item)
@@ -103,9 +109,11 @@ func transformContent() {
 		}
 
 		ct := contentType
+		isAsset := item.Sys.Type == gontentful.ASSET
 
-		if item.Sys.Type == gontentful.ASSET {
+		if isAsset {
 			ct = gontentful.ASSET_TABLE_NAME
+			getAssetImageURL(item, defaultLocale, imageURLs)
 		} else if item.Sys.Type == gontentful.ENTRY && len(ct) == 0 {
 			ct = toCamelCase(item.Sys.ContentType.Sys.ID)
 		}
@@ -116,7 +124,7 @@ func transformContent() {
 				log.Fatalf("failed to marshal entry: %s", err.Error())
 			}
 
-			path := fmt.Sprintf("./output/%s", ct)
+			path := fmt.Sprintf(outputFormat, ct)
 			err = os.MkdirAll(path, os.ModePerm)
 			if err != nil {
 				log.Fatalf("failed to create output folder %s: %s", path, err.Error())
@@ -130,6 +138,27 @@ func transformContent() {
 			fmt.Println()
 			fmt.Printf("\033[1A")
 		}
+	}
+
+	i := 1
+	j := len(imageURLs)
+
+	imgPath := fmt.Sprintf(outputFormat, gontentful.IMAGE_FOLDER_NAME)
+	err = os.MkdirAll(imgPath, os.ModePerm)
+	if err != nil {
+		log.Fatalf("failed to create images folder: %s", err.Error())
+	}
+
+	for fn, url := range imageURLs {
+		fmt.Printf("Dowloading images: %d/%d - %s", i, j, fn)
+		err = downloadImage(url, fmt.Sprintf("%s/%s", imgPath, fn))
+		if err != nil {
+			log.Fatalf("failed to download image: %s", err.Error())
+		}
+		i++
+		fmt.Printf("\033[2K")
+		fmt.Println()
+		fmt.Printf("\033[1A")
 	}
 
 	fmt.Println("Content successfully transformed")
@@ -244,4 +273,51 @@ func getDisplayField(e *gontentful.Entry, displayField string, defaultLocale str
 		}
 	}
 	return e.Sys.ID
+}
+
+func getAssetImageURL(entry *gontentful.Entry, defaultLocale string, imageURLs map[string]string) {
+	//id := entry.Sys.ID
+	file, ok := entry.Fields["file"].(map[string]interface{})
+	if ok {
+		// l := len(file)
+		for loc, fc := range file {
+			// if l != 1 || loc != defaultLocale {
+			// 	id := fmt.Sprintf("%s-%s", entry.Sys.ID, loc)
+			// }
+			fileContent, ok := fc.(map[string]interface{})
+			if ok {
+				fileName := fileContent["fileName"].(string)
+				if fileName != "" {
+					url := fileContent["url"].(string)
+					if url != "" {
+						imageURLs[gontentful.GetImageFileName(fileName, entry.Sys.ID, loc)] = fmt.Sprintf("http:%s", url)
+					}
+				}
+			}
+		}
+	}
+}
+
+func downloadImage(URL, fileName string) error {
+	resp, err := http.Get(URL)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return errors.New("received non 200 response code")
+	}
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

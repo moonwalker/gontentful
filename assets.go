@@ -10,6 +10,7 @@ const (
 	DELETED_ASSET      = "DeletedAsset"
 	ASSET_TABLE_NAME   = "_asset"
 	ASSET_DISPLAYFIELD = "title"
+	IMAGE_FOLDER_NAME  = "_images"
 )
 
 var (
