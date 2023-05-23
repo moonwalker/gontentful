@@ -7,12 +7,14 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"time"
 
 	"github.com/moonwalker/gontentful"
 	"github.com/moonwalker/moonbase/pkg/content"
 )
 
 func transformContentType() {
+	start := time.Now()
 	fmt.Println("ContentType transforming started")
 
 	opts := &gontentful.ClientOptions{
@@ -94,7 +96,7 @@ func transformContentType() {
 	fmt.Printf("\033[2K")
 	fmt.Println()
 	fmt.Printf("\033[1A")
-	fmt.Println("ContentType successfully transformed")
+	fmt.Printf("ContentType successfully transformed in %fs\n", time.Since(start).Seconds())
 }
 
 func formatContentType() {

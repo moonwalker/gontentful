@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,6 +12,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gosimple/slug"
 
@@ -34,6 +34,7 @@ type Config struct {
 }
 
 func transformContent() {
+	start := time.Now()
 	fmt.Println("Content transforming started")
 
 	opts := &gontentful.ClientOptions{
@@ -149,11 +150,13 @@ func transformContent() {
 		log.Fatalf("failed to create images folder: %s", err.Error())
 	}
 
+	errors := make([]string, 0)
+
 	for fn, url := range imageURLs {
 		fmt.Printf("Dowloading images: %d/%d - %s", i, j, fn)
 		err = downloadImage(url, fmt.Sprintf("%s/%s", imgPath, fn))
 		if err != nil {
-			log.Fatalf("failed to download image: %s", err.Error())
+			errors = append(errors, err.Error())
 		}
 		i++
 		fmt.Printf("\033[2K")
@@ -161,7 +164,11 @@ func transformContent() {
 		fmt.Printf("\033[1A")
 	}
 
-	fmt.Println("Content successfully transformed")
+	fmt.Println("Content successfully transformed in %fs\n", time.Since(start).Seconds())
+
+	for _, e := range errors {
+		fmt.Println(e)
+	}
 }
 
 func formatContent() {
@@ -276,14 +283,9 @@ func getDisplayField(e *gontentful.Entry, displayField string, defaultLocale str
 }
 
 func getAssetImageURL(entry *gontentful.Entry, defaultLocale string, imageURLs map[string]string) {
-	//id := entry.Sys.ID
 	file, ok := entry.Fields["file"].(map[string]interface{})
 	if ok {
-		// l := len(file)
 		for loc, fc := range file {
-			// if l != 1 || loc != defaultLocale {
-			// 	id := fmt.Sprintf("%s-%s", entry.Sys.ID, loc)
-			// }
 			fileContent, ok := fc.(map[string]interface{})
 			if ok {
 				fileName := fileContent["fileName"].(string)
@@ -299,24 +301,30 @@ func getAssetImageURL(entry *gontentful.Entry, defaultLocale string, imageURLs m
 }
 
 func downloadImage(URL, fileName string) error {
+
+	// _, err := os.Open(fileName)
+	// if err == nil {
+	// 	return nil
+	// }
+
 	resp, err := http.Get(URL)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed fetch url %s: %s", URL, err.Error())
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return errors.New("received non 200 response code")
+		return fmt.Errorf("failed to download %s: %d - %s", fileName, resp.StatusCode, resp.Status)
 	}
 	file, err := os.Create(fileName)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create file %s: %s", fileName, err.Error())
 	}
 	defer file.Close()
 
 	_, err = io.Copy(file, resp.Body)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to copy file %s: %s", fileName, err.Error())
 	}
 
 	return nil
