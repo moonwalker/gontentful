@@ -40,9 +40,9 @@ func transformContent() {
 		SpaceID:       spaceID,
 		EnvironmentID: "master",
 		CdnToken:      cdnToken,
-		CdnURL:        "cdn.contentful.com",
+		CdnURL:        apiURL,
 		CmaToken:      cmaToken,
-		CmaURL:        "api.contentful.com",
+		CmaURL:        cmaURL,
 	}
 	cli := gontentful.NewClient(opts)
 

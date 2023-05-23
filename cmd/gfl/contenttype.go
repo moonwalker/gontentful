@@ -19,9 +19,9 @@ func transformContentType() {
 		SpaceID:       spaceID,
 		EnvironmentID: "master",
 		CdnToken:      cdnToken,
-		CdnURL:        "cdn.contentful.com",
+		CdnURL:        apiURL,
 		CmaToken:      cmaToken,
-		CmaURL:        "api.contentful.com",
+		CmaURL:        cmaURL,
 	}
 	cli := gontentful.NewClient(opts)
 
@@ -51,7 +51,7 @@ func transformContentType() {
 		if err != nil {
 			log.Fatal(fmt.Errorf("failed to transform model: %s", err.Error()))
 		}
-		path := fmt.Sprintf("./output/%s", item.Sys.ID)
+		path := fmt.Sprintf(outputFormat, item.Sys.ID)
 		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
 			log.Fatal(fmt.Errorf("failed to create output folder %s: %s", path, err.Error()))
@@ -65,7 +65,7 @@ func transformContentType() {
 		fmt.Printf("\033[1A")
 	}
 	// _assets schema
-	aid := "_asset"
+	aid := gontentful.ASSET_TABLE_NAME
 	schema := &content.Schema{
 		ID:   aid,
 		Name: "Asset",
@@ -82,7 +82,7 @@ func transformContentType() {
 			},
 		},
 	}
-	path := fmt.Sprintf("./output/%s", aid)
+	path := fmt.Sprintf(outputFormat, aid)
 	err = os.MkdirAll(path, os.ModePerm)
 	if err != nil {
 		log.Fatalf("failed to create output folder %s: %s", path, err.Error())
