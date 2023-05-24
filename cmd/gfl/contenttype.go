@@ -96,7 +96,7 @@ func transformContentType() {
 	fmt.Printf("\033[2K")
 	fmt.Println()
 	fmt.Printf("\033[1A")
-	fmt.Printf("ContentType successfully transformed in %fs\n", time.Since(start).Seconds())
+	fmt.Printf("ContentType successfully transformed in %.1fss\n", time.Since(start).Seconds())
 }
 
 func formatContentType() {

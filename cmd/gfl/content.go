@@ -164,7 +164,7 @@ func transformContent() {
 		fmt.Printf("\033[1A")
 	}
 
-	fmt.Println("Content successfully transformed in %fs\n", time.Since(start).Seconds())
+	fmt.Printf("Content successfully transformed in %.1fs\n", time.Since(start).Seconds())
 
 	for _, e := range errors {
 		fmt.Println(e)
