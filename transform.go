@@ -1,10 +1,17 @@
 package gontentful
 
 import (
+	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/moonwalker/moonbase/pkg/content"
+)
+
+const (
+	cdnClientID = "yeGKJew8TyopStA61YrS4A"
+	imageCDNFmt = "//%s.com/cdn-cgi/imagedelivery/%s/%s/%s"
 )
 
 func TransformModel(model *ContentType) (*content.Schema, error) {
@@ -552,11 +559,33 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 					includes[fv.(string)] = rf.Type
 				}
 			} else {
-				fields[fn].(map[string]interface{})[loc] = fv
+				if contentType == ASSET_TABLE_NAME && fn == "file" {
+					fields[fn].(map[string]interface{})[loc] = replaceAssetURL(fv, id, loc)
+				} else {
+					fields[fn].(map[string]interface{})[loc] = fv
+				}
 			}
 		}
 	}
 	e.Fields = fields
 
 	return e, includes, nil
+}
+
+func replaceAssetURL(file interface{}, sysID string, loc string) interface{} {
+	if fileMap, ok := file.(map[string]interface{}); ok {
+		fileName := fileMap["fileName"].(string)
+		if fileName != "" {
+			url := fileMap["url"].(string)
+			if url != "" {
+				fn := GetImageFileName(fileName, sysID, loc)
+				brand := os.Getenv("PRODUCT")
+				if len(brand) == 0 {
+					brand = os.Getenv("product")
+				}
+				fileMap["url"] = fmt.Sprintf(imageCDNFmt, brand, cdnClientID, brand, fn)
+			}
+		}
+	}
+	return file
 }
