@@ -3,9 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -152,7 +154,7 @@ func transformContent() {
 
 	for fn, url := range imageURLs {
 		fmt.Printf("Dowloading images: %d/%d - %s", i, j, fn)
-		err = gontentful.DownloadImage(url, fmt.Sprintf("%s/%s", imgPath, fn))
+		err = downloadImage(url, fmt.Sprintf("%s/%s", imgPath, fn))
 		if err != nil {
 			errors = append(errors, err.Error())
 		}
@@ -278,4 +280,28 @@ func getDisplayField(e *gontentful.Entry, displayField string, defaultLocale str
 		}
 	}
 	return e.Sys.ID
+}
+
+func downloadImage(URL, fileName string) error {
+	resp, err := http.Get(URL)
+	if err != nil {
+		return fmt.Errorf("failed fetch url %s: %s", URL, err.Error())
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("failed to download %s: %d - %s", fileName, resp.StatusCode, resp.Status)
+	}
+	file, err := os.Create(fileName)
+	if err != nil {
+		return fmt.Errorf("failed to create file %s: %s", fileName, err.Error())
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to copy file %s: %s", fileName, err.Error())
+	}
+
+	return nil
 }

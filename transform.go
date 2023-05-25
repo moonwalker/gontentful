@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -610,32 +609,21 @@ func GetAssetImageURL(entry *Entry, imageURLs map[string]string) {
 	}
 }
 
-func DownloadImage(URL, fileName string) error {
-
-	// _, err := os.Open(fileName)
-	// if err == nil {
-	// 	return nil
-	// }
-
+func downloadImage(URL, fileName string) (string, error) {
 	resp, err := http.Get(URL)
 	if err != nil {
-		return fmt.Errorf("failed fetch url %s: %s", URL, err.Error())
+		return "", fmt.Errorf("failed fetch url %s: %s", URL, err.Error())
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("failed to download %s: %d - %s", fileName, resp.StatusCode, resp.Status)
-	}
-	file, err := os.Create(fileName)
-	if err != nil {
-		return fmt.Errorf("failed to create file %s: %s", fileName, err.Error())
-	}
-	defer file.Close()
-
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to copy file %s: %s", fileName, err.Error())
+		return "", fmt.Errorf("failed to download %s: %d - %s", fileName, resp.StatusCode, resp.Status)
 	}
 
-	return nil
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read response body %s: - %s", fileName, err.Error())
+	}
+
+	return string(b), nil
 }
