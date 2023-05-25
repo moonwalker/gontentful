@@ -87,17 +87,14 @@ func (s *GHPublish) Exec(repo string) error {
 func getAssetImageURL(entry *PublishedEntry) map[string]string {
 	imageURLs := make(map[string]string)
 
-	file, ok := entry.Fields["file"]
-	if ok {
-		for loc, fc := range file {
-			fileContent, ok := fc.(map[string]interface{})
-			if ok {
-				fileName := fileContent["fileName"].(string)
-				if fileName != "" {
-					url := fileContent["url"].(string)
-					if url != "" {
-						imageURLs[GetImageFileName(fileName, entry.Sys.ID, loc)] = fmt.Sprintf("http:%s", url)
-					}
+	for loc, fc := range entry.Fields["file"] {
+		fileContent, ok := fc.(map[string]interface{})
+		if ok {
+			fileName := fileContent["fileName"].(string)
+			if fileName != "" {
+				url := fileContent["url"].(string)
+				if url != "" {
+					imageURLs[GetImageFileName(fileName, entry.Sys.ID, loc)] = fmt.Sprintf("http:%s", url)
 				}
 			}
 		}
