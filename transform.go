@@ -609,7 +609,7 @@ func GetAssetImageURL(entry *Entry, imageURLs map[string]string) {
 	}
 }
 
-func downloadImage(URL, fileName string) (string, error) {
+func downloadImage(URL string) (string, error) {
 	resp, err := http.Get(URL)
 	if err != nil {
 		return "", fmt.Errorf("failed fetch url %s: %s", URL, err.Error())
@@ -617,12 +617,12 @@ func downloadImage(URL, fileName string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("failed to download %s: %d - %s", fileName, resp.StatusCode, resp.Status)
+		return "", fmt.Errorf("failed to download %s: %d - %s", URL, resp.StatusCode, resp.Status)
 	}
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to read response body %s: - %s", fileName, err.Error())
+		return "", fmt.Errorf("failed to read response body %s: - %s", URL, err.Error())
 	}
 
 	return string(b), nil
