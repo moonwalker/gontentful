@@ -12,7 +12,7 @@ import (
 
 const (
 	cdnClientID = "yeGKJew8TyopStA61YrS4A"
-	imageCDNFmt = "//%s.com/cdn-cgi/imagedelivery/%s/%s/%s"
+	imageCDNFmt = "//%s.com/cdn-cgi/imagedelivery/%s/%s/%s/public"
 )
 
 func TransformModel(model *ContentType) (*content.Schema, error) {
