@@ -18,7 +18,12 @@ type GHPublish struct {
 }
 
 func NewGHPublish(entry *PublishedEntry, fileName string, locales *Locales, brand string) *GHPublish {
-	folderName := entry.Sys.ContentType.Sys.ID
+	folderName := ""
+	if entry.Sys.Type == ASSET {
+		folderName = ASSET_TABLE_NAME
+	} else {
+		folderName = entry.Sys.ContentType.Sys.ID
+	}
 	return &GHPublish{
 		FolderName: folderName,
 		FileName:   fileName,
