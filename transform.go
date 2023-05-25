@@ -408,7 +408,7 @@ func TransformEntry(locales *Locales, model *Entry, brand string) (map[string]*c
 	return res, nil
 }
 
-func TransformPublishedEntry(locales *Locales, model *PublishedEntry) (map[string]*content.ContentData, error) {
+func TransformPublishedEntry(locales *Locales, model *PublishedEntry, brand string) (map[string]*content.ContentData, error) {
 	res := make(map[string]*content.ContentData, 0)
 	for _, loc := range locales.Items {
 		data := &content.ContentData{
@@ -443,7 +443,11 @@ func TransformPublishedEntry(locales *Locales, model *PublishedEntry) (map[strin
 			}
 
 			if data.Fields[fn] == nil {
-				data.Fields[fn] = locValue
+				if model.Sys.Type == ASSET && fn == "file" {
+					data.Fields[fn] = replaceAssetURL(brand, locValue, model.Sys.ID, strings.ToLower(loc.Code))
+				} else {
+					data.Fields[fn] = locValue
+				}
 			}
 		}
 

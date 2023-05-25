@@ -14,15 +14,17 @@ type GHPublish struct {
 	FolderName string
 	FileName   string
 	Locales    *Locales
+	Brand      string
 }
 
-func NewGHPublish(entry *PublishedEntry, fileName string, locales *Locales) *GHPublish {
+func NewGHPublish(entry *PublishedEntry, fileName string, locales *Locales, brand string) *GHPublish {
 	folderName := entry.Sys.ContentType.Sys.ID
 	return &GHPublish{
 		FolderName: folderName,
 		FileName:   fileName,
 		Locales:    locales,
 		Entry:      entry,
+		Brand:      brand,
 	}
 }
 
@@ -30,7 +32,7 @@ func (s *GHPublish) Exec(repo string) error {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
 
-	cd, err := TransformPublishedEntry(s.Locales, s.Entry)
+	cd, err := TransformPublishedEntry(s.Locales, s.Entry, s.Brand)
 	if err != nil {
 		return err
 	}
