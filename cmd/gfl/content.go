@@ -3,11 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"math"
-	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -108,7 +106,7 @@ func transformContent() {
 
 		if isAsset {
 			ct = gontentful.ASSET_TABLE_NAME
-			getAssetImageURL(item, defaultLocale, imageURLs)
+			gontentful.GetAssetImageURL(item, imageURLs)
 		} else if item.Sys.Type == gontentful.ENTRY && len(ct) == 0 {
 			ct = toCamelCase(item.Sys.ContentType.Sys.ID)
 		}
@@ -154,7 +152,7 @@ func transformContent() {
 
 	for fn, url := range imageURLs {
 		fmt.Printf("Dowloading images: %d/%d - %s", i, j, fn)
-		err = downloadImage(url, fmt.Sprintf("%s/%s", imgPath, fn))
+		err = gontentful.DownloadImage(url, fmt.Sprintf("%s/%s", imgPath, fn))
 		if err != nil {
 			errors = append(errors, err.Error())
 		}
@@ -280,52 +278,4 @@ func getDisplayField(e *gontentful.Entry, displayField string, defaultLocale str
 		}
 	}
 	return e.Sys.ID
-}
-
-func getAssetImageURL(entry *gontentful.Entry, defaultLocale string, imageURLs map[string]string) {
-	file, ok := entry.Fields["file"].(map[string]interface{})
-	if ok {
-		for loc, fc := range file {
-			fileContent, ok := fc.(map[string]interface{})
-			if ok {
-				fileName := fileContent["fileName"].(string)
-				if fileName != "" {
-					url := fileContent["url"].(string)
-					if url != "" {
-						imageURLs[gontentful.GetImageFileName(fileName, entry.Sys.ID, loc)] = fmt.Sprintf("http:%s", url)
-					}
-				}
-			}
-		}
-	}
-}
-
-func downloadImage(URL, fileName string) error {
-
-	// _, err := os.Open(fileName)
-	// if err == nil {
-	// 	return nil
-	// }
-
-	resp, err := http.Get(URL)
-	if err != nil {
-		return fmt.Errorf("failed fetch url %s: %s", URL, err.Error())
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("failed to download %s: %d - %s", fileName, resp.StatusCode, resp.Status)
-	}
-	file, err := os.Create(fileName)
-	if err != nil {
-		return fmt.Errorf("failed to create file %s: %s", fileName, err.Error())
-	}
-	defer file.Close()
-
-	_, err = io.Copy(file, resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to copy file %s: %s", fileName, err.Error())
-	}
-
-	return nil
 }

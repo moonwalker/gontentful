@@ -2,6 +2,9 @@ package gontentful
 
 import (
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -587,4 +590,52 @@ func replaceAssetURL(brand string, file interface{}, sysID string, loc string) i
 		}
 	}
 	return file
+}
+
+func GetAssetImageURL(entry *Entry, imageURLs map[string]string) {
+	file, ok := entry.Fields["file"].(map[string]interface{})
+	if ok {
+		for loc, fc := range file {
+			fileContent, ok := fc.(map[string]interface{})
+			if ok {
+				fileName := fileContent["fileName"].(string)
+				if fileName != "" {
+					url := fileContent["url"].(string)
+					if url != "" {
+						imageURLs[GetImageFileName(fileName, entry.Sys.ID, loc)] = fmt.Sprintf("http:%s", url)
+					}
+				}
+			}
+		}
+	}
+}
+
+func DownloadImage(URL, fileName string) error {
+
+	// _, err := os.Open(fileName)
+	// if err == nil {
+	// 	return nil
+	// }
+
+	resp, err := http.Get(URL)
+	if err != nil {
+		return fmt.Errorf("failed fetch url %s: %s", URL, err.Error())
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("failed to download %s: %d - %s", fileName, resp.StatusCode, resp.Status)
+	}
+	file, err := os.Create(fileName)
+	if err != nil {
+		return fmt.Errorf("failed to create file %s: %s", fileName, err.Error())
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to copy file %s: %s", fileName, err.Error())
+	}
+
+	return nil
 }
