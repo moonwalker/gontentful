@@ -2,7 +2,6 @@ package gontentful
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -351,7 +350,7 @@ func formatSchemaRecursive(schema *content.Schema) []*ContentType {
 	return res
 }
 
-func TransformEntry(locales *Locales, model *Entry) (map[string]*content.ContentData, error) {
+func TransformEntry(locales *Locales, model *Entry, brand string) (map[string]*content.ContentData, error) {
 	res := make(map[string]*content.ContentData, 0)
 	for _, loc := range locales.Items {
 		data := &content.ContentData{
@@ -390,7 +389,11 @@ func TransformEntry(locales *Locales, model *Entry) (map[string]*content.Content
 			}
 
 			if data.Fields[fn] == nil {
-				data.Fields[fn] = locValue
+				if model.Sys.Type == ASSET && fn == "file" {
+					data.Fields[fn] = replaceAssetURL(brand, locValue, model.Sys.ID, strings.ToLower(loc.Code))
+				} else {
+					data.Fields[fn] = locValue
+				}
 			}
 		}
 
@@ -559,11 +562,7 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 					includes[fv.(string)] = rf.Type
 				}
 			} else {
-				if contentType == ASSET_TABLE_NAME && fn == "file" {
-					fields[fn].(map[string]interface{})[loc] = replaceAssetURL(fv, id, loc)
-				} else {
-					fields[fn].(map[string]interface{})[loc] = fv
-				}
+				fields[fn].(map[string]interface{})[loc] = fv
 			}
 		}
 	}
@@ -572,17 +571,13 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 	return e, includes, nil
 }
 
-func replaceAssetURL(file interface{}, sysID string, loc string) interface{} {
+func replaceAssetURL(brand string, file interface{}, sysID string, loc string) interface{} {
 	if fileMap, ok := file.(map[string]interface{}); ok {
 		fileName := fileMap["fileName"].(string)
 		if fileName != "" {
 			url := fileMap["url"].(string)
 			if url != "" {
 				fn := GetImageFileName(fileName, sysID, loc)
-				brand := os.Getenv("PRODUCT")
-				if len(brand) == 0 {
-					brand = os.Getenv("product")
-				}
 				fileMap["url"] = fmt.Sprintf(imageCDNFmt, brand, cdnClientID, brand, fn)
 			}
 		}

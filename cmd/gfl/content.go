@@ -103,12 +103,6 @@ func transformContent() {
 	imageURLs := make(map[string]string)
 
 	for _, item := range res.Items {
-		var entries map[string]*content.ContentData
-		entries, err = gontentful.TransformEntry(locales, item)
-		if err != nil {
-			log.Fatalf("failed to transform entry: %s", err.Error())
-		}
-
 		ct := contentType
 		isAsset := item.Sys.Type == gontentful.ASSET
 
@@ -117,6 +111,12 @@ func transformContent() {
 			getAssetImageURL(item, defaultLocale, imageURLs)
 		} else if item.Sys.Type == gontentful.ENTRY && len(ct) == 0 {
 			ct = toCamelCase(item.Sys.ContentType.Sys.ID)
+		}
+
+		var entries map[string]*content.ContentData
+		entries, err = gontentful.TransformEntry(locales, item, brand)
+		if err != nil {
+			log.Fatalf("failed to transform entry: %s", err.Error())
 		}
 
 		for l, e := range entries {

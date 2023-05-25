@@ -10,6 +10,7 @@ var (
 	ctTransform = false
 	direction,
 	contentType,
+	brand,
 	repo string
 	snake        = regexp.MustCompile(`([_ ]\w)`)
 	transformCmd = &cobra.Command{
@@ -22,6 +23,9 @@ var (
 				rootCmd.MarkPersistentFlagRequired("space")
 				rootCmd.MarkPersistentFlagRequired("token")
 				rootCmd.MarkPersistentFlagRequired("cma")
+				if !ctTransform {
+					cmd.MarkFlagRequired("brand")
+				}
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
@@ -48,6 +52,7 @@ func init() {
 	transformCmd.Flags().BoolVarP(&ctTransform, "ct", "f", false, "content type transform")
 	transformCmd.Flags().StringVarP(&contentType, "contentModel", "m", "", "type of the content to migrate")
 	transformCmd.Flags().StringVarP(&repo, "repo", "r", "", "repo of the content to migrate")
+	transformCmd.Flags().StringVarP(&brand, "brand", "b", "", "brand")
 	transformCmd.PersistentFlags().StringVarP(&direction, "direction", "d", "", "directions: <fromcf|tocf>")
 	transformCmd.MarkPersistentFlagRequired("direction")
 	rootCmd.AddCommand(transformCmd)
