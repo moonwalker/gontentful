@@ -59,10 +59,49 @@ func (s *GHPublish) Exec(repo string) error {
 		})
 	}
 
+	if s.Entry.Sys.Type == ASSET {
+		imageURLs := getAssetImageURL(s.Entry)
+		for fn, url := range imageURLs {
+			// download image
+			imageContent, err := downloadImage(url)
+			if err != nil {
+				return err
+			}
+
+			// add image to entries array
+			entries = append(entries, gh.BlobEntry{
+				Path:    fmt.Sprintf("%s/%s", IMAGE_FOLDER_NAME, fn),
+				Content: &imageContent,
+			})
+		}
+	}
+
 	_, err = gh.CommitBlobs(context.Background(), cfg.Token, owner, repo, branch, entries, "feat(content): update files")
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func getAssetImageURL(entry *PublishedEntry) map[string]string {
+	imageURLs := make(map[string]string)
+
+	file, ok := entry.Fields["file"].(map[string]interface{})
+	if ok {
+		for loc, fc := range file {
+			fileContent, ok := fc.(map[string]interface{})
+			if ok {
+				fileName := fileContent["fileName"].(string)
+				if fileName != "" {
+					url := fileContent["url"].(string)
+					if url != "" {
+						imageURLs[GetImageFileName(fileName, entry.Sys.ID, loc)] = fmt.Sprintf("http:%s", url)
+					}
+				}
+			}
+		}
+	}
+
+	return imageURLs
 }
