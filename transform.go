@@ -391,12 +391,11 @@ func TransformEntry(locales *Locales, model *Entry, brand string) (map[string]*c
 			}
 
 			if data.Fields[fn] == nil {
-				/*if model.Sys.Type == ASSET && fn == "file" {
+				if model.Sys.Type == ASSET && fn == "file" {
 					data.Fields[fn] = replaceAssetURL(brand, locValue, model.Sys.ID, strings.ToLower(loc.Code))
 				} else {
 					data.Fields[fn] = locValue
-				}*/
-				data.Fields[fn] = locValue
+				}
 			}
 		}
 
@@ -446,12 +445,11 @@ func TransformPublishedEntry(locales *Locales, model *PublishedEntry, brand stri
 			}
 
 			if data.Fields[fn] == nil {
-				/*if model.Sys.Type == ASSET && fn == "file" {
+				if model.Sys.Type == ASSET && fn == "file" {
 					data.Fields[fn] = replaceAssetURL(brand, locValue, model.Sys.ID, strings.ToLower(loc.Code))
 				} else {
 					data.Fields[fn] = locValue
-				}*/
-				data.Fields[fn] = locValue
+				}
 			}
 		}
 
