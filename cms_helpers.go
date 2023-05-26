@@ -29,7 +29,7 @@ func parseFileName(fn string) (string, string, error) {
 	}
 
 	s := strings.Split(strings.TrimSuffix(fn, ext), "_")
-	if len(s) != 2 || len(s[1]) == 0 {
+	if len(s) != 2 || len(s[0]) == 0 || len(s[1]) == 0 {
 		return "", "", errors.New(fmt.Sprintf("incorrect filename: %s", fn))
 	}
 
