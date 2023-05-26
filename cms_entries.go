@@ -23,7 +23,6 @@ const (
 	owner      = "moonwalker"
 	branch     = "main"
 	configPath = "moonbase.yaml"
-	include    = 0
 )
 
 func GetCMSEntries(contentType string, repo string, include int) (*Entries, *ContentTypes, error) {
@@ -32,7 +31,7 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 		return nil, nil, fmt.Errorf("failed to get content localized: %s", err.Error())
 	}
 
-	entries, err := createEntriesFromLocalizedData(repo, schemas, localizedData)
+	entries, err := createEntriesFromLocalizedData(repo, schemas, localizedData, include)
 
 	cts := make([]*ContentType, 0)
 	for _, schema := range schemas {
@@ -56,7 +55,7 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 	return entries, contentTypes, nil
 }
 
-func createEntriesFromLocalizedData(repo string, schemas map[string]*content.Schema, localizedData map[string]map[string]map[string]content.ContentData) (*Entries, error) {
+func createEntriesFromLocalizedData(repo string, schemas map[string]*content.Schema, localizedData map[string]map[string]map[string]content.ContentData, include int) (*Entries, error) {
 	entries := &Entries{
 		Sys: &Sys{
 			Type: "Array",
@@ -111,7 +110,7 @@ func GetCMSEntry(contentType string, repo string, prefix string, include int) (*
 		fmt.Println(k, *v)
 	}
 
-	entries, err := createEntriesFromLocalizedData(repo, schemas, localizedData)
+	entries, err := createEntriesFromLocalizedData(repo, schemas, localizedData, include)
 	if err != nil {
 		return nil, fmt.Errorf("failed to format repository content: %s", err.Error())
 	}
