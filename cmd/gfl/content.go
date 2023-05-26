@@ -131,7 +131,13 @@ func transformContent() {
 				log.Fatalf("failed to create output folder %s: %s", path, err.Error())
 			}
 
-			fn := fmt.Sprintf("%s_%s", getDisplayField(item, displayFields[ct], defaultLocale), l)
+			dfv := getDisplayField(item, displayFields[ct], defaultLocale)
+			fn := ""
+			if isAsset {
+				fn = fmt.Sprintf("%s-%s_%s", dfv, item.Sys.ID, l)
+			} else {
+				fn = fmt.Sprintf("%s_%s", dfv, l)
+			}
 			f := fmt.Sprintf("%s/%s.json", path, strings.ToLower(fn))
 			fmt.Printf("Writing file: %s", f)
 			ioutil.WriteFile(f, b, 0644)
