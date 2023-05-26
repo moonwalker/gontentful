@@ -279,7 +279,9 @@ func getDisplayField(e *gontentful.Entry, displayField string, defaultLocale str
 		if k == displayField {
 			if i, ok := v.(map[string]interface{}); ok {
 				if s, ok := i[defaultLocale].(string); ok {
-					return slug.Make(s)
+					if df := slug.Make(s); df != "" {
+						return df
+					}
 				}
 			}
 			break
