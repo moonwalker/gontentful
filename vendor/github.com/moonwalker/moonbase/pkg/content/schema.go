@@ -6,7 +6,6 @@ import (
 
 const (
 	JsonSchemaName = "_schema.json"
-	ImageFolder    = "_images"
 )
 
 type Asset struct {
