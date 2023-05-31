@@ -37,28 +37,7 @@ func (s *GHPublish) Exec(repo string) error {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
 
-	cd, err := TransformPublishedEntry(s.Locales, s.Entry, s.Brand)
-	if err != nil {
-		return err
-	}
-
-	// upload to github
 	entries := make([]gh.BlobEntry, 0)
-	for l, c := range cd {
-		fileName := fmt.Sprintf("%s_%s.json", s.FileName, l)
-		contentBytes, err := json.Marshal(c)
-		if err != nil {
-			return err
-		}
-
-		content := string(contentBytes)
-		path := filepath.Join(cfg.WorkDir, s.FolderName, fileName)
-		entries = append(entries, gh.BlobEntry{
-			Path:    path,
-			Content: &content,
-		})
-	}
-
 	if s.Entry.Sys.Type == ASSET {
 		imageURLs := getAssetImageURL(s.Entry)
 		for fn, url := range imageURLs {
@@ -74,6 +53,27 @@ func (s *GHPublish) Exec(repo string) error {
 				Content: &imageContent,
 			})
 		}
+	}
+
+	cd, err := TransformPublishedEntry(s.Locales, s.Entry, s.Brand)
+	if err != nil {
+		return err
+	}
+
+	// upload to github
+	for l, c := range cd {
+		fileName := fmt.Sprintf("%s_%s.json", s.FileName, l)
+		contentBytes, err := json.Marshal(c)
+		if err != nil {
+			return err
+		}
+
+		content := string(contentBytes)
+		path := filepath.Join(cfg.WorkDir, s.FolderName, fileName)
+		entries = append(entries, gh.BlobEntry{
+			Path:    path,
+			Content: &content,
+		})
 	}
 
 	_, err = gh.CommitBlobs(context.Background(), cfg.Token, owner, repo, branch, entries, "feat(content): update files")
