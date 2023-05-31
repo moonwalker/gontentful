@@ -416,6 +416,7 @@ func TransformEntry(locales *Locales, model *Entry, brand string) (map[string]*c
 func TransformPublishedEntry(locales *Locales, model *PublishedEntry, brand string) (map[string]*content.ContentData, error) {
 	res := make(map[string]*content.ContentData, 0)
 	for _, loc := range locales.Items {
+		contentLoc := loc.Code
 		data := &content.ContentData{
 			ID:     model.Sys.ID,
 			Fields: make(map[string]interface{}),
@@ -426,6 +427,7 @@ func TransformPublishedEntry(locales *Locales, model *PublishedEntry, brand stri
 			locValue := locValues[strings.ToLower(loc.Code)]
 			if locValue == nil {
 				locValue = locValues[defaultLocale]
+				contentLoc = defaultLocale
 			}
 
 			if lsysl, ok := locValue.([]interface{}); ok {
@@ -449,7 +451,7 @@ func TransformPublishedEntry(locales *Locales, model *PublishedEntry, brand stri
 
 			if data.Fields[fn] == nil {
 				if model.Sys.Type == ASSET && fn == "file" {
-					data.Fields[fn] = replaceAssetURL(brand, locValue, model.Sys.ID, strings.ToLower(loc.Code))
+					data.Fields[fn] = replaceAssetURL(brand, locValue, model.Sys.ID, strings.ToLower(contentLoc))
 				} else {
 					data.Fields[fn] = locValue
 				}
