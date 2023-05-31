@@ -47,10 +47,17 @@ func (s *GHPublish) Exec(repo string) error {
 				return err
 			}
 
-			// add image to entries array
+			// create the blobs with the image's content (encoding base64)
+			encoding := "base64"
+			blob, err := gh.CreateBlob(ctx, cfg.Token, owner, repo, branch, &imageContent, &encoding)
+			if err != nil {
+				return err
+			}
+
+			// add image sha to entries array
 			entries = append(entries, gh.BlobEntry{
-				Path:    fmt.Sprintf("%s/%s", IMAGE_FOLDER_NAME, fn),
-				Content: &imageContent,
+				Path: fmt.Sprintf("%s/%s", IMAGE_FOLDER_NAME, fn),
+				SHA:  blob.SHA,
 			})
 		}
 	}
@@ -76,7 +83,7 @@ func (s *GHPublish) Exec(repo string) error {
 		})
 	}
 
-	_, err = gh.CommitBlobs(context.Background(), cfg.Token, owner, repo, branch, entries, "feat(content): update files")
+	_, err = gh.CommitBlobs(ctx, cfg.Token, owner, repo, branch, entries, "feat(content): update files")
 	if err != nil {
 		return err
 	}

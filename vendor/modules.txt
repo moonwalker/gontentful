@@ -31,7 +31,7 @@ github.com/lib/pq/scram
 # github.com/mitchellh/mapstructure v1.5.0
 ## explicit; go 1.14
 github.com/mitchellh/mapstructure
-# github.com/moonwalker/moonbase v0.0.0-20230526152617-257b02351673
+# github.com/moonwalker/moonbase v0.0.0-20230531192347-9908a60430ef
 ## explicit; go 1.19
 github.com/moonwalker/moonbase/internal/env
 github.com/moonwalker/moonbase/pkg/content

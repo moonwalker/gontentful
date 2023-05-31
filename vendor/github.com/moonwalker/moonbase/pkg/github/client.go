@@ -113,6 +113,17 @@ func GetBlob(ctx context.Context, accessToken string, owner string, repo string,
 	return []byte(decodedBlob), resp, nil
 }
 
+func CreateBlob(ctx context.Context, accessToken string, owner string, repo string, ref string, content *string, encoding *string) (*github.Blob, error) {
+	githubClient := ghClient(ctx, accessToken)
+
+	blob, _, err := githubClient.Git.CreateBlob(ctx, owner, repo, &github.Blob{
+		Content:  content,
+		Encoding: encoding,
+	})
+
+	return blob, err
+}
+
 func CommitBlob(ctx context.Context, accessToken string, owner string, repo string, ref string, path string, content *string, commitMessage string) (*github.Response, error) {
 	githubClient := ghClient(ctx, accessToken)
 
@@ -126,6 +137,9 @@ func CommitBlob(ctx context.Context, accessToken string, owner string, repo stri
 			Path:    path,
 			Content: content,
 		}})
+	if err != nil {
+		return resp, err
+	}
 
 	resp, err = pushCommit(ctx, githubClient, reference, tree, owner, repo, commitMessage)
 	if err != nil {
@@ -138,6 +152,7 @@ func CommitBlob(ctx context.Context, accessToken string, owner string, repo stri
 type BlobEntry struct {
 	Path    string
 	Content *string
+	SHA     *string
 }
 
 func getCommitTree(ctx context.Context, githubClient *github.Client, owner string, repo string, sha string, items []BlobEntry) (*github.Tree, *github.Response, error) {
@@ -149,6 +164,7 @@ func getCommitTree(ctx context.Context, githubClient *github.Client, owner strin
 			Type:    github.String("blob"),
 			Mode:    github.String("100644"),
 			Content: i.Content,
+			SHA:     i.SHA,
 		})
 	}
 
