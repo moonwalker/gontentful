@@ -113,15 +113,15 @@ func GetBlob(ctx context.Context, accessToken string, owner string, repo string,
 	return []byte(decodedBlob), resp, nil
 }
 
-func CreateBlob(ctx context.Context, accessToken string, owner string, repo string, ref string, content *string, encoding *string) (*github.Blob, error) {
+func CreateBlob(ctx context.Context, accessToken string, owner string, repo string, ref string, content *string, encoding *string) (*github.Blob, *github.Response, error) {
 	githubClient := ghClient(ctx, accessToken)
 
-	blob, _, err := githubClient.Git.CreateBlob(ctx, owner, repo, &github.Blob{
+	blob, resp, err := githubClient.Git.CreateBlob(ctx, owner, repo, &github.Blob{
 		Content:  content,
 		Encoding: encoding,
 	})
 
-	return blob, err
+	return blob, resp, err
 }
 
 func CommitBlob(ctx context.Context, accessToken string, owner string, repo string, ref string, path string, content *string, commitMessage string) (*github.Response, error) {

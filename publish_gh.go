@@ -49,7 +49,7 @@ func (s *GHPublish) Exec(repo string) error {
 
 			// create the blobs with the image's content (encoding base64)
 			encoding := "base64"
-			blob, err := gh.CreateBlob(ctx, cfg.Token, owner, repo, branch, &imageContent, &encoding)
+			blob, _, err := gh.CreateBlob(ctx, cfg.Token, owner, repo, branch, &imageContent, &encoding)
 			if err != nil {
 				return err
 			}

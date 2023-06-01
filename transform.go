@@ -395,7 +395,7 @@ func TransformEntry(locales *Locales, model *Entry, brand string) (map[string]*c
 
 			if data.Fields[fn] == nil {
 				if model.Sys.Type == ASSET && fn == "file" {
-					data.Fields[fn] = replaceAssetURL(brand, locValue, model.Sys.ID, strings.ToLower(contentLoc))
+					data.Fields[fn] = replaceAssetFile(brand, locValue, model.Sys.ID, strings.ToLower(contentLoc))
 				} else {
 					data.Fields[fn] = locValue
 				}
@@ -451,7 +451,7 @@ func TransformPublishedEntry(locales *Locales, model *PublishedEntry, brand stri
 
 			if data.Fields[fn] == nil {
 				if model.Sys.Type == ASSET && fn == "file" {
-					data.Fields[fn] = replaceAssetURL(brand, locValue, model.Sys.ID, strings.ToLower(contentLoc))
+					data.Fields[fn] = replaceAssetFile(brand, locValue, model.Sys.ID, strings.ToLower(contentLoc))
 				} else {
 					data.Fields[fn] = locValue
 				}
@@ -582,13 +582,14 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 	return e, includes, nil
 }
 
-func replaceAssetURL(brand string, file interface{}, sysID string, loc string) interface{} {
+func replaceAssetFile(brand string, file interface{}, sysID string, loc string) interface{} {
 	if fileMap, ok := file.(map[string]interface{}); ok {
 		fileName := fileMap["fileName"].(string)
 		if fileName != "" {
 			url := fileMap["url"].(string)
 			if url != "" {
 				fn := GetImageFileName(fileName, sysID, loc)
+				fileMap["fileName"] = fn
 				fileMap["url"] = fmt.Sprintf(imageCDNFmt, brand, cdnClientID, brand, fn)
 			}
 		}
