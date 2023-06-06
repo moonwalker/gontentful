@@ -391,7 +391,17 @@ func GetContentsRecursive_old(ctx context.Context, accessToken string, owner str
 func GetArchivedContents(ctx context.Context, accessToken string, owner string, repo string, ref string, path string) ([]*github.RepositoryContent, *github.Response, error) {
 	githubClient := ghClient(ctx, accessToken)
 
-	url, resp, err := githubClient.Repositories.GetArchiveLink(ctx, owner, repo, github.Tarball, nil, false)
+	var opt *github.RepositoryContentGetOptions
+	if len(path) > 0 {
+		dirSha, resp, err := getDirectorySha(ctx, githubClient, owner, repo, ref, path)
+		if err != nil {
+			return nil, resp, err
+		}
+		opt = &github.RepositoryContentGetOptions{
+			Ref: dirSha,
+		}
+	}
+	url, resp, err := githubClient.Repositories.GetArchiveLink(ctx, owner, repo, github.Tarball, opt, false)
 	if err != nil {
 		return nil, resp, err
 	}

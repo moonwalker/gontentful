@@ -13,7 +13,7 @@ import (
 
 const (
 	cdnClientID = "yeGKJew8TyopStA61YrS4A"
-	imageCDNFmt = "//%s.com/cdn-cgi/imagedelivery/%s/%s/%s/public"
+	imageCDNFmt = "//instaslots.com/cdn-cgi/imagedelivery/%s/%s/%s/public"
 )
 
 func TransformModel(model *ContentType) (*content.Schema, error) {
@@ -583,16 +583,22 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 }
 
 func replaceAssetFile(brand string, file interface{}, sysID string, loc string) interface{} {
-	if fileMap, ok := file.(map[string]interface{}); ok {
+	if originalfileMap, ok := file.(map[string]interface{}); ok {
+		// clone map
+		fileMap := make(map[string]interface{})
+		for k, v := range originalfileMap {
+			fileMap[k] = v
+		}
 		fileName := fileMap["fileName"].(string)
 		if fileName != "" {
 			url := fileMap["url"].(string)
 			if url != "" {
 				fn := GetImageFileName(fileName, sysID, loc)
 				fileMap["fileName"] = fn
-				fileMap["url"] = fmt.Sprintf(imageCDNFmt, brand, cdnClientID, brand, fn)
+				fileMap["url"] = fmt.Sprintf(imageCDNFmt, cdnClientID, brand, fn)
 			}
 		}
+		return fileMap
 	}
 	return file
 }
