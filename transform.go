@@ -13,7 +13,7 @@ import (
 
 const (
 	cdnClientID = "yeGKJew8TyopStA61YrS4A"
-	imageCDNFmt = "//instaslots.com/cdn-cgi/imagedelivery/%s/%s/%s/public"
+	imageCDNFmt = "//imagedelivery.net/%s/%s/%s/public"
 )
 
 func TransformModel(model *ContentType) (*content.Schema, error) {

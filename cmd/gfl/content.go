@@ -108,7 +108,9 @@ func transformContent() {
 
 		if isAsset {
 			ct = gontentful.ASSET_TABLE_NAME
-			gontentful.GetAssetImageURL(item, imageURLs)
+			if !noImages {
+				gontentful.GetAssetImageURL(item, imageURLs)
+			}
 		} else if item.Sys.Type == gontentful.ENTRY && len(ct) == 0 {
 			ct = toCamelCase(item.Sys.ContentType.Sys.ID)
 		}
@@ -149,25 +151,26 @@ func transformContent() {
 
 	i := 1
 	j := len(imageURLs)
-
-	imgPath := fmt.Sprintf(outputFormat, gontentful.IMAGE_FOLDER_NAME)
-	err = os.MkdirAll(imgPath, os.ModePerm)
-	if err != nil {
-		log.Fatalf("failed to create images folder: %s", err.Error())
-	}
-
 	errors := make([]string, 0)
 
-	for fn, url := range imageURLs {
-		fmt.Printf("Dowloading images: %d/%d - %s", i, j, fn)
-		err = downloadImage(url, fmt.Sprintf("%s/%s", imgPath, fn))
+	if j > 0 {
+		imgPath := fmt.Sprintf(outputFormat, gontentful.IMAGE_FOLDER_NAME)
+		err = os.MkdirAll(imgPath, os.ModePerm)
 		if err != nil {
-			errors = append(errors, err.Error())
+			log.Fatalf("failed to create images folder: %s", err.Error())
 		}
-		i++
-		fmt.Printf("\033[2K")
-		fmt.Println()
-		fmt.Printf("\033[1A")
+
+		for fn, url := range imageURLs {
+			fmt.Printf("Dowloading images: %d/%d - %s", i, j, fn)
+			err = downloadImage(url, fmt.Sprintf("%s/%s", imgPath, fn))
+			if err != nil {
+				errors = append(errors, err.Error())
+			}
+			i++
+			fmt.Printf("\033[2K")
+			fmt.Println()
+			fmt.Printf("\033[1A")
+		}
 	}
 
 	fmt.Printf("Content successfully transformed in %.1fs\n", time.Since(start).Seconds())

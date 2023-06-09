@@ -8,6 +8,7 @@ import (
 
 var (
 	ctTransform = false
+	noImages    = false
 	direction,
 	contentType,
 	brand,
@@ -50,6 +51,7 @@ var (
 func init() {
 	// contentType to migrate
 	transformCmd.Flags().BoolVarP(&ctTransform, "ct", "f", false, "content type transform")
+	transformCmd.Flags().BoolVarP(&noImages, "no-images", "i", false, "skip downloading images")
 	transformCmd.Flags().StringVarP(&contentType, "contentModel", "m", "", "type of the content to migrate")
 	transformCmd.Flags().StringVarP(&repo, "repo", "r", "", "repo of the content to migrate")
 	transformCmd.Flags().StringVarP(&brand, "brand", "b", "", "brand")
