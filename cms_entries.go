@@ -101,7 +101,7 @@ func GetCMSEntry(contentType string, repo string, prefix string, include int) (*
 		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
 	}
 
-	schemas, localizedData, err := formatRepositoryContent(rcs)
+	schemas, localizedData, err := formatRepositoryContent(rcs, path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to format repository content: %s", err.Error())
 	}
@@ -123,7 +123,8 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 	cfg := getConfig(ctx, owner, repo, branch)
 	path := filepath.Join(cfg.WorkDir, contentType)
 
-	rcs, _, err := gh.GetAllLocaleContents(ctx, cfg.Token, owner, repo, branch, path, prefix)
+	rcs, _, err := gh.GetAllLocaleContentsWithTree(ctx, cfg.Token, owner, repo, branch, path, prefix)
+	//rcs, _, err := gh.GetAllLocaleContents(ctx, cfg.Token, owner, repo, branch, path, prefix)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
 	}
@@ -217,7 +218,7 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 	path := filepath.Join(cfg.WorkDir, ct)
 	var rcs []*github.RepositoryContent
 	var err error
-	if len(ct) == 0 {
+	/*if len(ct) == 0 || ct != ASSET_TABLE_NAME {
 		//localPath := fmt.Sprintf("/Users/rolandhelli/Development/src/github.com/moonwalker/%s", repo)
 		//rcs, err = GetLocalContentsRecursive(localPath)
 		rcs, _, err = gh.GetArchivedContents(ctx, cfg.Token, owner, repo, branch, path)
@@ -229,20 +230,26 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get json(s) from github: %s", err.Error())
 		}
+	}*/
+
+	// test, use GetArchivedContents in all use cases
+	rcs, _, err = gh.GetArchivedContents(ctx, cfg.Token, owner, repo, branch, path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get json(s) from github: %s", err.Error())
 	}
 
-	schemas, localizedData, err := formatRepositoryContent(rcs)
+	schemas, localizedData, err := formatRepositoryContent(rcs, path)
 
 	return schemas, localizedData, err
 }
 
-func formatRepositoryContent(rcs []*github.RepositoryContent) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData, error) {
+func formatRepositoryContent(rcs []*github.RepositoryContent, path string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData, error) {
 	localizedData := make(map[string]map[string]map[string]content.ContentData)
 	schemas := make(map[string]*content.Schema)
 	var err error
 
 	for _, rc := range rcs {
-		ect := extractContentype(*rc.Path)
+		ect := extractContentype(filepath.Join(path, *rc.Path))
 		if ect == IMAGE_FOLDER_NAME {
 			continue
 		}
