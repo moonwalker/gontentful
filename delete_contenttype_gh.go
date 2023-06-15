@@ -14,7 +14,7 @@ type GHDeleteContentType struct {
 }
 
 func NewGHDeleteContentType(sys *Sys) *GHDeleteContentType {
-	folderName := sys.ContentType.Sys.ID
+	folderName := sys.ID
 	return &GHDeleteContentType{
 		FolderName: folderName,
 		SysID:      sys.ID,
