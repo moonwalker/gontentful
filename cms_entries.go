@@ -106,10 +106,6 @@ func GetCMSEntry(contentType string, repo string, prefix string, include int) (*
 		return nil, fmt.Errorf("failed to format repository content: %s", err.Error())
 	}
 
-	for k, v := range schemas {
-		fmt.Println(k, *v)
-	}
-
 	entries, err := createEntriesFromLocalizedData(repo, schemas, localizedData, include)
 	if err != nil {
 		return nil, fmt.Errorf("failed to format repository content: %s", err.Error())
