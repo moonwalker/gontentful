@@ -28,12 +28,13 @@ func parseFileName(fn string) (string, string, error) {
 		return "", "", errors.New(fmt.Sprintf("incorrect file format: %s", ext))
 	}
 
-	s := strings.Split(strings.TrimSuffix(fn, ext), "_")
-	if len(s) != 2 || len(s[0]) == 0 || len(s[1]) == 0 {
+	basefn := strings.TrimSuffix(fn, ext)
+	s := strings.Split(basefn, "_")
+	if len(s) < 2 || len(s[0]) == 0 || len(s[len(s)-1]) == 0 {
 		return "", "", errors.New(fmt.Sprintf("incorrect filename: %s", fn))
 	}
 
-	return s[0], s[1], nil
+	return strings.TrimSuffix(basefn, fmt.Sprintf("_%s", s[len(s)-1])), s[len(s)-1], nil
 }
 
 func getConfig(ctx context.Context, owner string, repo string, ref string) *Config {
