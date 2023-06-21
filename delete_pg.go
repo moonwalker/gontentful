@@ -30,7 +30,7 @@ func NewPGDelete(schemaName string, sys *Sys) *PGDelete {
 	}
 }
 
-func (s *PGDelete) Exec(databaseURL string, schemaName string) error {
+func (s *PGDelete) Exec(databaseURL string) error {
 	db, err := sqlx.Connect("postgres", databaseURL)
 	if err != nil {
 		return err
@@ -44,8 +44,8 @@ func (s *PGDelete) Exec(databaseURL string, schemaName string) error {
 	}
 	defer txn.Rollback()
 
-	if schemaName != "" {
-		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", schemaName))
+	if s.SchemaName != "" {
+		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
 		if err != nil {
 			return err
 		}
