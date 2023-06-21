@@ -356,13 +356,13 @@ func formatSchemaRecursive(schema *content.Schema) []*ContentType {
 func TransformEntry(locales *Locales, model *Entry, brand string) (map[string]*content.ContentData, error) {
 	res := make(map[string]*content.ContentData, 0)
 	for _, loc := range locales.Items {
-		contentLoc := loc.Code
 		data := &content.ContentData{
 			ID:     model.Sys.ID,
 			Fields: make(map[string]interface{}),
 		}
 
 		for fn, fv := range model.Fields {
+			contentLoc := loc.Code
 			locValues, ok := fv.(map[string]interface{})
 			if !ok {
 				continue // no locale value, continue

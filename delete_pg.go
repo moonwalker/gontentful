@@ -2,6 +2,7 @@ package gontentful
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
@@ -37,8 +38,20 @@ func (s *PGDelete) Exec(databaseURL string) error {
 
 	defer db.Close()
 
-	tmpl, err := template.New("").Parse(deleteTemplate)
+	txn, err := db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
 
+	if s.SchemaName != "" {
+		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+		if err != nil {
+			return err
+		}
+	}
+
+	tmpl, err := template.New("").Parse(deleteTemplate)
 	if err != nil {
 		return err
 	}
@@ -51,7 +64,15 @@ func (s *PGDelete) Exec(databaseURL string) error {
 
 	// fmt.Println(buff.String())
 
-	_, err = db.Exec(buff.String())
+	_, err = txn.Exec(buff.String())
+	if err != nil {
+		return err
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return err
+	}
 
 	return err
 }
