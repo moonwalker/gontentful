@@ -33,7 +33,7 @@ func NewGHPublish(entry *PublishedEntry, fileName string, locales *Locales, bran
 	}
 }
 
-func (s *GHPublish) Exec(repo string) error {
+func (s *GHPublish) Exec(repo string) ([]gh.BlobEntry, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
 
@@ -44,14 +44,14 @@ func (s *GHPublish) Exec(repo string) error {
 			// download image
 			imageContent, err := downloadImage(url)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			// create the blobs with the image's content (encoding base64)
 			encoding := "base64"
 			blob, _, err := gh.CreateBlob(ctx, cfg.Token, owner, repo, branch, &imageContent, &encoding)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			// add image sha to entries array
@@ -64,7 +64,7 @@ func (s *GHPublish) Exec(repo string) error {
 
 	cd, err := TransformPublishedEntry(s.Locales, s.Entry, s.Brand)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// upload to github
@@ -72,7 +72,7 @@ func (s *GHPublish) Exec(repo string) error {
 		fileName := fmt.Sprintf("%s_%s.json", s.FileName, l)
 		contentBytes, err := json.Marshal(c)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		content := string(contentBytes)
@@ -83,12 +83,20 @@ func (s *GHPublish) Exec(repo string) error {
 		})
 	}
 
-	_, err = gh.CommitBlobs(ctx, cfg.Token, owner, repo, branch, entries, "feat(content): update files")
+	/*_, err = gh.CommitBlobs(ctx, cfg.Token, owner, repo, branch, entries, "feat(content): update files")
 	if err != nil {
 		return err
-	}
+	}*/
 
-	return nil
+	return entries, nil
+}
+
+func PublishCFChanges(repo string, entries []gh.BlobEntry) error {
+	ctx := context.Background()
+	cfg := getConfig(ctx, owner, repo, branch)
+
+	_, err := gh.CommitBlobs(ctx, cfg.Token, owner, repo, branch, entries, "feat(content): update files")
+	return err
 }
 
 func getAssetImageURL(entry *PublishedEntry) map[string]string {

@@ -31,7 +31,7 @@ func NewGHDelete(sys *Sys, filaName string, locales *Locales) *GHDelete {
 	}
 }
 
-func (s *GHDelete) Exec(repo string) error {
+func (s *GHDelete) Exec(repo string) ([]gh.BlobEntry, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
 	path := filepath.Join(cfg.WorkDir, s.FolderName)
@@ -42,6 +42,9 @@ func (s *GHDelete) Exec(repo string) error {
 		fileNames = append(fileNames, fmt.Sprintf("%s_%s.json", s.FileName, l.Code))
 	}
 
-	_, err := gh.DeleteFiles(ctx, cfg.Token, owner, repo, branch, path, "feat(content): delete files", fileNames)
-	return err
+	//_, err := gh.DeleteFiles(ctx, cfg.Token, owner, repo, branch, path, "feat(content): delete files", fileNames)
+	//return err
+
+	items, err := gh.GetDeleteFileEntries(ctx, cfg.Token, owner, repo, branch, path, "feat(content): delete files", fileNames)
+	return items, err
 }
