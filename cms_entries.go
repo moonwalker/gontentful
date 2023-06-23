@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"reflect"
 	"time"
 
 	"github.com/google/go-github/v48/github"
@@ -127,6 +128,7 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 
 	// get model schema
 	refFields := make(map[string]*content.Field, 0)
+	localizedFields := make(map[string]bool, 0)
 	for _, rc := range rcs {
 		if *rc.Name == content.JsonSchemaName {
 			schema := &content.Schema{}
@@ -137,6 +139,9 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 			for _, sf := range schema.Fields {
 				if sf.Reference {
 					refFields[sf.ID] = sf
+				}
+				if sf.Localized {
+					localizedFields[sf.ID] = true
 				}
 			}
 		}
@@ -201,10 +206,30 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 			}
 		}
 	}
+
+	// clear fallback values
+	clearPublishedEntryFallbackValues(localizedFields, fields)
+
 	return &PublishedEntry{
 		Sys:    sys,
 		Fields: PublishFields(fields),
 	}, nil
+}
+
+func clearPublishedEntryFallbackValues(localizedFields map[string]bool, fields map[string]map[string]interface{}) {
+	for fn, fvs := range fields {
+		if !localizedFields[fn] {
+			continue
+		}
+		for loc, _ := range fvs {
+			if loc == defaultLocale {
+				continue
+			}
+			if reflect.DeepEqual(fields[fn][loc], fields[fn][defaultLocale]) {
+				fields[fn][loc] = nil
+			}
+		}
+	}
 }
 
 func getContentLocalized(repo string, ct string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData, error) {
@@ -283,7 +308,44 @@ func formatRepositoryContent(rcs []*github.RepositoryContent, path string) (map[
 		ld[data.ID][loc] = data
 	}
 
+	clearLocalizedDataFallbackValues(schemas, localizedData)
+
 	return schemas, localizedData, nil
+}
+
+func clearLocalizedDataFallbackValues(schemas map[string]*content.Schema, localizedData map[string]map[string]map[string]content.ContentData) {
+	localizedFields := make(map[string]map[string]bool)
+
+	for ct, s := range schemas {
+		localizedFields[ct] = make(map[string]bool)
+		for _, sf := range s.Fields {
+			if sf.Localized {
+				localizedFields[ct][sf.ID] = true
+			}
+		}
+	}
+
+	for ct, ld := range localizedData {
+		for _, d := range ld {
+			clearItemFallbackValues(localizedFields[ct], d)
+		}
+	}
+}
+
+func clearItemFallbackValues(localizedFields map[string]bool, locData map[string]content.ContentData) {
+	for loc, data := range locData {
+		if loc == defaultLocale {
+			continue
+		}
+		for fn, _ := range data.Fields {
+			if localizedFields == nil || !localizedFields[fn] {
+				continue
+			}
+			if reflect.DeepEqual(locData[loc].Fields[fn], locData[defaultLocale].Fields[fn]) {
+				locData[loc].Fields[fn] = nil
+			}
+		}
+	}
 }
 
 func GetLocalContentsRecursive(path string) ([]*github.RepositoryContent, error) {
