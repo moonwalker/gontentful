@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"reflect"
-	"time"
 
 	"github.com/google/go-github/v48/github"
 	"github.com/moonwalker/moonbase/pkg/content"
@@ -200,8 +199,8 @@ func GetPublishedEntry(repo string, contentType string, prefix string) (*Publish
 		if sys == nil {
 			sys = &Sys{
 				ID:        data.ID,
-				CreatedAt: data.CreatedAt.Format(time.RFC3339Nano),
-				UpdatedAt: data.UpdatedAt.Format(time.RFC3339Nano),
+				CreatedAt: data.CreatedAt,
+				UpdatedAt: data.UpdatedAt,
 				Version:   data.Version,
 			}
 		}

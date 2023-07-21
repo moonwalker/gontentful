@@ -402,9 +402,9 @@ func TransformEntry(locales *Locales, model *Entry, brand string) (map[string]*c
 			}
 		}
 
-		data.CreatedAt = getSysDate(model.Sys.CreatedAt)
+		data.CreatedAt = model.Sys.CreatedAt
 		data.CreatedBy = "admin"
-		data.UpdatedAt = getSysDate(model.Sys.UpdatedAt)
+		data.UpdatedAt = model.Sys.UpdatedAt
 		data.UpdatedBy = "admin"
 		data.Version = model.Sys.Version
 		res[strings.ToLower(loc.Code)] = data
@@ -458,9 +458,9 @@ func TransformPublishedEntry(locales *Locales, model *PublishedEntry, brand stri
 			}
 		}
 
-		data.CreatedAt = getSysDate(model.Sys.CreatedAt)
+		data.CreatedAt = model.Sys.CreatedAt
 		data.CreatedBy = "admin"
-		data.UpdatedAt = getSysDate(model.Sys.UpdatedAt)
+		data.UpdatedAt = model.Sys.UpdatedAt
 		data.UpdatedBy = "admin"
 		data.Version = model.Sys.Version
 		res[strings.ToLower(loc.Code)] = data
@@ -526,12 +526,8 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 		},
 	}
 
-	if contents[defaultLocale].CreatedAt != nil {
-		e.Sys.CreatedAt = contents[defaultLocale].CreatedAt.Format(time.RFC3339Nano)
-	}
-	if contents[defaultLocale].UpdatedAt != nil {
-		e.Sys.UpdatedAt = contents[defaultLocale].UpdatedAt.Format(time.RFC3339Nano)
-	}
+	e.Sys.CreatedAt = contents[defaultLocale].CreatedAt
+	e.Sys.UpdatedAt = contents[defaultLocale].UpdatedAt
 
 	fields := make(map[string]interface{})
 
