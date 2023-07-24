@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/google/go-github/v48/github"
 	gh "github.com/moonwalker/moonbase/pkg/github"
 )
 
@@ -91,12 +92,12 @@ func (s *GHPublish) Exec(repo string) ([]gh.BlobEntry, error) {
 	return entries, nil
 }
 
-func PublishCFChanges(repo string, entries []gh.BlobEntry) error {
+func PublishCFChanges(repo string, entries []gh.BlobEntry) (github.Rate, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
 
-	_, err := gh.CommitBlobs(ctx, cfg.Token, owner, repo, branch, entries, "feat(content): update files")
-	return err
+	resp, err := gh.CommitBlobs(ctx, cfg.Token, owner, repo, branch, entries, "feat(content): update files")
+	return resp.Rate, err
 }
 
 func getAssetImageURL(entry *PublishedEntry) map[string]string {
