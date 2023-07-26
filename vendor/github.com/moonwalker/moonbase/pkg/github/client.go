@@ -304,8 +304,39 @@ func DeleteFiles(ctx context.Context, accessToken string, owner string, repo str
 		}
 	}
 
-	resp, err = CommitBlobs(ctx, accessToken, owner, repo, ref, items, commitMessage)
+	if len(items) > 0 {
+		resp, err = CommitBlobs(ctx, accessToken, owner, repo, ref, items, commitMessage)
+	}
 	return resp, err
+}
+
+func GetDeleteFileEntries(ctx context.Context, accessToken string, owner string, repo string, ref string, path string, commitMessage string, fileNames []string) ([]BlobEntry, error) {
+	githubClient := ghClient(ctx, accessToken)
+
+	_, rc, _, err := githubClient.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{
+		Ref: ref,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	fn := make(map[string]bool)
+	for _, f := range fileNames {
+		fn[f] = true
+	}
+
+	items := make([]BlobEntry, 0)
+	for _, c := range rc {
+		if *c.Type == "file" && fn[*c.Name] {
+			items = append(items, BlobEntry{
+				Path:    *c.Path,
+				Content: nil,
+			})
+
+		}
+	}
+
+	return items, nil
 }
 
 func GetCommits(ctx context.Context, accessToken string, owner string, repo string, ref string) ([]*github.RepositoryCommit, *github.Response, error) {

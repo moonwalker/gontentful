@@ -56,9 +56,9 @@ type Schema struct {
 type ContentData struct {
 	ID        string                 `json:"id,omitempty"`
 	Fields    map[string]interface{} `json:"fields,omitempty"`
-	CreatedAt *time.Time             `json:"createdAt,omitempty"`
+	CreatedAt string                 `json:"createdAt,omitempty"`
 	CreatedBy string                 `json:"createdBy,omitempty"`
-	UpdatedAt *time.Time             `json:"updatedAt,omitempty"`
+	UpdatedAt string                 `json:"updatedAt,omitempty"`
 	UpdatedBy string                 `json:"updatedBy,omitempty"`
 	Version   int                    `json:"version,omitempty"`
 }
