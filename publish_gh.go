@@ -15,10 +15,10 @@ type GHPublish struct {
 	FolderName string
 	FileName   string
 	Locales    *Locales
-	Brand      string
+	Repo       string
 }
 
-func NewGHPublish(entry *PublishedEntry, fileName string, locales *Locales, brand string) *GHPublish {
+func NewGHPublish(entry *PublishedEntry, fileName string, locales *Locales, repo string) *GHPublish {
 	folderName := ""
 	if entry.Sys.Type == ASSET {
 		folderName = ASSET_TABLE_NAME
@@ -30,7 +30,7 @@ func NewGHPublish(entry *PublishedEntry, fileName string, locales *Locales, bran
 		FileName:   fileName,
 		Locales:    locales,
 		Entry:      entry,
-		Brand:      brand,
+		Repo:       repo,
 	}
 }
 
@@ -63,7 +63,7 @@ func (s *GHPublish) Exec(repo string) ([]gh.BlobEntry, error) {
 		}
 	}
 
-	cd, err := TransformPublishedEntry(s.Locales, s.Entry, s.Brand)
+	cd, err := TransformPublishedEntry(s.Locales, s.Entry, s.Repo)
 	if err != nil {
 		return nil, err
 	}
