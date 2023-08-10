@@ -63,6 +63,7 @@ func (s *GHPublish) Exec(repo string) ([]gh.BlobEntry, error) {
 	}
 
 	cflId := strings.TrimPrefix(repo, "cms-")
+	cflId = strings.TrimPrefix(cflId, "mw-")
 	cd, err := TransformPublishedEntry(s.Locales, s.Entry, cflId)
 	if err != nil {
 		return nil, err
