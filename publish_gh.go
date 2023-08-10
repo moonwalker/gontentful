@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/go-github/v48/github"
 	gh "github.com/moonwalker/moonbase/pkg/github"
@@ -15,10 +16,9 @@ type GHPublish struct {
 	FolderName string
 	FileName   string
 	Locales    *Locales
-	Repo       string
 }
 
-func NewGHPublish(entry *PublishedEntry, fileName string, locales *Locales, repo string) *GHPublish {
+func NewGHPublish(entry *PublishedEntry, fileName string, locales *Locales) *GHPublish {
 	folderName := ""
 	if entry.Sys.Type == ASSET {
 		folderName = ASSET_TABLE_NAME
@@ -30,7 +30,6 @@ func NewGHPublish(entry *PublishedEntry, fileName string, locales *Locales, repo
 		FileName:   fileName,
 		Locales:    locales,
 		Entry:      entry,
-		Repo:       repo,
 	}
 }
 
@@ -63,7 +62,8 @@ func (s *GHPublish) Exec(repo string) ([]gh.BlobEntry, error) {
 		}
 	}
 
-	cd, err := TransformPublishedEntry(s.Locales, s.Entry, s.Repo)
+	cflId := strings.TrimPrefix(repo, "cms-")
+	cd, err := TransformPublishedEntry(s.Locales, s.Entry, cflId)
 	if err != nil {
 		return nil, err
 	}
