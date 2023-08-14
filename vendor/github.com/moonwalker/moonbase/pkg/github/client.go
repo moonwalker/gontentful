@@ -588,6 +588,29 @@ func GetAllLocaleContentsWithTree(ctx context.Context, accessToken string, owner
 	return rcs, resp, nil
 }
 
+func GetFilesContent(ctx context.Context, accessToken string, owner string, repo string, ref string, path string, files []string) ([]*github.RepositoryContent, *github.Response, error) {
+	githubClient := ghClient(ctx, accessToken)
+	var resp *github.Response
+
+	rcs := make([]*github.RepositoryContent, 0)
+	for _, fn := range files {
+		fnWithPath := filepath.Join(path, fn)
+		rc, _, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, fnWithPath, &github.RepositoryContentGetOptions{})
+		if err != nil {
+			return nil, resp, err
+		}
+		c, err := rc.GetContent()
+		if err != nil {
+			return nil, resp, err
+		}
+		rc.Content = &c
+		rcs = append(rcs, rc)
+		resp = resp
+	}
+
+	return rcs, resp, nil
+}
+
 func downloadFile(downloadURL string) ([]byte, error) {
 	resp, err := http.Get(downloadURL)
 	if err != nil {

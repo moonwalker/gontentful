@@ -114,13 +114,13 @@ func GetCMSEntry(contentType string, repo string, prefix string, include int) (*
 	return entries, nil
 }
 
-func GetPublishedEntry(repo string, contentType string, prefix string) (*PublishedEntry, error) {
+func GetPublishedEntry(repo string, contentType string, files []string) (*PublishedEntry, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
 	path := filepath.Join(cfg.WorkDir, contentType)
 
-	rcs, _, err := gh.GetAllLocaleContentsWithTree(ctx, cfg.Token, owner, repo, branch, path, prefix)
-	//rcs, _, err := gh.GetAllLocaleContents(ctx, cfg.Token, owner, repo, branch, path, prefix)
+	files = append(files, content.JsonSchemaName)
+	rcs, _, err := gh.GetFilesContent(ctx, cfg.Token, owner, repo, branch, path, files)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
 	}
