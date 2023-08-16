@@ -3,7 +3,6 @@ package gontentful
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -170,7 +169,7 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 		// clear headers so that they will not infect the next request.
 		c.headers = getHeadersMap(c.Options.OrgID)
 		// return the response
-		return ioutil.ReadAll(res.Body)
+		return io.ReadAll(res.Body)
 	}
 
 	apiError := parseError(req, res)

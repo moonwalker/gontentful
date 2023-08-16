@@ -64,7 +64,7 @@ func (s *PGFunctions) Exec(databaseURL string) error {
 		}
 	}
 
-	// ioutil.WriteFile("/tmp/func", buff.Bytes(), 0644)
+	// os.WriteFile("/tmp/func", buff.Bytes(), 0644)
 
 	_, err = txn.Exec(buff.String())
 	if err != nil {

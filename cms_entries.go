@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 
@@ -50,7 +50,7 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	ioutil.WriteFile("/tmp/entries.json", b, 0644)*/
+	os.WriteFile("/tmp/entries.json", b, 0644)*/
 
 	return entries, contentTypes, nil
 }
@@ -349,7 +349,7 @@ func clearItemFallbackValues(localizedFields map[string]bool, locData map[string
 
 func GetLocalContentsRecursive(path string) ([]*github.RepositoryContent, error) {
 	resp := make([]*github.RepositoryContent, 0)
-	files, err := ioutil.ReadDir(path)
+	files, err := os.ReadDir(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read dir at %s: %s", path, err.Error())
 	}
@@ -363,7 +363,7 @@ func GetLocalContentsRecursive(path string) ([]*github.RepositoryContent, error)
 		} else {
 			fName := f.Name()
 			fPath := fmt.Sprintf("%s/%s", path, f.Name())
-			fc, err := ioutil.ReadFile(fPath)
+			fc, err := os.ReadFile(fPath)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read file at %s: %s", path, err.Error())
 			}

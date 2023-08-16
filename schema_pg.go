@@ -180,7 +180,7 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 		}
 	}
 
-	// ioutil.WriteFile("/tmp/schema", []byte(str), 0644)
+	// os.WriteFile("/tmp/schema", []byte(str), 0644)
 
 	_, err = txn.Exec(str)
 	if err != nil {

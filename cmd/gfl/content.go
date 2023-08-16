@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -142,7 +141,7 @@ func transformContent() {
 			}
 			f := fmt.Sprintf("%s/%s.json", path, strings.ToLower(fn))
 			fmt.Printf("Writing file: %s", f)
-			ioutil.WriteFile(f, b, 0644)
+			os.WriteFile(f, b, 0644)
 			fmt.Printf("\033[2K")
 			fmt.Println()
 			fmt.Printf("\033[1A")
@@ -195,7 +194,7 @@ func formatContent() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	ioutil.WriteFile("/tmp/entries.json", b, 0644)*/
+	os.WriteFile("/tmp/entries.json", b, 0644)*/
 
 	fmt.Println("Content successfully formatted")
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"log"
 	"os"
 	"time"
@@ -61,7 +60,7 @@ func transformContentType() {
 		b, _ := json.Marshal(schema)
 		f := fmt.Sprintf("%s/%s", path, content.JsonSchemaName)
 		fmt.Printf("Writing file: %s", f)
-		ioutil.WriteFile(f, b, 0644)
+		os.WriteFile(f, b, 0644)
 		fmt.Printf("\033[2K")
 		fmt.Println()
 		fmt.Printf("\033[1A")
@@ -92,7 +91,7 @@ func transformContentType() {
 	b, _ := json.Marshal(schema)
 	f := fmt.Sprintf("%s/%s", path, content.JsonSchemaName)
 	fmt.Printf("Writing file: %s", f)
-	ioutil.WriteFile(f, b, 0644)
+	os.WriteFile(f, b, 0644)
 	fmt.Printf("\033[2K")
 	fmt.Println()
 	fmt.Printf("\033[1A")

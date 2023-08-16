@@ -2,8 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -26,7 +26,7 @@ var pgFuncCmd = &cobra.Command{
 	Short: "Create or replace postgres functions",
 
 	Run: func(cmd *cobra.Command, args []string) {
-		dat, err := ioutil.ReadFile("/tmp/schema")
+		dat, err := os.ReadFile("/tmp/schema")
 		if err == nil {
 			res := &gontentful.PGSQLSchema{}
 			err = json.Unmarshal(dat, &res)
@@ -71,7 +71,7 @@ var pgFuncCmd = &cobra.Command{
 			if err != nil {
 				log.Print(err)
 			} else {
-				ioutil.WriteFile("/tmp/schema", s, 0644)
+				os.WriteFile("/tmp/schema", s, 0644)
 			}
 		}
 

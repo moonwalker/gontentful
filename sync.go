@@ -62,7 +62,7 @@ func (s *SpacesService) getSyncPage(query url.Values) (*SyncResponse, error) {
 	// } else {
 	// 	key = string(key[len(key)-100:])
 	// }
-	// dat, err := ioutil.ReadFile("/tmp/sync/" + key)
+	// dat, err := os.ReadFile("/tmp/sync/" + key)
 	// if err == nil {
 	// 	res := &SyncResponse{}
 	// 	err = json.Unmarshal(dat, &res)
@@ -81,7 +81,7 @@ func (s *SpacesService) getSyncPage(query url.Values) (*SyncResponse, error) {
 		return nil, err
 	}
 
-	// ioutil.WriteFile("/tmp/sync/"+key, body, 0644)
+	// os.WriteFile("/tmp/sync/"+key, body, 0644)
 
 	return res, nil
 }
