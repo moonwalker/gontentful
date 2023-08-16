@@ -3,7 +3,6 @@ package gontentful
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,13 +24,13 @@ func getAccessToken() string {
 func parseFileName(fn string) (string, string, error) {
 	ext := filepath.Ext(fn)
 	if ext != ".json" {
-		return "", "", errors.New(fmt.Sprintf("incorrect file format: %s", ext))
+		return "", "", fmt.Errorf("incorrect file format: %s", ext)
 	}
 
 	basefn := strings.TrimSuffix(fn, ext)
 	s := strings.Split(basefn, "_")
 	if len(s) < 2 || len(s[0]) == 0 || len(s[len(s)-1]) == 0 {
-		return "", "", errors.New(fmt.Sprintf("incorrect filename: %s", fn))
+		return "", "", fmt.Errorf("incorrect filename: %s", fn)
 	}
 
 	return strings.TrimSuffix(basefn, fmt.Sprintf("_%s", s[len(s)-1])), s[len(s)-1], nil

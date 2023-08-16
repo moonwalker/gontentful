@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -474,7 +473,7 @@ func GetArchivedContents(ctx context.Context, accessToken string, owner string, 
 			li := strings.LastIndex(header.Name, "/")
 			path := header.Name[fi:]
 			name := header.Name[li+1:]
-			bs, err := ioutil.ReadAll(tarReader)
+			bs, err := io.ReadAll(tarReader)
 			if err != nil {
 				return nil, resp, fmt.Errorf("tarReader ReadAll() failed: %s", err.Error())
 			}

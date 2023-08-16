@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"strings"
 	"text/template"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const gqlTemplate = `# Code generated, DO NOT EDIT
@@ -168,7 +171,7 @@ func (s *GraphQLSchema) Render() (string, error) {
 
 func NewGraphQLTypeDef(schema *GraphQLSchema, typeName string, fields []*ContentTypeField) *GraphQLType {
 	typeDef := &GraphQLType{
-		TypeName:  strings.Title(typeName),
+		TypeName:  cases.Title(language.Und).String(typeName),
 		Fields:    make([]*GraphQLField, 0),
 		Resolvers: make([]*GraphQLResolver, 0),
 	}
@@ -321,7 +324,7 @@ func getValidationContentType(schema *GraphQLSchema, t string, validations []*Fi
 			}
 		}
 	}
-	return strings.Title(t)
+	return cases.Title(language.Und).String(t)
 }
 
 func pluralName(typeName string) string {
