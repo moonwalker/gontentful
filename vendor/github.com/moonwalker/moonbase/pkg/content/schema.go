@@ -6,6 +6,7 @@ import (
 
 const (
 	JsonSchemaName = "_schema.json"
+	DefaultLocale  = "en"
 )
 
 type Asset struct {
@@ -61,4 +62,16 @@ type ContentData struct {
 	UpdatedAt string                 `json:"updatedAt,omitempty"`
 	UpdatedBy string                 `json:"updatedBy,omitempty"`
 	Version   int                    `json:"version,omitempty"`
+}
+
+type MergedContentData struct {
+	ID        string                            `json:"id,omitempty"`
+	Name      string                            `json:"name,omitempty"`
+	Type      string                            `json:"type,omitempty"`
+	Fields    map[string]map[string]interface{} `json:"fields,omitempty"`
+	CreatedAt *time.Time                        `json:"createdAt,omitempty"`
+	CreatedBy string                            `json:"createdBy,omitempty"`
+	UpdatedAt *time.Time                        `json:"updatedAt,omitempty"`
+	UpdatedBy string                            `json:"updatedBy,omitempty"`
+	Version   int                               `json:"version,omitempty"`
 }

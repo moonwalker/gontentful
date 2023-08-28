@@ -44,7 +44,7 @@ func AuthCodeURL(state string) string {
 }
 
 func Exchange(code string) (string, error) {
-	t, err := ghConfig().Exchange(oauth2.NoContext, code)
+	t, err := ghConfig().Exchange(context.Background(), code)
 	if err != nil {
 		return "", err
 	}
@@ -251,30 +251,44 @@ func createPR(ctx context.Context, githubClient *github.Client, owner string, re
 func DeleteFolder(ctx context.Context, accessToken string, owner string, repo string, ref string, path string, commitMessage string) (*github.Response, error) {
 	githubClient := ghClient(ctx, accessToken)
 
-	_, rc, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{
-		Ref: ref,
-	})
+	resp, items, err := getFolderContentRecursive(ctx, githubClient, owner, repo, ref, path)
 	if err != nil {
 		return resp, err
 	}
 
-	for _, c := range rc {
-		if *c.Type == "dir" {
-			resp, err = DeleteFolder(ctx, accessToken, owner, repo, ref, *c.Path, commitMessage)
-		} else {
-			_, _, err = githubClient.Repositories.DeleteFile(ctx, owner, repo, *c.Path, &github.RepositoryContentFileOptions{
-				Message: &commitMessage,
-				SHA:     c.SHA,
-				Branch:  &ref,
-			})
-
-		}
-		if err != nil {
-			return resp, err
-		}
+	if len(items) > 0 {
+		resp, err = CommitBlobs(ctx, accessToken, owner, repo, ref, items, commitMessage)
 	}
 
 	return resp, nil
+}
+
+func getFolderContentRecursive(ctx context.Context, githubClient *github.Client, owner string, repo string, ref string, path string) (*github.Response, []BlobEntry, error) {
+	_, rc, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{
+		Ref: ref,
+	})
+	if err != nil {
+		return resp, nil, err
+	}
+
+	items := make([]BlobEntry, 0)
+	for _, c := range rc {
+		if *c.Type == "dir" {
+			var folderItems []BlobEntry
+			resp, folderItems, err = getFolderContentRecursive(ctx, githubClient, owner, repo, ref, *c.Path)
+			items = append(items, folderItems...)
+		} else {
+			items = append(items, BlobEntry{
+				Path:    *c.Path,
+				Content: nil,
+			})
+		}
+		if err != nil {
+			return resp, nil, err
+		}
+	}
+
+	return resp, items, nil
 }
 
 func DeleteFiles(ctx context.Context, accessToken string, owner string, repo string, ref string, path string, commitMessage string, fileNames []string) (*github.Response, error) {
@@ -604,7 +618,6 @@ func GetFilesContent(ctx context.Context, accessToken string, owner string, repo
 		}
 		rc.Content = &c
 		rcs = append(rcs, rc)
-		resp = resp
 	}
 
 	return rcs, resp, nil
