@@ -1,6 +1,7 @@
 package gontentful
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -633,5 +634,5 @@ func downloadImage(URL string) (string, error) {
 		return "", fmt.Errorf("failed to read response body %s: - %s", URL, err.Error())
 	}
 
-	return base64.StdEncoding.EncodeToString(b), nil
+	return base64.StdEncoding.EncodeToString(bytes.Trim(b, "\xef\xbb\xbf")), nil
 }
