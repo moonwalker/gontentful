@@ -91,15 +91,24 @@ func createEntriesFromLocalizedData(repo string, schemas map[string]*content.Sch
 	return entries, nil
 }
 
-func GetCMSEntry(contentType string, repo string, prefix string, include int) (*Entries, error) {
+func GetCMSEntry(contentType string, repo string, prefix string, locales []*Locale, include int) (*Entries, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
 	path := filepath.Join(cfg.WorkDir, contentType)
 
-	rcs, _, err := gh.GetAllLocaleContentsWithTree(ctx, cfg.Token, owner, repo, branch, path, prefix)
+	files := make([]string, 0)
+	for _, l := range locales {
+		files = append(files, fmt.Sprintf("%s_%s.json", prefix, l.Code))
+	}
+	files = append(files, content.JsonSchemaName)
+	rcs, _, err := gh.GetFilesContent(ctx, cfg.Token, owner, repo, branch, path, files)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
 	}
+	/*rcs, _, err := gh.GetAllLocaleContentsWithTree(ctx, cfg.Token, owner, repo, branch, path, prefix)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
+	}*/
 
 	schemas, localizedData, err := formatRepositoryContent(rcs, path)
 	if err != nil {

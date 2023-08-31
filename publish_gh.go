@@ -38,6 +38,7 @@ func (s *GHPublish) Exec(repo string) ([]gh.BlobEntry, error) {
 	cfg := getConfig(ctx, owner, repo, branch)
 
 	entries := make([]gh.BlobEntry, 0)
+	imageEntries := make([]gh.BlobEntry, 0)
 	if s.Entry.Sys.Type == ASSET {
 		imageURLs := getAssetImageURL(s.Entry)
 		for fn, url := range imageURLs {
@@ -55,7 +56,7 @@ func (s *GHPublish) Exec(repo string) ([]gh.BlobEntry, error) {
 			}
 
 			// add image sha to entries array
-			entries = append(entries, gh.BlobEntry{
+			imageEntries = append(entries, gh.BlobEntry{
 				Path: fmt.Sprintf("%s/%s", IMAGE_FOLDER_NAME, fn),
 				SHA:  blob.SHA,
 			})
@@ -85,10 +86,12 @@ func (s *GHPublish) Exec(repo string) ([]gh.BlobEntry, error) {
 		})
 	}
 
-	/*_, err = gh.CommitBlobs(ctx, cfg.Token, owner, repo, branch, entries, "feat(content): update files")
-	if err != nil {
-		return err
-	}*/
+	if len(imageEntries) > 0 {
+		_, err = gh.CommitBlobs(ctx, cfg.Token, owner, repo, branch, imageEntries, "feat(content): update images")
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	return entries, nil
 }
