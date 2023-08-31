@@ -56,10 +56,14 @@ func (s *GHPublish) Exec(repo string) ([]gh.BlobEntry, error) {
 			}
 
 			// add image sha to entries array
-			imageEntries = append(entries, gh.BlobEntry{
+			entries = append(entries, gh.BlobEntry{
 				Path: fmt.Sprintf("%s/%s", IMAGE_FOLDER_NAME, fn),
 				SHA:  blob.SHA,
 			})
+			/*imageEntries = append(entries, gh.BlobEntry{
+				Path: fmt.Sprintf("%s/%s", IMAGE_FOLDER_NAME, fn),
+				SHA:  blob.SHA,
+			})*/
 		}
 	}
 
