@@ -12,67 +12,82 @@ import (
 )
 
 type GHPublish struct {
-	Entry      *PublishedEntry
-	FolderName string
-	FileName   string
-	Locales    *Locales
+	Entry    *PublishedEntry
+	RepoName string
+	FileName string
+	Locales  []*Locale
 }
 
-func NewGHPublish(entry *PublishedEntry, fileName string, locales *Locales) *GHPublish {
-	folderName := ""
-	if entry.Sys.Type == ASSET {
-		folderName = ASSET_TABLE_NAME
-	} else {
-		folderName = entry.Sys.ContentType.Sys.ID
-	}
+func NewGHPublish(entry *PublishedEntry, repoName, fileName string, locales *Locales) *GHPublish {
 	return &GHPublish{
-		FolderName: folderName,
-		FileName:   fileName,
-		Locales:    locales,
-		Entry:      entry,
+		Entry:    entry,
+		RepoName: repoName,
+		FileName: fileName,
+		Locales:  locales.Items,
 	}
 }
 
-func (s *GHPublish) Exec(repo string) ([]gh.BlobEntry, error) {
-	ctx := context.Background()
-	cfg := getConfig(ctx, owner, repo, branch)
+func getDeleteEntries(ctx context.Context, cfg *Config, s *GHPublish, folderName string) ([]gh.BlobEntry, error) {
+	path := filepath.Join(cfg.WorkDir, folderName)
 
-	entries := make([]gh.BlobEntry, 0)
-	imageEntries := make([]gh.BlobEntry, 0)
-	if s.Entry.Sys.Type == ASSET {
-		imageURLs := getAssetImageURL(s.Entry)
-		for fn, url := range imageURLs {
-			// download image
-			imageContent, err := downloadImage(url)
-			if err != nil {
-				return nil, err
-			}
+	fileNames := make([]string, 0)
 
-			// create the blobs with the image's content (encoding base64)
-			encoding := "base64"
-			blob, _, err := gh.CreateBlob(ctx, cfg.Token, owner, repo, branch, &imageContent, &encoding)
-			if err != nil {
-				return nil, err
-			}
-
-			// add image sha to entries array
-			entries = append(entries, gh.BlobEntry{
-				Path: fmt.Sprintf("%s/%s", IMAGE_FOLDER_NAME, fn),
-				SHA:  blob.SHA,
-			})
-			/*imageEntries = append(entries, gh.BlobEntry{
-				Path: fmt.Sprintf("%s/%s", IMAGE_FOLDER_NAME, fn),
-				SHA:  blob.SHA,
-			})*/
-		}
+	for _, l := range s.Locales {
+		fileNames = append(fileNames, fmt.Sprintf("%s_%s.json", s.FileName, l.Code))
 	}
 
-	cflId := strings.TrimPrefix(repo, "cms-")
-	cflId = strings.TrimPrefix(cflId, "mw-")
-	cd, err := TransformPublishedEntry(s.Locales, s.Entry, cflId)
+	return gh.GetDeleteFileEntries(ctx, cfg.Token, owner, s.RepoName, branch, path, "feat(content): delete files", fileNames)
+}
+
+func getAssetImages(ctx context.Context, cfg *Config, repo, url string) (*string, error) {
+	// download image
+	imageContent, err := downloadImage(url)
 	if err != nil {
 		return nil, err
 	}
+	// create the blobs with the image's content (encoding base64)
+	encoding := "base64"
+	blob, _, err := gh.CreateBlob(ctx, cfg.Token, owner, repo, branch, &imageContent, &encoding)
+	if err != nil {
+		return nil, err
+	}
+	return blob.SHA, nil
+}
+
+func (s *GHPublish) Exec() ([]gh.BlobEntry, error) {
+	ctx := context.Background()
+	cfg := getConfig(ctx, owner, s.RepoName, branch)
+
+	entryType := s.Entry.Sys.Type
+	entries := make([]gh.BlobEntry, 0)
+	folderName := ""
+
+	switch entryType {
+	case DELETED_ASSET:
+		return getDeleteEntries(ctx, cfg, s, ASSET_TABLE_NAME)
+	case DELETED_CONTENT_TYPE:
+		return getDeleteEntries(ctx, cfg, s, s.Entry.Sys.ContentType.Sys.ID)
+	case ASSET:
+		folderName = ASSET_TABLE_NAME
+		imageURLs := getAssetImageURL(s.Entry)
+		for fn, url := range imageURLs {
+			sha, err := getAssetImages(ctx, cfg, s.RepoName, url)
+			if err != nil {
+				return nil, err
+			}
+			// add image sha to entries array
+			entries = append(entries, gh.BlobEntry{
+				Path: fmt.Sprintf("%s/%s", IMAGE_FOLDER_NAME, fn),
+				SHA:  sha,
+			})
+		}
+	default:
+		folderName = s.Entry.Sys.ContentType.Sys.ID
+	}
+
+	cflId := strings.TrimPrefix(s.RepoName, "cms-")
+	cflId = strings.TrimPrefix(cflId, "mw-")
+	cd := TransformPublishedEntry(s.Locales, s.Entry, cflId)
 
 	// upload to github
 	for l, c := range cd {
@@ -83,18 +98,11 @@ func (s *GHPublish) Exec(repo string) ([]gh.BlobEntry, error) {
 		}
 
 		content := string(contentBytes)
-		path := filepath.Join(cfg.WorkDir, s.FolderName, fileName)
+		path := filepath.Join(cfg.WorkDir, folderName, fileName)
 		entries = append(entries, gh.BlobEntry{
 			Path:    path,
 			Content: &content,
 		})
-	}
-
-	if len(imageEntries) > 0 {
-		_, err = gh.CommitBlobs(ctx, cfg.Token, owner, repo, branch, imageEntries, "feat(content): update images")
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return entries, nil

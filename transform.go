@@ -354,9 +354,9 @@ func formatSchemaRecursive(schema *content.Schema) []*ContentType {
 	return res
 }
 
-func TransformEntry(locales *Locales, model *Entry, brand string) (map[string]*content.ContentData, error) {
+func TransformEntry(locales []*Locale, model *Entry, brand string) map[string]*content.ContentData {
 	res := make(map[string]*content.ContentData, 0)
-	for _, loc := range locales.Items {
+	for _, loc := range locales {
 		data := &content.ContentData{
 			ID:     model.Sys.ID,
 			Fields: make(map[string]interface{}),
@@ -411,12 +411,12 @@ func TransformEntry(locales *Locales, model *Entry, brand string) (map[string]*c
 		res[strings.ToLower(loc.Code)] = data
 	}
 
-	return res, nil
+	return res
 }
 
-func TransformPublishedEntry(locales *Locales, model *PublishedEntry, brand string) (map[string]*content.ContentData, error) {
+func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, brand string) map[string]*content.ContentData {
 	res := make(map[string]*content.ContentData, 0)
-	for _, loc := range locales.Items {
+	for _, loc := range locales {
 		contentLoc := loc.Code
 		data := &content.ContentData{
 			ID:     model.Sys.ID,
@@ -467,7 +467,7 @@ func TransformPublishedEntry(locales *Locales, model *PublishedEntry, brand stri
 		res[strings.ToLower(loc.Code)] = data
 	}
 
-	return res, nil
+	return res
 }
 
 func getSysDate(date string) *time.Time {
