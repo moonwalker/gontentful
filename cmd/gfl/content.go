@@ -16,7 +16,6 @@ import (
 	"github.com/gosimple/slug"
 
 	"github.com/moonwalker/gontentful"
-	"github.com/moonwalker/moonbase/pkg/content"
 )
 
 const (
@@ -114,11 +113,7 @@ func transformContent() {
 			ct = toCamelCase(item.Sys.ContentType.Sys.ID)
 		}
 
-		var entries map[string]*content.ContentData
-		entries, err = gontentful.TransformEntry(locales, item, brand)
-		if err != nil {
-			log.Fatalf("failed to transform entry: %s", err.Error())
-		}
+		entries := gontentful.TransformEntry(locales.Items, item, brand)
 
 		for l, e := range entries {
 			b, err := json.Marshal(e)
