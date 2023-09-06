@@ -32,6 +32,9 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 	}
 
 	entries, err := createEntriesFromLocalizedData(repo, schemas, localizedData, include)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to create loclalized entires: %s", err.Error())
+	}
 
 	cts := make([]*ContentType, 0)
 	for _, schema := range schemas {
@@ -117,7 +120,7 @@ func GetCMSEntry(contentType string, repo string, prefix string, locales []*Loca
 
 	entries, err := createEntriesFromLocalizedData(repo, schemas, localizedData, include)
 	if err != nil {
-		return nil, fmt.Errorf("failed to format repository content: %s", err.Error())
+		return nil, fmt.Errorf("failed to create loclalized entires: %s", err.Error())
 	}
 
 	return entries, nil
