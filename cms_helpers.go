@@ -73,3 +73,21 @@ func GetImageFileName(fileName string, sysId string, locale string) string {
 	ext := filepath.Ext(fileName)
 	return slug.Make(fmt.Sprintf("%s_%s-%s", fileName[:len(fileName)-len(ext)], sysId, locale)) + ext
 }
+
+func getDefaultLocale(locales []*Locale) string {
+	hasDefault := false
+	for _, loc := range locales {
+		code := strings.ToLower(loc.Code)
+		if loc.Default {
+			return code
+		}
+		if code == defaultLocale {
+			hasDefault = true
+		}
+	}
+	if len(locales) > 0 && !hasDefault {
+		return strings.ToLower(locales[0].Code)
+	}
+
+	return defaultLocale
+}

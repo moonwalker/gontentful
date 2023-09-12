@@ -161,59 +161,61 @@ func GetPublishedEntry(repo string, contentType string, files []string) (*Publis
 	fields := make(map[string]map[string]interface{})
 	var sys *Sys
 	for _, rc := range rcs {
-		_, loc, err := parseFileName(*rc.Name)
-		if err != nil {
-			//fmt.Println(fmt.Sprintf("Skipping file: %s Err: %s", *rc.Path, err.Error()))
-			continue
-		}
-		data := content.ContentData{}
-		err = json.Unmarshal([]byte(*rc.Content), &data)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal content data: %s", err.Error())
-		}
-		for k, v := range data.Fields {
-			if fields[k] == nil {
-				fields[k] = make(map[string]interface{})
+		if *rc.Name != content.JsonSchemaName {
+			_, loc, err := parseFileName(*rc.Name)
+			if err != nil {
+				//fmt.Println(fmt.Sprintf("Skipping file: %s Err: %s", *rc.Path, err.Error()))
+				continue
 			}
-			if rf := refFields[k]; rf != nil {
+			data := content.ContentData{}
+			err = json.Unmarshal([]byte(*rc.Content), &data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to unmarshal content data: %s", err.Error())
+			}
+			for k, v := range data.Fields {
 				if fields[k] == nil {
 					fields[k] = make(map[string]interface{})
 				}
-				if rf.List {
-					if rl, ok := v.([]interface{}); ok {
-						refList := make([]interface{}, 0)
-						for _, r := range rl {
-							if rid, ok := r.(string); ok {
-								esys := make(map[string]interface{})
-								esys["type"] = LINK
-								esys["linkType"] = ENTRY
-								esys["id"] = rid
-								es := make(map[string]interface{})
-								es["sys"] = esys
-								refList = append(refList, es)
+				if rf := refFields[k]; rf != nil {
+					if fields[k] == nil {
+						fields[k] = make(map[string]interface{})
+					}
+					if rf.List {
+						if rl, ok := v.([]interface{}); ok {
+							refList := make([]interface{}, 0)
+							for _, r := range rl {
+								if rid, ok := r.(string); ok {
+									esys := make(map[string]interface{})
+									esys["type"] = LINK
+									esys["linkType"] = ENTRY
+									esys["id"] = rid
+									es := make(map[string]interface{})
+									es["sys"] = esys
+									refList = append(refList, es)
+								}
 							}
+							fields[k][loc] = refList
 						}
-						fields[k][loc] = refList
+					} else {
+						esys := make(map[string]interface{})
+						esys["type"] = LINK
+						esys["linkType"] = ENTRY
+						esys["id"] = v
+						es := make(map[string]interface{})
+						es["sys"] = esys
+						fields[k][loc] = es
 					}
 				} else {
-					esys := make(map[string]interface{})
-					esys["type"] = LINK
-					esys["linkType"] = ENTRY
-					esys["id"] = v
-					es := make(map[string]interface{})
-					es["sys"] = esys
-					fields[k][loc] = es
+					fields[k][loc] = v
 				}
-			} else {
-				fields[k][loc] = v
 			}
-		}
-		if sys == nil {
-			sys = &Sys{
-				ID:        data.ID,
-				CreatedAt: data.CreatedAt,
-				UpdatedAt: data.UpdatedAt,
-				Version:   data.Version,
+			if sys == nil {
+				sys = &Sys{
+					ID:        data.ID,
+					CreatedAt: data.CreatedAt,
+					UpdatedAt: data.UpdatedAt,
+					Version:   data.Version,
+				}
 			}
 		}
 	}
@@ -232,11 +234,8 @@ func clearPublishedEntryFallbackValues(localizedFields map[string]bool, fields m
 		if !localizedFields[fn] {
 			continue
 		}
-		for loc, _ := range fvs {
-			if loc == defaultLocale {
-				continue
-			}
-			if reflect.DeepEqual(fields[fn][loc], fields[fn][defaultLocale]) {
+		for loc := range fvs {
+			if loc != defaultLocale && reflect.DeepEqual(fields[fn][loc], fields[fn][defaultLocale]) {
 				fields[fn][loc] = nil
 			}
 		}

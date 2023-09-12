@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"strings"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
@@ -70,16 +69,7 @@ type PGSyncConTable struct {
 
 func NewPGSyncSchema(schemaName string, locales []*Locale, types []*ContentType, entries []*Entry, initSync bool) *PGSyncSchema {
 
-	defLocale := defaultLocale
-	if len(locales) > 0 {
-		defLocale = locales[0].Code
-		for _, loc := range locales {
-			if loc.Default {
-				defLocale = strings.ToLower(loc.Code)
-				break
-			}
-		}
-	}
+	defLocale := getDefaultLocale(locales)
 
 	schema := &PGSyncSchema{
 		SchemaName:       schemaName,
@@ -100,10 +90,8 @@ func NewPGSyncSchema(schemaName string, locales []*Locale, types []*ContentType,
 			contentType := item.Sys.ContentType.Sys.ID
 			tableName := toSnakeCase(contentType)
 			appendTables(schema, item, tableName, columnsByContentType[contentType].fieldColumns, columnsByContentType[contentType].columnReferences, columnsByContentType[contentType].localizedColumns, !initSync)
-			break
 		case ASSET:
 			appendTables(schema, item, ASSET_TABLE_NAME, assetColumns, nil, localizedAssetColumns, !initSync)
-			break
 			// case DELETED_ENTRY:
 			// 	contentType := item.Sys.ContentType.Sys.ID
 			// 	tableName := toSnakeCase(contentType)

@@ -12,18 +12,20 @@ import (
 )
 
 type GHPublish struct {
-	Entry    *PublishedEntry
-	RepoName string
-	FileName string
-	Locales  []*Locale
+	Entry           *PublishedEntry
+	RepoName        string
+	FileName        string
+	Locales         []*Locale
+	LocalizedFields map[string]bool
 }
 
-func NewGHPublish(entry *PublishedEntry, repoName, fileName string, locales *Locales) *GHPublish {
+func NewGHPublish(entry *PublishedEntry, repoName, fileName string, locales *Locales, localizedFields map[string]bool) *GHPublish {
 	return &GHPublish{
-		Entry:    entry,
-		RepoName: repoName,
-		FileName: fileName,
-		Locales:  locales.Items,
+		Entry:           entry,
+		RepoName:        repoName,
+		FileName:        fileName,
+		Locales:         locales.Items,
+		LocalizedFields: localizedFields,
 	}
 }
 
@@ -87,7 +89,7 @@ func (s *GHPublish) Exec() ([]gh.BlobEntry, error) {
 
 	cflId := strings.TrimPrefix(s.RepoName, "cms-")
 	cflId = strings.TrimPrefix(cflId, "mw-")
-	cd := TransformPublishedEntry(s.Locales, s.Entry, cflId)
+	cd := TransformPublishedEntry(s.Locales, s.Entry, s.LocalizedFields, cflId)
 
 	// upload to github
 	for l, c := range cd {

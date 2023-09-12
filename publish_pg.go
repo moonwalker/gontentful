@@ -21,15 +21,7 @@ type PGPublish struct {
 
 func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentType, item *PublishedEntry) *PGPublish {
 
-	defLocale := defaultLocale
-	if len(locales) > 0 {
-		defLocale = locales[0].Code
-		for _, loc := range locales {
-			if loc.Default {
-				defLocale = loc.Code
-			}
-		}
-	}
+	defLocale := getDefaultLocale(locales)
 
 	q := &PGPublish{
 		SchemaName:       schemaName,
@@ -69,7 +61,6 @@ func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentTyp
 			}
 			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, contentTypeColumns, fieldValues, loc))
 		}
-		break
 	case ASSET:
 		q.TableName = ASSET_TABLE_NAME
 		for _, oLoc := range locales {
@@ -90,7 +81,6 @@ func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentTyp
 			}
 			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, assetColumns, fieldValues, strings.ToLower(oLoc.Code)))
 		}
-		break
 	}
 	return q
 }

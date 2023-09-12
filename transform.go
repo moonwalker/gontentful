@@ -414,7 +414,7 @@ func TransformEntry(locales []*Locale, model *Entry, brand string) map[string]*c
 	return res
 }
 
-func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, brand string) map[string]*content.ContentData {
+func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, localizedFields map[string]bool, brand string) map[string]*content.ContentData {
 	res := make(map[string]*content.ContentData, 0)
 	for _, loc := range locales {
 		contentLoc := loc.Code
@@ -426,7 +426,7 @@ func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, brand str
 		for fn, fv := range model.Fields {
 			locValues := fv
 			locValue := locValues[strings.ToLower(loc.Code)]
-			if locValue == nil {
+			if !localizedFields[fn] || locValue == nil {
 				locValue = locValues[defaultLocale]
 				contentLoc = defaultLocale
 			}
