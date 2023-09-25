@@ -47,6 +47,8 @@ func transformContentType() {
 		log.Fatalf("contenttype(s) not found: %s", contentType)
 	}
 
+	os.RemoveAll(fmt.Sprintf(outputFormat, ""))
+
 	for _, item := range types.Items {
 		schema, err := gontentful.TransformModel(item)
 		if err != nil {

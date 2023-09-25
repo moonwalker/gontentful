@@ -22,9 +22,9 @@ INSERT INTO {{ $.SchemaName }}.{{ $.TableName }} (
 	{{- end }}
 	'{{ .Locale }}',
 	'{{ .Version }}',
-	to_timestamp('{{ .CreatedAt }}','YYYY-MM-DDThh24:mi:ss.mssZ'),
+	to_timestamp('{{ .CreatedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'),
 	'sync',
-	to_timestamp('{{ .UpdatedAt }}','YYYY-MM-DDThh24:mi:ss.mssZ'),
+	to_timestamp('{{ .UpdatedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'),
 	'sync'
 )
 ON CONFLICT (_id) DO UPDATE

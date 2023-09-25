@@ -21,21 +21,6 @@ func getAccessToken() string {
 	return ght
 }
 
-func parseFileName(fn string) (string, string, error) {
-	ext := filepath.Ext(fn)
-	if ext != ".json" {
-		return "", "", fmt.Errorf("incorrect file format: %s", ext)
-	}
-
-	basefn := strings.TrimSuffix(fn, ext)
-	s := strings.Split(basefn, "_")
-	if len(s) < 2 || len(s[0]) == 0 || len(s[len(s)-1]) == 0 {
-		return "", "", fmt.Errorf("incorrect filename: %s", fn)
-	}
-
-	return strings.TrimSuffix(basefn, fmt.Sprintf("_%s", s[len(s)-1])), s[len(s)-1], nil
-}
-
 func getConfig(ctx context.Context, owner string, repo string, ref string) *Config {
 	accessToken := getAccessToken()
 	data, _, _ := gh.GetBlob(ctx, accessToken, owner, repo, ref, configPath)
@@ -61,12 +46,19 @@ func mergeMaps[M ~map[K]V, K comparable, V any](dst M, src M) {
 	}
 }
 
-func extractContentype(path string) string {
-	items := strings.Split(path, "/")
-	if len(items) > 1 {
-		return items[len(items)-2]
-	}
-	return ""
+func extractContenttype(path string, idx int) string {
+	dirs := strings.Split(filepath.Dir(path), "/")
+	return dirs[len(dirs)-idx]
+}
+
+func extractFileInfo(fn string) (string, string) {
+	ext := filepath.Ext(fn)
+	locale := strings.TrimSuffix(fn, ext)
+	return locale, ext
+}
+
+func extractLocale(path string, ext string) string {
+	return strings.TrimSuffix(filepath.Base(path), ext)
 }
 
 func GetImageFileName(fileName string, sysId string, locale string) string {

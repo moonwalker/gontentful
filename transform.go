@@ -489,6 +489,13 @@ func FormatData(contentType string, id string, schemas map[string]*content.Schem
 	schema := schemas[contentType]
 	contents := locData[contentType][id]
 
+	if schema == nil {
+		return nil, nil, fmt.Errorf("missing schema: %s", contentType)
+	}
+	if contents == nil {
+		return nil, nil, fmt.Errorf("missing content: %s", id)
+	}
+
 	refFields := make(map[string]*content.Field, 0)
 	for _, sf := range schema.Fields {
 		if sf.Reference {
@@ -496,15 +503,12 @@ func FormatData(contentType string, id string, schemas map[string]*content.Schem
 		}
 	}
 
-	entry, includes, err := formatEntry(id, contentType, contents, refFields)
-	if err != nil {
-		return nil, nil, err
-	}
+	entry, includes := formatEntry(id, contentType, contents, refFields)
 
 	return entry, includes, nil
 }
 
-func formatEntry(id string, contentType string, contents map[string]content.ContentData, refFields map[string]*content.Field) (*Entry, map[string]string, error) {
+func formatEntry(id string, contentType string, contents map[string]content.ContentData, refFields map[string]*content.Field) (*Entry, map[string]string) {
 	includes := make(map[string]string)
 
 	sysType := ENTRY
@@ -576,7 +580,7 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 	}
 	e.Fields = fields
 
-	return e, includes, nil
+	return e, includes
 }
 
 func replaceAssetFile(brand string, file interface{}, sysID string, loc string) interface{} {

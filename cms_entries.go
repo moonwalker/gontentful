@@ -30,7 +30,6 @@ func GetCMSEntries(contentType string, repo string, include int) (*Entries, *Con
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get content localized: %s", err.Error())
 	}
-
 	entries, err := createEntriesFromLocalizedData(repo, schemas, localizedData, include)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create loclalized entires: %s", err.Error())
@@ -67,7 +66,7 @@ func createEntriesFromLocalizedData(repo string, schemas map[string]*content.Sch
 
 	includes := make(map[string]string)
 	for ct, locData := range localizedData {
-		for id, _ := range locData {
+		for id := range locData {
 			entry, entryRefs, err := FormatData(ct, id, schemas, localizedData)
 			if err != nil {
 				return nil, fmt.Errorf("failed to format file content: %s", err.Error())
@@ -94,14 +93,14 @@ func createEntriesFromLocalizedData(repo string, schemas map[string]*content.Sch
 	return entries, nil
 }
 
-func GetCMSEntry(contentType string, repo string, prefix string, locales []*Locale, include int) (*Entries, error) {
+func GetCMSEntry(contentType string, repo string, name string, locales []*Locale, include int) (*Entries, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
 	path := filepath.Join(cfg.WorkDir, contentType)
 
 	files := make([]string, 0)
 	for _, l := range locales {
-		files = append(files, fmt.Sprintf("%s_%s.json", prefix, l.Code))
+		files = append(files, fmt.Sprintf("%s/%s.json", name, l.Code))
 	}
 	files = append(files, content.JsonSchemaName)
 	rcs, _, err := gh.GetFilesContent(ctx, cfg.Token, owner, repo, branch, path, files)
@@ -113,7 +112,7 @@ func GetCMSEntry(contentType string, repo string, prefix string, locales []*Loca
 		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
 	}*/
 
-	schemas, localizedData, err := formatRepositoryContent(rcs, path)
+	schemas, localizedData, err := formatRepositoryContent(rcs, contentType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to format repository content: %s", err.Error())
 	}
@@ -162,11 +161,11 @@ func GetPublishedEntry(repo string, contentType string, files []string) (*Publis
 	var sys *Sys
 	for _, rc := range rcs {
 		if *rc.Name != content.JsonSchemaName {
-			_, loc, err := parseFileName(*rc.Name)
-			if err != nil {
-				//fmt.Println(fmt.Sprintf("Skipping file: %s Err: %s", *rc.Path, err.Error()))
+			ext := filepath.Ext(*rc.Name)
+			if ext != ".json" {
 				continue
 			}
+			loc := extractLocale(*rc.Path, ext)
 			data := content.ContentData{}
 			err = json.Unmarshal([]byte(*rc.Content), &data)
 			if err != nil {
@@ -269,27 +268,19 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 		return nil, nil, fmt.Errorf("failed to get json(s) from github: %s", err.Error())
 	}
 
-	schemas, localizedData, err := formatRepositoryContent(rcs, path)
+	schemas, localizedData, err := formatRepositoryContent(rcs, ct)
 
 	return schemas, localizedData, err
 }
 
-func formatRepositoryContent(rcs []*github.RepositoryContent, path string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData, error) {
+func formatRepositoryContent(rcs []*github.RepositoryContent, contentType string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData, error) {
 	localizedData := make(map[string]map[string]map[string]content.ContentData)
 	schemas := make(map[string]*content.Schema)
 	var err error
 
 	for _, rc := range rcs {
-		ect := extractContentype(filepath.Join(path, *rc.Path))
-		if ect == IMAGE_FOLDER_NAME {
-			continue
-		}
-		if localizedData[ect] == nil {
-			localizedData[ect] = make(map[string]map[string]content.ContentData)
-		}
-		ld := localizedData[ect]
-
 		if *rc.Name == content.JsonSchemaName {
+			ect := extractContenttype(*rc.Path, 1)
 			m := &content.Schema{}
 			err = json.Unmarshal([]byte(*rc.Content), m)
 			if err != nil {
@@ -299,10 +290,18 @@ func formatRepositoryContent(rcs []*github.RepositoryContent, path string) (map[
 			continue
 		}
 
-		_, loc, err := parseFileName(*rc.Name)
-		if err != nil {
-			//fmt.Println(fmt.Sprintf("Skipping file: %s Err: %s", *rc.Path, err.Error()))
+		ect := extractContenttype(*rc.Path, 2)
+		if ect == IMAGE_FOLDER_NAME {
 			continue
+		}
+
+		loc, ext := extractFileInfo(*rc.Name)
+		if ext != ".json" {
+			continue
+		}
+
+		if localizedData[ect] == nil {
+			localizedData[ect] = make(map[string]map[string]content.ContentData)
 		}
 
 		data := content.ContentData{}
@@ -312,10 +311,10 @@ func formatRepositoryContent(rcs []*github.RepositoryContent, path string) (map[
 			return nil, nil, fmt.Errorf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error())
 		}
 
-		if ld[data.ID] == nil {
-			ld[data.ID] = make(map[string]content.ContentData)
+		if localizedData[ect][data.ID] == nil {
+			localizedData[ect][data.ID] = make(map[string]content.ContentData)
 		}
-		ld[data.ID][loc] = data
+		localizedData[ect][data.ID][loc] = data
 	}
 
 	clearLocalizedDataFallbackValues(schemas, localizedData)

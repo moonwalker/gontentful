@@ -881,9 +881,9 @@ INSERT INTO {{ $.SchemaName }}._models (
 	'{{ $tbl.Data.Description }}',
 	'{{ $tbl.Data.DisplayField }}',
 	{{ $tbl.Data.Version }},
-	to_timestamp('{{ $tbl.Data.CreatedAt }}', 'YYYY-MM-DDThh24:mi:ss.mssZ'),
+	to_timestamp('{{ $tbl.Data.CreatedAt }}', 'YYYY-MM-DDThh24:mi:ss.usZ'),
 	'system',
-	to_timestamp('{{ $tbl.Data.UpdatedAt }}', 'YYYY-MM-DDThh24:mi:ss.mssZ'),
+	to_timestamp('{{ $tbl.Data.UpdatedAt }}', 'YYYY-MM-DDThh24:mi:ss.usZ'),
 	'system'
 )
 ON CONFLICT (name) DO UPDATE

@@ -27,8 +27,6 @@ func GetCMSSchemas(repo string, ct string) (*ContentTypes, error) {
 	}
 
 	for _, rc := range res {
-		ect := extractContentype(*rc.Path)
-
 		ghc, err := rc.GetContent()
 		if err != nil {
 			return nil, fmt.Errorf("repositoryContent.GetContent failed: %s", err.Error())
@@ -36,7 +34,7 @@ func GetCMSSchemas(repo string, ct string) (*ContentTypes, error) {
 		m := &content.Schema{}
 		_ = json.Unmarshal([]byte(ghc), m)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal schema %s: %s", ect, err.Error())
+			return nil, fmt.Errorf("failed to unmarshal schema %s: %s", *rc.Path, err.Error())
 		}
 		schemas.Items = append(schemas.Items, formatSchema(m))
 	}
@@ -60,8 +58,6 @@ func GetCMSSchemasExpanded(repo string, ct string) (*ContentTypes, error) {
 	}
 
 	for _, rc := range res {
-		ect := extractContentype(*rc.Path)
-
 		ghc, err := rc.GetContent()
 		if err != nil {
 			return nil, fmt.Errorf("repositoryContent.GetContent failed: %s", err.Error())
@@ -69,7 +65,7 @@ func GetCMSSchemasExpanded(repo string, ct string) (*ContentTypes, error) {
 		m := &content.Schema{}
 		_ = json.Unmarshal([]byte(ghc), m)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal schema %s: %s", ect, err.Error())
+			return nil, fmt.Errorf("failed to unmarshal schema %s: %s", *rc.Path, err.Error())
 		}
 		schemas.Items = append(schemas.Items, formatSchemaRecursive(m)...)
 	}

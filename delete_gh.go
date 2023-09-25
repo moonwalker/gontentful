@@ -39,7 +39,7 @@ func (s *GHDelete) Exec(repo string) ([]gh.BlobEntry, error) {
 	fileNames := make([]string, 0)
 
 	for _, l := range s.Locales {
-		fileNames = append(fileNames, fmt.Sprintf("%s_%s.json", s.FileName, l.Code))
+		fileNames = append(fileNames, fmt.Sprintf("%s/%s.json", s.FileName, l.Code))
 	}
 
 	//_, err := gh.DeleteFiles(ctx, cfg.Token, owner, repo, branch, path, "feat(content): delete files", fileNames)
