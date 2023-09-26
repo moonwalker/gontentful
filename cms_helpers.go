@@ -46,7 +46,10 @@ func mergeMaps[M ~map[K]V, K comparable, V any](dst M, src M) {
 	}
 }
 
-func extractContenttype(path string, idx int) string {
+func extractContenttype(ct string, path string, idx int) string {
+	if ct != "" {
+		return ct
+	}
 	dirs := strings.Split(filepath.Dir(path), "/")
 	return dirs[len(dirs)-idx]
 }

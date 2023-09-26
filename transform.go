@@ -493,7 +493,7 @@ func FormatData(contentType string, id string, schemas map[string]*content.Schem
 		return nil, nil, fmt.Errorf("missing schema: %s", contentType)
 	}
 	if contents == nil {
-		return nil, nil, fmt.Errorf("missing content: %s", id)
+		return nil, nil, fmt.Errorf("missing content: %s %s", contentType, id)
 	}
 
 	refFields := make(map[string]*content.Field, 0)

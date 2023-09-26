@@ -84,6 +84,7 @@ func createEntriesFromLocalizedData(repo string, schemas map[string]*content.Sch
 
 		includedEntries, includedAssets, err := formatIncludesRecursive(repo, includes, include, schemas, localizedData)
 		if err != nil {
+
 			return nil, fmt.Errorf("failed to fetch includes list: %s", err.Error())
 		}
 		entries.Includes.Entry = includedEntries
@@ -280,7 +281,7 @@ func formatRepositoryContent(rcs []*github.RepositoryContent, contentType string
 
 	for _, rc := range rcs {
 		if *rc.Name == content.JsonSchemaName {
-			ect := extractContenttype(*rc.Path, 1)
+			ect := extractContenttype(contentType, *rc.Path, 1)
 			m := &content.Schema{}
 			err = json.Unmarshal([]byte(*rc.Content), m)
 			if err != nil {
@@ -290,7 +291,7 @@ func formatRepositoryContent(rcs []*github.RepositoryContent, contentType string
 			continue
 		}
 
-		ect := extractContenttype(*rc.Path, 2)
+		ect := extractContenttype(contentType, *rc.Path, 2)
 		if ect == IMAGE_FOLDER_NAME {
 			continue
 		}
@@ -404,7 +405,7 @@ func formatIncludesRecursive(repo string, entryRefs map[string]string, include i
 				return nil, nil, fmt.Errorf("failed to get format localized: %s", err.Error())
 			}
 			if isc[ct] == nil || ild[ct] == nil {
-				fmt.Println(fmt.Sprintf("content %s was not found", ct))
+				fmt.Printf("content %s %s was not found\n", ct, id)
 				continue
 			}
 
