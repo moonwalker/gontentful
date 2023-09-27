@@ -520,7 +520,7 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 		Sys: &Sys{
 			ID:      id,
 			Type:    sysType,
-			Version: contents[defaultLocale].Version,
+			Version: contents[DefaultLocale].Version,
 			ContentType: &ContentType{
 				Sys: &Sys{
 					Type:     LINK,
@@ -531,8 +531,8 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 		},
 	}
 
-	e.Sys.CreatedAt = contents[defaultLocale].CreatedAt
-	e.Sys.UpdatedAt = contents[defaultLocale].UpdatedAt
+	e.Sys.CreatedAt = contents[DefaultLocale].CreatedAt
+	e.Sys.UpdatedAt = contents[DefaultLocale].UpdatedAt
 
 	fields := make(map[string]interface{})
 

@@ -351,7 +351,7 @@ func clearItemFallbackValues(localizedFields map[string]bool, locData map[string
 			if localizedFields == nil || !localizedFields[fn] {
 				continue
 			}
-			if reflect.DeepEqual(locData[loc].Fields[fn], locData[defaultLocale].Fields[fn]) {
+			if reflect.DeepEqual(locData[loc].Fields[fn], locData[DefaultLocale].Fields[fn]) {
 				locData[loc].Fields[fn] = nil
 			}
 		}
