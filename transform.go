@@ -371,8 +371,8 @@ func TransformEntry(locales []*Locale, model *Entry, brand string) map[string]*c
 
 			locValue := locValues[strings.ToLower(loc.Code)]
 			if locValue == nil {
-				locValue = locValues[defaultLocale]
-				contentLoc = defaultLocale
+				locValue = locValues[DefaultLocale]
+				contentLoc = DefaultLocale
 			}
 
 			if lsysl, ok := locValue.([]interface{}); ok {
@@ -427,8 +427,8 @@ func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, localized
 			locValues := fv
 			locValue := locValues[strings.ToLower(loc.Code)]
 			if !localizedFields[fn] || locValue == nil {
-				locValue = locValues[defaultLocale]
-				contentLoc = defaultLocale
+				locValue = locValues[DefaultLocale]
+				contentLoc = DefaultLocale
 			}
 
 			if lsysl, ok := locValue.([]interface{}); ok {

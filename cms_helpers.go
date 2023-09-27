@@ -76,7 +76,7 @@ func getDefaultLocale(locales []*Locale) string {
 		if loc.Default {
 			return code
 		}
-		if code == defaultLocale {
+		if code == DefaultLocale {
 			hasDefault = true
 		}
 	}
@@ -84,5 +84,5 @@ func getDefaultLocale(locales []*Locale) string {
 		return strings.ToLower(locales[0].Code)
 	}
 
-	return defaultLocale
+	return DefaultLocale
 }

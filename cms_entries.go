@@ -235,7 +235,7 @@ func clearPublishedEntryFallbackValues(localizedFields map[string]bool, fields m
 			continue
 		}
 		for loc := range fvs {
-			if loc != defaultLocale && reflect.DeepEqual(fields[fn][loc], fields[fn][defaultLocale]) {
+			if loc != DefaultLocale && reflect.DeepEqual(fields[fn][loc], fields[fn][DefaultLocale]) {
 				fields[fn][loc] = nil
 			}
 		}
@@ -344,7 +344,7 @@ func clearLocalizedDataFallbackValues(schemas map[string]*content.Schema, locali
 
 func clearItemFallbackValues(localizedFields map[string]bool, locData map[string]content.ContentData) {
 	for loc, data := range locData {
-		if loc == defaultLocale {
+		if loc == DefaultLocale {
 			continue
 		}
 		for fn, _ := range data.Fields {

@@ -110,7 +110,7 @@ func execQuery(q string) int64 {
 	if err != nil {
 		log.Fatal(err)
 	}
-	query := gontentful.ParsePGQuery(schemaName, "en", qv)
+	query := gontentful.ParsePGQuery(schemaName, gontentful.DefaultLocale, qv)
 	// log.Println("executing query...")
 	_, _, err = query.Exec(databaseURL)
 	if err != nil {
