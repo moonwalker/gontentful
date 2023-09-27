@@ -66,7 +66,7 @@ func transformContent() {
 	if err != nil {
 		log.Fatalf("failed to fetch locales: %s", err.Error())
 	}
-	defaultLocale := "en"
+	defaultLocale := gontentful.DefaultLocale
 	for _, l := range locales.Items {
 		if l.Default {
 			defaultLocale = l.Code

@@ -8,6 +8,10 @@ import (
 
 type LocalesService service
 
+const (
+	DefaultLocale = "en"
+)
+
 func (s *LocalesService) Get(query url.Values) ([]byte, error) {
 	path := fmt.Sprintf(pathLocales, s.client.Options.SpaceID)
 	return s.client.get(path, query)
