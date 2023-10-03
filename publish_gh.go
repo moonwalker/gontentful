@@ -67,7 +67,7 @@ func (s *GHPublish) Exec() ([]gh.BlobEntry, error) {
 	switch entryType {
 	case DELETED_ASSET:
 		return getDeleteEntries(ctx, cfg, s, ASSET_TABLE_NAME)
-	case DELETED_CONTENT_TYPE:
+	case DELETED_ENTRY:
 		return getDeleteEntries(ctx, cfg, s, s.Entry.Sys.ContentType.Sys.ID)
 	case ASSET:
 		folderName = ASSET_TABLE_NAME
