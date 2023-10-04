@@ -115,39 +115,44 @@ func transformContent() {
 			ct = toCamelCase(item.Sys.ContentType.Sys.ID)
 		}
 
-		entries := gontentful.TransformEntry(locales.Items, item, brand)
+		if !onlyImages {
+			entries := gontentful.TransformEntry(locales.Items, item, brand)
 
-		for l, e := range entries {
-			b, err := json.Marshal(e)
-			if err != nil {
-				log.Fatalf("failed to marshal entry: %s", err.Error())
-			}
+			for l, e := range entries {
+				b, err := json.Marshal(e)
+				if err != nil {
+					log.Fatalf("failed to marshal entry: %s", err.Error())
+				}
 
-			dfv := getDisplayField(item, displayFields[ct], defaultLocale)
-			if isAsset {
-				dfv = fmt.Sprintf("%s-%s", dfv, item.Sys.ID)
-			}
+				dfv := getDisplayField(item, displayFields[ct], defaultLocale)
+				if isAsset {
+					dfv = fmt.Sprintf("%s-%s", dfv, item.Sys.ID)
+				}
 
-			dir := fmt.Sprintf("%s/%s", ct, strings.ToLower(dfv))
-			path := fmt.Sprintf(outputFormat, dir)
+				dir := fmt.Sprintf("%s/%s", ct, strings.ToLower(dfv))
+				path := fmt.Sprintf(outputFormat, dir)
 
-			err = os.MkdirAll(path, os.ModePerm)
-			if err != nil {
-				log.Fatalf("failed to create output folder %s: %s", path, err.Error())
-			}
+				err = os.MkdirAll(path, os.ModePerm)
+				if err != nil {
+					log.Fatalf("failed to create output folder %s: %s", path, err.Error())
+				}
 
-			f := fmt.Sprintf("%s/%s.json", path, l)
-			if _, err := os.Stat(f); os.IsNotExist(err) {
-				fmt.Printf("Writing file: %s", f)
-				os.WriteFile(f, b, 0644)
-				fmt.Printf("\033[2K")
-				fmt.Println()
-				fmt.Printf("\033[1A")
-			} else {
-				log.Printf("%s already exists. unable to save: %s", path, item.Sys.ID)
-				break
+				f := fmt.Sprintf("%s/%s.json", path, l)
+				if _, err := os.Stat(f); os.IsNotExist(err) {
+					fmt.Printf("Writing file: %s", f)
+					os.WriteFile(f, b, 0644)
+					fmt.Printf("\033[2K")
+					fmt.Println()
+					fmt.Printf("\033[1A")
+				} else {
+					log.Printf("%s already exists. unable to save: %s", path, item.Sys.ID)
+					break
+				}
 			}
 		}
+	}
+	if onlyImages {
+		fmt.Println(" Transform skipped. Only downloading iumages.")
 	}
 
 	i := 1
