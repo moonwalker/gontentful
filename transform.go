@@ -426,7 +426,9 @@ func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, localized
 			contentLoc := loc.Code
 			locValues := fv
 			locValue := locValues[strings.ToLower(loc.Code)]
-			if (model.Sys.Type != ASSET && !localizedFields[fn]) || locValue == nil {
+			if (model.Sys.Type == ASSET && !localizedAssetColumns[fn]) ||
+				(model.Sys.Type != ASSET && !localizedFields[fn]) ||
+				locValue == nil {
 				locValue = locValues[defaultLocale]
 				contentLoc = defaultLocale
 			}
