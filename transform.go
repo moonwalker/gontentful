@@ -417,16 +417,16 @@ func TransformEntry(locales []*Locale, model *Entry, brand string) map[string]*c
 func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, localizedFields map[string]bool, brand string) map[string]*content.ContentData {
 	res := make(map[string]*content.ContentData, 0)
 	for _, loc := range locales {
-		contentLoc := loc.Code
 		data := &content.ContentData{
 			ID:     model.Sys.ID,
 			Fields: make(map[string]interface{}),
 		}
 
 		for fn, fv := range model.Fields {
+			contentLoc := loc.Code
 			locValues := fv
 			locValue := locValues[strings.ToLower(loc.Code)]
-			if !localizedFields[fn] || locValue == nil {
+			if (model.Sys.Type != ASSET && !localizedFields[fn]) || locValue == nil {
 				locValue = locValues[DefaultLocale]
 				contentLoc = DefaultLocale
 			}
