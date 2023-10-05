@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -153,27 +152,28 @@ func transformContent() {
 		}
 	}
 	if onlyImages {
-		fmt.Println(" Transform skipped. Only downloading iumages.")
+		fmt.Println("Transform skipped. Only downloading iumages.")
 	}
 
 	i := 1
 	j := len(imageURLs)
 	errors := make([]string, 0)
 	images := make(map[string]bool)
+	existingImages := make(map[string]bool)
+	imgPath := fmt.Sprintf(outputFormat, gontentful.IMAGE_FOLDER_NAME)
 
-	if _, err := os.Stat(fmt.Sprintf(outputFormat, gontentful.IMAGE_FOLDER_NAME)); !os.IsNotExist(err) {
-		files, err := ioutil.ReadDir(fmt.Sprintf(outputFormat, gontentful.IMAGE_FOLDER_NAME))
+	if _, err := os.Stat(imgPath); !os.IsNotExist(err) {
+		files, err := os.ReadDir(imgPath)
 		if err != nil {
 			log.Fatal(err)
 		}
-		images := make(map[string]bool)
 		for _, file := range files {
 			images[file.Name()] = true
 		}
 	}
 
 	if j > 0 {
-		imgPath := fmt.Sprintf(outputFormat, gontentful.IMAGE_FOLDER_NAME)
+		split := time.Now()
 		err = os.MkdirAll(imgPath, os.ModePerm)
 		if err != nil {
 			log.Fatalf("failed to create images folder: %s", err.Error())
@@ -182,22 +182,34 @@ func transformContent() {
 		for fn, url := range imageURLs {
 			if images[fn] {
 				fmt.Printf("Skipping images: %d/%d - %s", i, j, fn)
-				i++
-				continue
+			} else {
+				fmt.Printf("Dowloading images: %d/%d - %s", i, j, fn)
+				err = downloadImage(url, fmt.Sprintf("%s/%s", imgPath, fn))
+				if err != nil {
+					errors = append(errors, err.Error())
+				}
 			}
-			fmt.Printf("Dowloading images: %d/%d - %s", i, j, fn)
-			err = downloadImage(url, fmt.Sprintf("%s/%s", imgPath, fn))
-			if err != nil {
-				errors = append(errors, err.Error())
-			}
+			existingImages[fn] = true
 			i++
 			fmt.Printf("\033[2K")
 			fmt.Println()
 			fmt.Printf("\033[1A")
 		}
+
+		fmt.Printf("%d images successfully downloaded in %.1fs\n", j, time.Since(split).Seconds())
 	}
 
-	fmt.Printf("Content successfully transformed in %.1fs\n", time.Since(start).Seconds())
+	for fn := range images {
+		if !existingImages[fn] {
+			err = os.Remove(fmt.Sprintf("%s/%s", imgPath, fn))
+			if err != nil {
+				errors = append(errors, err.Error())
+			}
+			fmt.Printf("Deleting images: %s", fn)
+		}
+	}
+
+	fmt.Printf("%d content successfully transformed in %.1fs\n", len(res.Items), time.Since(start).Seconds())
 
 	for _, e := range errors {
 		fmt.Println(e)
