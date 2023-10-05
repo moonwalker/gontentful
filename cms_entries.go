@@ -262,9 +262,12 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 			return nil, nil, fmt.Errorf("failed to get json(s) from github: %s", err.Error())
 		}
 	}*/
-
-	// test, use GetArchivedContents in all use cases
-	rcs, _, err = gh.GetArchivedContents(ctx, cfg.Token, owner, repo, branch, path)
+	if ct != "" {
+		rcs, _, err = gh.GetContentsRecursive(ctx, cfg.Token, owner, repo, branch, path)
+	} else {
+		// test, use GetArchivedContents in all use cases
+		rcs, _, err = gh.GetArchivedContents(ctx, cfg.Token, owner, repo, branch, path)
+	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get json(s) from github: %s", err.Error())
 	}
