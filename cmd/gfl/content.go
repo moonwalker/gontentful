@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -158,6 +159,18 @@ func transformContent() {
 	i := 1
 	j := len(imageURLs)
 	errors := make([]string, 0)
+	images := make(map[string]bool)
+
+	if _, err := os.Stat(fmt.Sprintf(outputFormat, gontentful.IMAGE_FOLDER_NAME)); !os.IsNotExist(err) {
+		files, err := ioutil.ReadDir(fmt.Sprintf(outputFormat, gontentful.IMAGE_FOLDER_NAME))
+		if err != nil {
+			log.Fatal(err)
+		}
+		images := make(map[string]bool)
+		for _, file := range files {
+			images[file.Name()] = true
+		}
+	}
 
 	if j > 0 {
 		imgPath := fmt.Sprintf(outputFormat, gontentful.IMAGE_FOLDER_NAME)
@@ -167,6 +180,11 @@ func transformContent() {
 		}
 
 		for fn, url := range imageURLs {
+			if images[fn] {
+				fmt.Printf("Skipping images: %d/%d - %s", i, j, fn)
+				i++
+				continue
+			}
 			fmt.Printf("Dowloading images: %d/%d - %s", i, j, fn)
 			err = downloadImage(url, fmt.Sprintf("%s/%s", imgPath, fn))
 			if err != nil {
