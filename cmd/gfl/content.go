@@ -145,7 +145,7 @@ func transformContent() {
 		}
 	}
 	if onlyImages {
-		fmt.Println(" Transform skipped. Only downloading iumages.")
+		fmt.Println("Transform skipped. Only downloading iumages.")
 	}
 
 	i := 1
@@ -166,6 +166,7 @@ func transformContent() {
 	}
 
 	if j > 0 {
+		split := time.Now()
 		err = os.MkdirAll(imgPath, os.ModePerm)
 		if err != nil {
 			log.Fatalf("failed to create images folder: %s", err.Error())
@@ -187,6 +188,8 @@ func transformContent() {
 			fmt.Println()
 			fmt.Printf("\033[1A")
 		}
+
+		fmt.Printf("%d images successfully downloaded in %.1fs\n", j, time.Since(split).Seconds())
 	}
 
 	for fn := range images {
@@ -195,10 +198,11 @@ func transformContent() {
 			if err != nil {
 				errors = append(errors, err.Error())
 			}
+			fmt.Printf("Deleting images: %s", fn)
 		}
 	}
 
-	fmt.Printf("Content successfully transformed in %.1fs\n", time.Since(start).Seconds())
+	fmt.Printf("%d content successfully transformed in %.1fs\n", len(res.Items), time.Since(start).Seconds())
 
 	for _, e := range errors {
 		fmt.Println(e)
