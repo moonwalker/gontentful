@@ -527,19 +527,20 @@ func GetContentsRecursive(ctx context.Context, accessToken string, owner string,
 			c.Content = &content
 			rcs = append(rcs, c)
 		}
-		if *c.Type == "dir" {
+		// not needed with the new content structure
+		/*if *c.Type == "dir" {
 			rcr, _, err := GetContentsRecursive(ctx, accessToken, owner, repo, ref, *c.Path)
 			if err != nil {
 				return nil, resp, err
 			}
 			rcs = append(rcs, rcr...)
-		}
+		}*/
 	}
 
 	return rcs, resp, nil
 }
 
-func GetAllLocaleContents(ctx context.Context, accessToken string, owner string, repo string, ref string, path string, prefix string) ([]*github.RepositoryContent, *github.Response, error) {
+func GetAllLocaleContents(ctx context.Context, accessToken string, owner string, repo string, ref string, path string) ([]*github.RepositoryContent, *github.Response, error) {
 	githubClient := ghClient(ctx, accessToken)
 
 	_, rc, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{
@@ -551,7 +552,7 @@ func GetAllLocaleContents(ctx context.Context, accessToken string, owner string,
 
 	rcs := make([]*github.RepositoryContent, 0)
 	for _, c := range rc {
-		if *c.Type == "file" && (strings.HasPrefix(*c.Name, prefix) || *c.Name == content.JsonSchemaName) {
+		if *c.Type == "file" && (*c.Name == content.JsonSchemaName || filepath.Ext(*c.Name) == ".json") {
 			b, err := downloadFile(*c.DownloadURL)
 			if err != nil {
 				return nil, resp, err
@@ -618,6 +619,37 @@ func GetFilesContent(ctx context.Context, accessToken string, owner string, repo
 		}
 		rc.Content = &c
 		rcs = append(rcs, rc)
+	}
+
+	return rcs, resp, nil
+}
+
+func SearchContentsByID(ctx context.Context, accessToken string, owner string, repo string, ref string, path string, id string) ([]*github.RepositoryContent, *github.Response, error) {
+	githubClient := ghClient(ctx, accessToken)
+
+	_, rc, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, path, &github.RepositoryContentGetOptions{
+		Ref: ref,
+	})
+	if err != nil {
+		return nil, resp, err
+	}
+
+	rcs := make([]*github.RepositoryContent, 0)
+	for _, c := range rc {
+		if *c.Type == "file" && *c.Name != content.JsonSchemaName {
+			b, err := downloadFile(*c.DownloadURL)
+			if err != nil {
+				return nil, resp, err
+			}
+			content := string(b)
+			if strings.Contains(content, "Not found") {
+				log.Fatal("couldn't download file")
+			}
+			if strings.HasPrefix(content, fmt.Sprintf(`{"id":"%s",`, id)) {
+				c.Content = &content
+				rcs = append(rcs, c)
+			}
+		}
 	}
 
 	return rcs, resp, nil
