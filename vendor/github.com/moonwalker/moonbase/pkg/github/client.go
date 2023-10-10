@@ -670,6 +670,20 @@ func downloadFile(downloadURL string) ([]byte, error) {
 	return b, nil
 }
 
+func GetSchema(ctx context.Context, accessToken string, owner string, repo string, ref string, path string) (*github.RepositoryContent, *github.Response, error) {
+	githubClient := ghClient(ctx, accessToken)
+
+	schemaPath := filepath.Join(path, content.JsonSchemaName)
+	fc, _, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, schemaPath, &github.RepositoryContentGetOptions{
+		Ref: ref,
+	})
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return fc, resp, nil
+}
+
 func GetSchemasRecursive(ctx context.Context, accessToken string, owner string, repo string, ref string, path string) ([]*github.RepositoryContent, *github.Response, error) {
 	githubClient := ghClient(ctx, accessToken)
 

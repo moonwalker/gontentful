@@ -30,8 +30,8 @@ github.com/mattn/go-sqlite3 v1.14.6 h1:dNPt6NO46WmLVt2DLNpwczCmdV5boIZ6g/tlDrlRU
 github.com/mattn/go-sqlite3 v1.14.6/go.mod h1:NyWgC/yNuGj7Q9rpYnZvas74GogHl5/Z4A/KQRfk6bU=
 github.com/mitchellh/mapstructure v1.5.0 h1:jeMsZIYE/09sWLaz43PL7Gy6RuMjD2eJVyuac5Z2hdY=
 github.com/mitchellh/mapstructure v1.5.0/go.mod h1:bFUtVrKA4DC2yAKiSyO/QUcy7e+RRV2QTWOzhPopBRo=
-github.com/moonwalker/moonbase v0.0.0-20231006135422-9386f5a9a704 h1:msPY2/SGQlS6LnA1dVUDhczO3FAdwbo4Ecb7cgtBILM=
-github.com/moonwalker/moonbase v0.0.0-20231006135422-9386f5a9a704/go.mod h1:5YxljSkAmPqteO1HwFtQj/bkZ02CHMh5z1B6FtXh5rY=
+github.com/moonwalker/moonbase v0.0.0-20231010153044-b6ed43b6fe15 h1:/GujAoxE9QvNe26DCmoP8yFSwr8LUT82Am4/a87s5xY=
+github.com/moonwalker/moonbase v0.0.0-20231010153044-b6ed43b6fe15/go.mod h1:5YxljSkAmPqteO1HwFtQj/bkZ02CHMh5z1B6FtXh5rY=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/spf13/cobra v1.6.1 h1:o94oiPyS4KD1mPy2fmcYYHHfCxLqYjJOhGsCHFZtEzA=
 github.com/spf13/cobra v1.6.1/go.mod h1:IOw/AERYS7UzyrGinqmz6HLUo219MORXGxhbaJUqzrY=
