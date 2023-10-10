@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 
+	"github.com/moonwalker/moonbase/pkg/content"
 	gh "github.com/moonwalker/moonbase/pkg/github"
 )
 
@@ -34,7 +35,7 @@ func (s *GHSyncSchema) Exec(repo string) error {
 		return err
 	}
 	sc := string(cb)
-	path := filepath.Join(cfg.WorkDir, s.FolderName, "_schema.json")
+	path := filepath.Join(cfg.WorkDir, s.FolderName, content.JsonSchemaName)
 
 	// Upload to github
 	_, err = gh.CommitBlob(ctx, cfg.Token, owner, repo, branch, path, &sc, "feat(content type): update files")
