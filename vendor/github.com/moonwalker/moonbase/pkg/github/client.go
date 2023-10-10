@@ -515,7 +515,8 @@ func GetContentsRecursive(ctx context.Context, accessToken string, owner string,
 
 	rcs := make([]*github.RepositoryContent, 0)
 	for _, c := range rc {
-		if *c.Type == "file" {
+		switch *c.Type {
+		case "file":
 			b, err := downloadFile(*c.DownloadURL)
 			if err != nil {
 				return nil, resp, err
@@ -526,15 +527,13 @@ func GetContentsRecursive(ctx context.Context, accessToken string, owner string,
 			}
 			c.Content = &content
 			rcs = append(rcs, c)
-		}
-		// not needed with the new content structure
-		/*if *c.Type == "dir" {
+		case "dir":
 			rcr, _, err := GetContentsRecursive(ctx, accessToken, owner, repo, ref, *c.Path)
 			if err != nil {
 				return nil, resp, err
 			}
 			rcs = append(rcs, rcr...)
-		}*/
+		}
 	}
 
 	return rcs, resp, nil
