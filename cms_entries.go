@@ -25,12 +25,16 @@ const (
 	configPath = "moonbase.yaml"
 )
 
+var localeVariants = map[string]string{
+	"nb": "no",
+	"no": "nb",
+}
+
 func GetCMSEntries(contentType string, repo string, include int) (*Entries, *ContentTypes, error) {
 	schemas, localizedData, err := getContentLocalized(repo, contentType)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get content localized: %s", err.Error())
 	}
-
 	entries, err := createEntriesFromLocalizedData(repo, schemas, localizedData, include)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create loclalized entires: %s", err.Error())
@@ -67,7 +71,7 @@ func createEntriesFromLocalizedData(repo string, schemas map[string]*content.Sch
 
 	includes := make(map[string]string)
 	for ct, locData := range localizedData {
-		for id, _ := range locData {
+		for id := range locData {
 			entry, entryRefs, err := FormatData(ct, id, schemas, localizedData)
 			if err != nil {
 				return nil, fmt.Errorf("failed to format file content: %s", err.Error())
@@ -85,6 +89,7 @@ func createEntriesFromLocalizedData(repo string, schemas map[string]*content.Sch
 
 		includedEntries, includedAssets, err := formatIncludesRecursive(repo, includes, include, schemas, localizedData)
 		if err != nil {
+
 			return nil, fmt.Errorf("failed to fetch includes list: %s", err.Error())
 		}
 		entries.Includes.Entry = includedEntries
@@ -94,26 +99,75 @@ func createEntriesFromLocalizedData(repo string, schemas map[string]*content.Sch
 	return entries, nil
 }
 
-func GetCMSEntry(contentType string, repo string, prefix string, locales []*Locale, include int) (*Entries, error) {
+func GetCMSEntry(contentType string, repo string, name string, locales []*Locale, include int) (*Entries, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
 	path := filepath.Join(cfg.WorkDir, contentType)
 
-	files := make([]string, 0)
+	/*files := make([]string, 0)
 	for _, l := range locales {
-		files = append(files, fmt.Sprintf("%s_%s.json", prefix, l.Code))
+		files = append(files, fmt.Sprintf("%s/%s.json", name, l.Code))
 	}
 	files = append(files, content.JsonSchemaName)
 	rcs, _, err := gh.GetFilesContent(ctx, cfg.Token, owner, repo, branch, path, files)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
-	}
-	/*rcs, _, err := gh.GetAllLocaleContentsWithTree(ctx, cfg.Token, owner, repo, branch, path, prefix)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
 	}*/
 
-	schemas, localizedData, err := formatRepositoryContent(rcs, path)
+	// get contentType's schema
+	rcs := make([]*github.RepositoryContent, 0)
+	rcSchema, _, err := gh.GetSchema(ctx, cfg.Token, owner, repo, branch, path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get schema(%s): %s", contentType, err.Error())
+	}
+	sc, err := rcSchema.GetContent()
+	if err != nil {
+		return nil, fmt.Errorf("RepositoryContent.GetContent failed: %s", err.Error())
+	}
+	rcSchema.Content = &sc
+	rcs = append(rcs, rcSchema)
+
+	// get all localized jsons
+	itemPath := fmt.Sprintf("%s/%s", path, name)
+	rcsAll, _, err := gh.GetContentsRecursive(ctx, cfg.Token, owner, repo, branch, itemPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
+	}
+	// helper map
+	contentLocMap := make(map[string]*github.RepositoryContent)
+	for _, rc := range rcsAll {
+		c, err := rc.GetContent()
+		if err != nil {
+			return nil, fmt.Errorf("RepositoryContent.GetContent failed: %s", err.Error())
+		}
+		rc.Content = &c
+		loc, _ := extractFileInfo(*rc.Name)
+		contentLocMap[loc] = rc
+	}
+
+	// create response array
+	for _, l := range locales {
+		if contentLocMap[l.Code] != nil {
+			rcs = append(rcs, contentLocMap[l.Code])
+		} else {
+			if len(localeVariants[l.Code]) > 0 {
+				lv := localeVariants[l.Code]
+				if contentLocMap[lv] != nil {
+					newPath := fmt.Sprintf("%s.json", l.Code)
+					newName := newPath
+					rcs = append(rcs, &github.RepositoryContent{
+						Name:    &newName,
+						Path:    &newPath,
+						Content: contentLocMap[lv].Content,
+					})
+				}
+			} else {
+				return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
+			}
+		}
+	}
+
+	schemas, localizedData, err := formatRepositoryContent(rcs, contentType)
 	if err != nil {
 		return nil, fmt.Errorf("failed to format repository content: %s", err.Error())
 	}
@@ -162,11 +216,11 @@ func GetPublishedEntry(repo string, contentType string, files []string) (*Publis
 	var sys *Sys
 	for _, rc := range rcs {
 		if *rc.Name != content.JsonSchemaName {
-			_, loc, err := parseFileName(*rc.Name)
-			if err != nil {
-				//fmt.Println(fmt.Sprintf("Skipping file: %s Err: %s", *rc.Path, err.Error()))
+			ext := filepath.Ext(*rc.Name)
+			if ext != ".json" {
 				continue
 			}
+			loc := extractLocale(*rc.Path, ext)
 			data := content.ContentData{}
 			err = json.Unmarshal([]byte(*rc.Content), &data)
 			if err != nil {
@@ -235,7 +289,7 @@ func clearPublishedEntryFallbackValues(localizedFields map[string]bool, fields m
 			continue
 		}
 		for loc := range fvs {
-			if loc != defaultLocale && reflect.DeepEqual(fields[fn][loc], fields[fn][defaultLocale]) {
+			if loc != DefaultLocale && reflect.DeepEqual(fields[fn][loc], fields[fn][DefaultLocale]) {
 				fields[fn][loc] = nil
 			}
 		}
@@ -262,34 +316,29 @@ func getContentLocalized(repo string, ct string) (map[string]*content.Schema, ma
 			return nil, nil, fmt.Errorf("failed to get json(s) from github: %s", err.Error())
 		}
 	}*/
-
-	// test, use GetArchivedContents in all use cases
-	rcs, _, err = gh.GetArchivedContents(ctx, cfg.Token, owner, repo, branch, path)
+	if ct != "" {
+		rcs, _, err = gh.GetContentsRecursive(ctx, cfg.Token, owner, repo, branch, path)
+	} else {
+		// test, use GetArchivedContents in all use cases
+		rcs, _, err = gh.GetArchivedContents(ctx, cfg.Token, owner, repo, branch, path)
+	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get json(s) from github: %s", err.Error())
 	}
 
-	schemas, localizedData, err := formatRepositoryContent(rcs, path)
+	schemas, localizedData, err := formatRepositoryContent(rcs, ct)
 
 	return schemas, localizedData, err
 }
 
-func formatRepositoryContent(rcs []*github.RepositoryContent, path string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData, error) {
+func formatRepositoryContent(rcs []*github.RepositoryContent, contentType string) (map[string]*content.Schema, map[string]map[string]map[string]content.ContentData, error) {
 	localizedData := make(map[string]map[string]map[string]content.ContentData)
 	schemas := make(map[string]*content.Schema)
 	var err error
 
 	for _, rc := range rcs {
-		ect := extractContentype(filepath.Join(path, *rc.Path))
-		if ect == IMAGE_FOLDER_NAME {
-			continue
-		}
-		if localizedData[ect] == nil {
-			localizedData[ect] = make(map[string]map[string]content.ContentData)
-		}
-		ld := localizedData[ect]
-
 		if *rc.Name == content.JsonSchemaName {
+			ect := extractContenttype(contentType, *rc.Path, 1)
 			m := &content.Schema{}
 			err = json.Unmarshal([]byte(*rc.Content), m)
 			if err != nil {
@@ -299,10 +348,18 @@ func formatRepositoryContent(rcs []*github.RepositoryContent, path string) (map[
 			continue
 		}
 
-		_, loc, err := parseFileName(*rc.Name)
-		if err != nil {
-			//fmt.Println(fmt.Sprintf("Skipping file: %s Err: %s", *rc.Path, err.Error()))
+		ect := extractContenttype(contentType, *rc.Path, 2)
+		if ect == IMAGE_FOLDER_NAME {
 			continue
+		}
+
+		loc, ext := extractFileInfo(*rc.Name)
+		if ext != ".json" {
+			continue
+		}
+
+		if localizedData[ect] == nil {
+			localizedData[ect] = make(map[string]map[string]content.ContentData)
 		}
 
 		data := content.ContentData{}
@@ -312,10 +369,10 @@ func formatRepositoryContent(rcs []*github.RepositoryContent, path string) (map[
 			return nil, nil, fmt.Errorf("failed to unmarshal file content(%s): %s", *rc.Path, err.Error())
 		}
 
-		if ld[data.ID] == nil {
-			ld[data.ID] = make(map[string]content.ContentData)
+		if localizedData[ect][data.ID] == nil {
+			localizedData[ect][data.ID] = make(map[string]content.ContentData)
 		}
-		ld[data.ID][loc] = data
+		localizedData[ect][data.ID][loc] = data
 	}
 
 	clearLocalizedDataFallbackValues(schemas, localizedData)
@@ -344,14 +401,14 @@ func clearLocalizedDataFallbackValues(schemas map[string]*content.Schema, locali
 
 func clearItemFallbackValues(localizedFields map[string]bool, locData map[string]content.ContentData) {
 	for loc, data := range locData {
-		if loc == defaultLocale {
+		if loc == DefaultLocale {
 			continue
 		}
 		for fn, _ := range data.Fields {
 			if localizedFields == nil || !localizedFields[fn] {
 				continue
 			}
-			if reflect.DeepEqual(locData[loc].Fields[fn], locData[defaultLocale].Fields[fn]) {
+			if reflect.DeepEqual(locData[loc].Fields[fn], locData[DefaultLocale].Fields[fn]) {
 				locData[loc].Fields[fn] = nil
 			}
 		}
@@ -405,7 +462,7 @@ func formatIncludesRecursive(repo string, entryRefs map[string]string, include i
 				return nil, nil, fmt.Errorf("failed to get format localized: %s", err.Error())
 			}
 			if isc[ct] == nil || ild[ct] == nil {
-				fmt.Println(fmt.Sprintf("content %s was not found", ct))
+				fmt.Printf("content %s %s was not found\n", ct, id)
 				continue
 			}
 

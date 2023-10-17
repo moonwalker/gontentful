@@ -371,8 +371,8 @@ func TransformEntry(locales []*Locale, model *Entry, brand string) map[string]*c
 
 			locValue := locValues[strings.ToLower(loc.Code)]
 			if locValue == nil {
-				locValue = locValues[defaultLocale]
-				contentLoc = defaultLocale
+				locValue = locValues[DefaultLocale]
+				contentLoc = DefaultLocale
 			}
 
 			if lsysl, ok := locValue.([]interface{}); ok {
@@ -429,8 +429,8 @@ func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, localized
 			if (model.Sys.Type == ASSET && !localizedAssetColumns[fn]) ||
 				(model.Sys.Type != ASSET && !localizedFields[fn]) ||
 				locValue == nil {
-				locValue = locValues[defaultLocale]
-				contentLoc = defaultLocale
+				locValue = locValues[DefaultLocale]
+				contentLoc = DefaultLocale
 			}
 
 			if lsysl, ok := locValue.([]interface{}); ok {
@@ -491,6 +491,13 @@ func FormatData(contentType string, id string, schemas map[string]*content.Schem
 	schema := schemas[contentType]
 	contents := locData[contentType][id]
 
+	if schema == nil {
+		return nil, nil, fmt.Errorf("missing schema: %s", contentType)
+	}
+	if contents == nil {
+		return nil, nil, fmt.Errorf("missing content: %s %s", contentType, id)
+	}
+
 	refFields := make(map[string]*content.Field, 0)
 	for _, sf := range schema.Fields {
 		if sf.Reference {
@@ -498,15 +505,12 @@ func FormatData(contentType string, id string, schemas map[string]*content.Schem
 		}
 	}
 
-	entry, includes, err := formatEntry(id, contentType, contents, refFields)
-	if err != nil {
-		return nil, nil, err
-	}
+	entry, includes := formatEntry(id, contentType, contents, refFields)
 
 	return entry, includes, nil
 }
 
-func formatEntry(id string, contentType string, contents map[string]content.ContentData, refFields map[string]*content.Field) (*Entry, map[string]string, error) {
+func formatEntry(id string, contentType string, contents map[string]content.ContentData, refFields map[string]*content.Field) (*Entry, map[string]string) {
 	includes := make(map[string]string)
 
 	sysType := ENTRY
@@ -518,7 +522,7 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 		Sys: &Sys{
 			ID:      id,
 			Type:    sysType,
-			Version: contents[defaultLocale].Version,
+			Version: contents[DefaultLocale].Version,
 			ContentType: &ContentType{
 				Sys: &Sys{
 					Type:     LINK,
@@ -529,8 +533,8 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 		},
 	}
 
-	e.Sys.CreatedAt = contents[defaultLocale].CreatedAt
-	e.Sys.UpdatedAt = contents[defaultLocale].UpdatedAt
+	e.Sys.CreatedAt = contents[DefaultLocale].CreatedAt
+	e.Sys.UpdatedAt = contents[DefaultLocale].UpdatedAt
 
 	fields := make(map[string]interface{})
 
@@ -578,7 +582,7 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 	}
 	e.Fields = fields
 
-	return e, includes, nil
+	return e, includes
 }
 
 func replaceAssetFile(brand string, file interface{}, sysID string, loc string) interface{} {

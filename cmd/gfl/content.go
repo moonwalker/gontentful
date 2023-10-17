@@ -48,7 +48,9 @@ func transformContent() {
 	var res *gontentful.Entries
 	var err error
 
-	if len(contentType) > 0 {
+	hasCt := len(contentType) > 0
+
+	if hasCt {
 		res, err = GetContentTypeEntries(cli, contentType)
 	} else {
 		res, err = GetAllEntries(cli)
@@ -64,7 +66,7 @@ func transformContent() {
 	if err != nil {
 		log.Fatalf("failed to fetch locales: %s", err.Error())
 	}
-	defaultLocale := "en"
+	defaultLocale := gontentful.DefaultLocale
 	for _, l := range locales.Items {
 		if l.Default {
 			defaultLocale = l.Code
@@ -73,7 +75,7 @@ func transformContent() {
 	}
 
 	var ctres *gontentful.ContentTypes
-	if len(contentType) > 0 {
+	if hasCt {
 		var ctype *gontentful.ContentType
 		ctype, err = cli.ContentTypes.GetSingleCMA(contentType)
 		if err == nil {
@@ -122,25 +124,30 @@ func transformContent() {
 					log.Fatalf("failed to marshal entry: %s", err.Error())
 				}
 
-				path := fmt.Sprintf(outputFormat, ct)
+				dfv := getDisplayField(item, displayFields[ct], defaultLocale)
+				if isAsset {
+					dfv = fmt.Sprintf("%s-%s", dfv, item.Sys.ID)
+				}
+
+				dir := fmt.Sprintf("%s/%s", ct, strings.ToLower(dfv))
+				path := fmt.Sprintf(outputFormat, dir)
+
 				err = os.MkdirAll(path, os.ModePerm)
 				if err != nil {
 					log.Fatalf("failed to create output folder %s: %s", path, err.Error())
 				}
 
-				dfv := getDisplayField(item, displayFields[ct], defaultLocale)
-				fn := ""
-				if isAsset {
-					fn = fmt.Sprintf("%s-%s_%s", dfv, item.Sys.ID, l)
+				f := fmt.Sprintf("%s/%s.json", path, l)
+				if _, err := os.Stat(f); os.IsNotExist(err) {
+					fmt.Printf("Writing file: %s", f)
+					os.WriteFile(f, b, 0644)
+					fmt.Printf("\033[2K")
+					fmt.Println()
+					fmt.Printf("\033[1A")
 				} else {
-					fn = fmt.Sprintf("%s_%s", dfv, l)
+					log.Printf("%s already exists. unable to save: %s", path, item.Sys.ID)
+					break
 				}
-				f := fmt.Sprintf("%s/%s.json", path, strings.ToLower(fn))
-				fmt.Printf("Writing file: %s", f)
-				os.WriteFile(f, b, 0644)
-				fmt.Printf("\033[2K")
-				fmt.Println()
-				fmt.Printf("\033[1A")
 			}
 		}
 	}

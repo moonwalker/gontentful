@@ -10,10 +10,6 @@ import (
 	"github.com/lib/pq"
 )
 
-const (
-	defaultLocale = "en"
-)
-
 var (
 	metaColumns           = []string{"_locale", "_version", "_created_at", "_created_by", "_updated_at", "_updated_by"}
 	localizedAssetColumns = map[string]bool{

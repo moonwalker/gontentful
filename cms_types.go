@@ -10,6 +10,28 @@ import (
 	gh "github.com/moonwalker/moonbase/pkg/github"
 )
 
+func GetCMSSchema(repo string, ct string) (*ContentType, error) {
+	ctx := context.Background()
+	cfg := getConfig(ctx, owner, repo, branch)
+	path := filepath.Join(cfg.WorkDir, ct)
+	res, _, err := gh.GetSchema(ctx, cfg.Token, owner, repo, branch, path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get schema from github: %s", err.Error())
+	}
+
+	ghc, err := res.GetContent()
+	if err != nil {
+		return nil, fmt.Errorf("repositoryContent.GetContent failed: %s", err.Error())
+	}
+	m := &content.Schema{}
+	_ = json.Unmarshal([]byte(ghc), m)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal schema %s: %s", *res.Path, err.Error())
+	}
+
+	return formatSchema(m), nil
+}
+
 func GetCMSSchemas(repo string, ct string) (*ContentTypes, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
@@ -27,8 +49,6 @@ func GetCMSSchemas(repo string, ct string) (*ContentTypes, error) {
 	}
 
 	for _, rc := range res {
-		ect := extractContentype(*rc.Path)
-
 		ghc, err := rc.GetContent()
 		if err != nil {
 			return nil, fmt.Errorf("repositoryContent.GetContent failed: %s", err.Error())
@@ -36,7 +56,7 @@ func GetCMSSchemas(repo string, ct string) (*ContentTypes, error) {
 		m := &content.Schema{}
 		_ = json.Unmarshal([]byte(ghc), m)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal schema %s: %s", ect, err.Error())
+			return nil, fmt.Errorf("failed to unmarshal schema %s: %s", *rc.Path, err.Error())
 		}
 		schemas.Items = append(schemas.Items, formatSchema(m))
 	}
@@ -60,8 +80,6 @@ func GetCMSSchemasExpanded(repo string, ct string) (*ContentTypes, error) {
 	}
 
 	for _, rc := range res {
-		ect := extractContentype(*rc.Path)
-
 		ghc, err := rc.GetContent()
 		if err != nil {
 			return nil, fmt.Errorf("repositoryContent.GetContent failed: %s", err.Error())
@@ -69,7 +87,7 @@ func GetCMSSchemasExpanded(repo string, ct string) (*ContentTypes, error) {
 		m := &content.Schema{}
 		_ = json.Unmarshal([]byte(ghc), m)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal schema %s: %s", ect, err.Error())
+			return nil, fmt.Errorf("failed to unmarshal schema %s: %s", *rc.Path, err.Error())
 		}
 		schemas.Items = append(schemas.Items, formatSchemaRecursive(m)...)
 	}
