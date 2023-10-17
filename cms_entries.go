@@ -25,6 +25,11 @@ const (
 	configPath = "moonbase.yaml"
 )
 
+var localeVariants = map[string]string{
+	"nb": "no",
+	"no": "nb",
+}
+
 func GetCMSEntries(contentType string, repo string, include int) (*Entries, *ContentTypes, error) {
 	schemas, localizedData, err := getContentLocalized(repo, contentType)
 	if err != nil {
@@ -99,7 +104,7 @@ func GetCMSEntry(contentType string, repo string, name string, locales []*Locale
 	cfg := getConfig(ctx, owner, repo, branch)
 	path := filepath.Join(cfg.WorkDir, contentType)
 
-	files := make([]string, 0)
+	/*files := make([]string, 0)
 	for _, l := range locales {
 		files = append(files, fmt.Sprintf("%s/%s.json", name, l.Code))
 	}
@@ -107,11 +112,60 @@ func GetCMSEntry(contentType string, repo string, name string, locales []*Locale
 	rcs, _, err := gh.GetFilesContent(ctx, cfg.Token, owner, repo, branch, path, files)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
+	}*/
+
+	// get contentType's schema
+	rcs := make([]*github.RepositoryContent, 0)
+	rcSchema, _, err := gh.GetSchema(ctx, cfg.Token, owner, repo, branch, path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get schema(%s): %s", contentType, err.Error())
 	}
-	/*rcs, _, err := gh.GetAllLocaleContentsWithTree(ctx, cfg.Token, owner, repo, branch, path, prefix)
+	sc, err := rcSchema.GetContent()
+	if err != nil {
+		return nil, fmt.Errorf("RepositoryContent.GetContent failed: %s", err.Error())
+	}
+	rcSchema.Content = &sc
+	rcs = append(rcs, rcSchema)
+
+	// get all localized jsons
+	itemPath := fmt.Sprintf("%s/%s", path, name)
+	rcsAll, _, err := gh.GetContentsRecursive(ctx, cfg.Token, owner, repo, branch, itemPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
-	}*/
+	}
+	// helper map
+	contentLocMap := make(map[string]*github.RepositoryContent)
+	for _, rc := range rcsAll {
+		c, err := rc.GetContent()
+		if err != nil {
+			return nil, fmt.Errorf("RepositoryContent.GetContent failed: %s", err.Error())
+		}
+		rc.Content = &c
+		loc, _ := extractFileInfo(*rc.Name)
+		contentLocMap[loc] = rc
+	}
+
+	// create response array
+	for _, l := range locales {
+		if contentLocMap[l.Code] != nil {
+			rcs = append(rcs, contentLocMap[l.Code])
+		} else {
+			if len(localeVariants[l.Code]) > 0 {
+				lv := localeVariants[l.Code]
+				if contentLocMap[lv] != nil {
+					newPath := fmt.Sprintf("%s.json", l.Code)
+					newName := newPath
+					rcs = append(rcs, &github.RepositoryContent{
+						Name:    &newName,
+						Path:    &newPath,
+						Content: contentLocMap[lv].Content,
+					})
+				}
+			} else {
+				return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
+			}
+		}
+	}
 
 	schemas, localizedData, err := formatRepositoryContent(rcs, contentType)
 	if err != nil {
