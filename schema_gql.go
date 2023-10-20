@@ -171,7 +171,7 @@ func (s *GraphQLSchema) Render() (string, error) {
 
 func NewGraphQLTypeDef(schema *GraphQLSchema, typeName string, fields []*ContentTypeField) *GraphQLType {
 	typeDef := &GraphQLType{
-		TypeName:  cases.Title(language.Und).String(typeName),
+		TypeName:  cases.Title(language.Und, cases.NoLower).String(typeName),
 		Fields:    make([]*GraphQLField, 0),
 		Resolvers: make([]*GraphQLResolver, 0),
 	}
@@ -324,7 +324,7 @@ func getValidationContentType(schema *GraphQLSchema, t string, validations []*Fi
 			}
 		}
 	}
-	return cases.Title(language.Und).String(t)
+	return cases.Title(language.Und, cases.NoLower).String(t)
 }
 
 func pluralName(typeName string) string {
