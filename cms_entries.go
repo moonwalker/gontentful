@@ -180,6 +180,30 @@ func GetCMSEntry(contentType string, repo string, name string, locales []*Locale
 	return entries, nil
 }
 
+func GetBlob(repo string, path string, file string) (*string, error) {
+	ctx := context.Background()
+	cfg := getConfig(ctx, owner, repo, branch)
+
+	rcs, _, err := gh.GetFilesContent(ctx, cfg.Token, owner, repo, branch, path, []string{file})
+	if err != nil {
+		return nil, err
+	}
+
+	return rcs[0].Content, nil
+}
+
+func GetBlobURL(repo string, path string, file string) (string, error) {
+	ctx := context.Background()
+	cfg := getConfig(ctx, owner, repo, branch)
+
+	rcs, _, err := gh.GetFilesContent(ctx, cfg.Token, owner, repo, branch, path, []string{file})
+	if err != nil {
+		return "", err
+	}
+
+	return *rcs[0].DownloadURL, nil
+}
+
 func GetPublishedEntry(repo string, contentType string, files []string) (*PublishedEntry, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)

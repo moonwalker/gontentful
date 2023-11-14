@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/go-github/v48/github"
 	gh "github.com/moonwalker/moonbase/pkg/github"
@@ -87,8 +86,7 @@ func (s *GHPublish) Exec() ([]gh.BlobEntry, error) {
 		folderName = s.Entry.Sys.ContentType.Sys.ID
 	}
 
-	cflId := strings.TrimPrefix(s.RepoName, "cms-")
-	cflId = strings.TrimPrefix(cflId, "mw-")
+	cflId := GetCloudflareImagesID(s.RepoName)
 	cd := TransformPublishedEntry(s.Locales, s.Entry, s.LocalizedFields, cflId)
 
 	// upload to github

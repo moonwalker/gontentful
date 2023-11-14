@@ -642,3 +642,9 @@ func downloadImage(URL string) (string, error) {
 
 	return base64.StdEncoding.EncodeToString(bytes.Trim(b, "\xef\xbb\xbf")), nil
 }
+
+func GetCloudflareImagesID(repoName string) string {
+	cflId := strings.TrimPrefix(repoName, "cms-")
+	cflId = strings.TrimPrefix(cflId, "mw-")
+	return cflId
+}
