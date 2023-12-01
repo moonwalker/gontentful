@@ -162,7 +162,7 @@ func GetCMSEntry(contentType string, repo string, name string, locales []*Locale
 					})
 				}
 			} else {
-				return nil, fmt.Errorf("failed to get all localized contents: %s", err.Error())
+				fmt.Printf("failed to get '%s' localized content for %s\n", l.Code, itemPath)
 			}
 		}
 	}
