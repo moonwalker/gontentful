@@ -612,11 +612,16 @@ func GetFilesContent(ctx context.Context, accessToken string, owner string, repo
 		if err != nil {
 			return nil, resp, err
 		}
-		c, err := rc.GetContent()
-		if err != nil {
-			return nil, resp, err
+
+		//when using the object media type, the content field will be an empty string and the encoding field will be "none"
+		if rc.Encoding == nil || *rc.Encoding != "none" {
+			c, err := rc.GetContent()
+			if err != nil {
+				return nil, resp, err
+			}
+			rc.Content = &c
 		}
-		rc.Content = &c
+
 		rcs = append(rcs, rc)
 	}
 

@@ -9,7 +9,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.7
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/moonwalker/moonbase v0.0.0-20231010201258-18432c50856a
+	github.com/moonwalker/moonbase v0.0.0-20231204103555-eab9dd93d046
 	github.com/spf13/cobra v1.6.1
 	golang.org/x/text v0.7.0
 	gopkg.in/yaml.v3 v3.0.1

@@ -25,6 +25,7 @@ const (
 	configPath   = "moonbase.yaml"
 	include      = 0
 	outputFormat = "./_output/%s"
+	videoURLHost = "assets.mw.zone"
 )
 
 type Config struct {
@@ -116,7 +117,7 @@ func transformContent() {
 		}
 
 		if !onlyImages {
-			entries := gontentful.TransformEntry(locales.Items, item, brand)
+			entries := gontentful.TransformEntry(locales.Items, item, brand, fmtVideoURL)
 
 			for l, e := range entries {
 				b, err := json.Marshal(e)
@@ -214,6 +215,14 @@ func transformContent() {
 	for _, e := range errors {
 		fmt.Println(e)
 	}
+}
+
+func fmtVideoURL(key string) string {
+	u := &url.URL{
+		Host: videoURLHost,
+		Path: key,
+	}
+	return u.String()
 }
 
 func formatContent() {

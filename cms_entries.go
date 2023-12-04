@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"time"
 
 	"github.com/google/go-github/v48/github"
 	"github.com/moonwalker/moonbase/pkg/content"
@@ -396,7 +397,27 @@ func formatRepositoryContent(rcs []*github.RepositoryContent, contentType string
 		if localizedData[ect][data.ID] == nil {
 			localizedData[ect][data.ID] = make(map[string]content.ContentData)
 		}
-		localizedData[ect][data.ID][loc] = data
+		if localizedData[ect][data.ID][loc].ID == data.ID {
+			eRow := localizedData[ect][data.ID][loc]
+			oUpdatedAt, err := time.Parse(time.RFC3339, eRow.UpdatedAt)
+			swapRows := false
+			if err != nil {
+				swapRows = true
+			} else {
+				nUpdatedAt, err := time.Parse(time.RFC3339, data.UpdatedAt)
+				if err == nil {
+					if nUpdatedAt.After(oUpdatedAt) {
+						swapRows = true
+					}
+				}
+			}
+			if swapRows {
+				fmt.Println(fmt.Sprintf("duplicated SysID %s with locale %s in contentType %s swapping rows", eRow.ID, loc, ect))
+				localizedData[ect][data.ID][loc] = data
+			}
+		} else {
+			localizedData[ect][data.ID][loc] = data
+		}
 	}
 
 	clearLocalizedDataFallbackValues(schemas, localizedData)

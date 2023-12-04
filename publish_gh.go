@@ -55,7 +55,7 @@ func getAssetImages(ctx context.Context, cfg *Config, repo, url string) (*string
 	return blob.SHA, nil
 }
 
-func (s *GHPublish) Exec() ([]gh.BlobEntry, error) {
+func (s *GHPublish) Exec(fmtVideoURL func(string) string) ([]gh.BlobEntry, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, s.RepoName, branch)
 
@@ -87,7 +87,7 @@ func (s *GHPublish) Exec() ([]gh.BlobEntry, error) {
 	}
 
 	cflId := GetCloudflareImagesID(s.RepoName)
-	cd := TransformPublishedEntry(s.Locales, s.Entry, s.LocalizedFields, cflId)
+	cd := TransformPublishedEntry(s.Locales, s.Entry, s.LocalizedFields, cflId, fmtVideoURL)
 
 	// upload to github
 	for l, c := range cd {

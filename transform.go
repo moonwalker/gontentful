@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 
@@ -354,7 +355,7 @@ func formatSchemaRecursive(schema *content.Schema) []*ContentType {
 	return res
 }
 
-func TransformEntry(locales []*Locale, model *Entry, brand string) map[string]*content.ContentData {
+func TransformEntry(locales []*Locale, model *Entry, brand string, fmtVideoURL func(string) string) map[string]*content.ContentData {
 	res := make(map[string]*content.ContentData, 0)
 	for _, loc := range locales {
 		data := &content.ContentData{
@@ -396,7 +397,7 @@ func TransformEntry(locales []*Locale, model *Entry, brand string) map[string]*c
 
 			if data.Fields[fn] == nil {
 				if model.Sys.Type == ASSET && fn == "file" {
-					data.Fields[fn] = replaceAssetFile(brand, locValue, model.Sys.ID, strings.ToLower(contentLoc))
+					data.Fields[fn] = replaceAssetFile(brand, locValue, model.Sys.ID, strings.ToLower(contentLoc), fmtVideoURL)
 				} else {
 					data.Fields[fn] = locValue
 				}
@@ -414,7 +415,7 @@ func TransformEntry(locales []*Locale, model *Entry, brand string) map[string]*c
 	return res
 }
 
-func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, localizedFields map[string]bool, brand string) map[string]*content.ContentData {
+func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, localizedFields map[string]bool, brand string, fmtVideoURL func(string) string) map[string]*content.ContentData {
 	res := make(map[string]*content.ContentData, 0)
 	for _, loc := range locales {
 		data := &content.ContentData{
@@ -454,7 +455,7 @@ func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, localized
 
 			if data.Fields[fn] == nil {
 				if model.Sys.Type == ASSET && fn == "file" {
-					data.Fields[fn] = replaceAssetFile(brand, locValue, model.Sys.ID, strings.ToLower(contentLoc))
+					data.Fields[fn] = replaceAssetFile(brand, locValue, model.Sys.ID, strings.ToLower(contentLoc), fmtVideoURL)
 				} else {
 					data.Fields[fn] = locValue
 				}
@@ -585,7 +586,7 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 	return e, includes
 }
 
-func replaceAssetFile(brand string, file interface{}, sysID string, loc string) interface{} {
+func replaceAssetFile(brand string, file interface{}, sysID string, loc string, fmtVideoURL func(string) string) interface{} {
 	if originalfileMap, ok := file.(map[string]interface{}); ok {
 		// clone map
 		fileMap := make(map[string]interface{})
@@ -598,7 +599,11 @@ func replaceAssetFile(brand string, file interface{}, sysID string, loc string) 
 			if url != "" {
 				fn := GetImageFileName(fileName, sysID, loc)
 				fileMap["fileName"] = fn
-				fileMap["url"] = fmt.Sprintf(imageCDNFmt, cdnClientID, brand, fn)
+				if IsVideoFile(fileName) {
+					fileMap["url"] = fmtVideoURL(fmt.Sprintf("%s/%s", brand, fn))
+				} else {
+					fileMap["url"] = fmt.Sprintf(imageCDNFmt, cdnClientID, brand, fn)
+				}
 			}
 		}
 		return fileMap
@@ -647,4 +652,15 @@ func GetCloudflareImagesID(repoName string) string {
 	cflId := strings.TrimPrefix(repoName, "cms-")
 	cflId = strings.TrimPrefix(cflId, "mw-")
 	return cflId
+}
+
+func IsVideoFile(fileName string) bool {
+	ext := path.Ext(fileName)
+	vids := []string{".mp4", ".mov", ".webm", ".wmv", ".avi", ".flv", ".avchd"}
+	for _, e := range vids {
+		if strings.ToLower(ext) == e {
+			return true
+		}
+	}
+	return false
 }
