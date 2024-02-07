@@ -124,7 +124,6 @@ type PGSQLDeleteTrigger struct {
 var schemaFuncMap = template.FuncMap{
 	"marshal": func(v interface{}) string {
 		a, _ := json.Marshal(v)
-		fmt.Println("marshal", string(a))
 		return string(a)
 	},
 }
