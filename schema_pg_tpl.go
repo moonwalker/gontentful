@@ -25,6 +25,19 @@ CREATE TABLE IF NOT EXISTS _asset (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS _asset__sys_id__locale ON _asset (_sys_id, _locale);
 --
+CREATE TABLE IF NOT EXISTS _schema (
+	model text primary key,
+	name text not null,
+	description text,
+	displayField text not null,
+	fields jsonb not null default '[]'::jsonb,
+	_version integer not null default 0,
+	_created_at timestamp without time zone default now(),
+	_created_by text not null,
+	_updated_at timestamp without time zone default now(),
+	_updated_by text not null
+);
+--
 {{ end -}}
 {{ range $tblidx, $tbl := $.Tables }}
 --
@@ -54,6 +67,40 @@ CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}__locale ON {{ $tbl.TableName
 CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}_{{ .ColumnName }} ON {{ $tbl.TableName }}({{ .ColumnName }},_locale);
 {{ end -}}
 {{- end }}
+--
+INSERT INTO _schema (
+	model,
+	name,
+	description,
+	displayField,
+	fields,
+	_version,
+	_created_at,
+	_created_by,
+	_updated_at,
+	_updated_by
+) VALUES (
+	'{{ $tbl.Schema.ID }}',
+	'{{ $tbl.Schema.Name }}',
+	'{{ $tbl.Schema.Description }}',
+	'{{ $tbl.Schema.DisplayField }}',
+	'{{ $tbl.Schema.Fields | marshal }}'::jsonb,
+	{{ $tbl.Schema.Version }},
+	to_timestamp('{{ $tbl.Schema.CreatedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'),
+	'sync',
+	to_timestamp('{{ $tbl.Schema.UpdatedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'),
+	'sync'
+)
+ON CONFLICT (model) DO UPDATE
+SET
+	name = EXCLUDED.name,
+	description = EXCLUDED.description,
+	displayField = EXCLUDED.displayField,
+	fields = EXCLUDED.fields,
+	_version= EXCLUDED._version,
+	_updated_at=EXCLUDED._updated_at,
+	_updated_by=EXCLUDED._updated_by
+;
 --
 {{- end -}}
 `

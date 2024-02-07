@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -626,6 +627,30 @@ func GetFilesContent(ctx context.Context, accessToken string, owner string, repo
 	}
 
 	return rcs, resp, nil
+}
+
+// "https://api.github.com/search/code?q=1LH4vkAWCVPt56aKmJZIxW+in:file+filename:en.json+path:_content/currency+repo:moonwalker/cms-instaslots"
+func SearchByID(ctx context.Context, accessToken string, owner string, repo string, ref string, path string, id string, locale string) (*github.RepositoryContent, *github.Response, error) {
+	githubClient := ghClient(ctx, accessToken)
+	q := fmt.Sprintf("%s+in:file+filename:%s.json+path:%s+repo:%s/%s", id, locale, path, owner, repo)
+	query, err := url.QueryUnescape(q)
+	if err != nil {
+		return nil, nil, err
+	}
+	sr, resp, err := githubClient.Search.Code(ctx, query, &github.SearchOptions{})
+	if err != nil {
+		return nil, resp, err
+	}
+	if len(sr.CodeResults) == 1 {
+		filepath := sr.CodeResults[0].GetPath()
+		rc, _, resp, err := githubClient.Repositories.GetContents(ctx, owner, repo, filepath, &github.RepositoryContentGetOptions{})
+		if err != nil {
+			return nil, resp, err
+		}
+		return rc, resp, err
+	}
+
+	return nil, resp, errors.New("not found")
 }
 
 func SearchContentsByID(ctx context.Context, accessToken string, owner string, repo string, ref string, path string, id string) ([]*github.RepositoryContent, *github.Response, error) {

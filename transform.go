@@ -18,7 +18,7 @@ const (
 	imageCDNFmt = "//imagedelivery.net/%s/%s/%s/public"
 )
 
-func TransformModel(model *ContentType) (*content.Schema, error) {
+func TransformModel(model *ContentType) *content.Schema {
 	createdAt, _ := time.Parse(time.RFC3339Nano, model.Sys.CreatedAt)
 	updatedAt, _ := time.Parse(time.RFC3339Nano, model.Sys.UpdatedAt)
 	schema := &content.Schema{
@@ -60,7 +60,7 @@ func TransformModel(model *ContentType) (*content.Schema, error) {
 		schema.Fields = append(schema.Fields, cf)
 	}
 
-	return schema, nil
+	return schema
 }
 
 func transformField(cf *content.Field, fieldType string, linkType string, validations []*FieldValidation, items *FieldTypeArrayItem) {

@@ -50,12 +50,9 @@ func transformContentType() {
 	os.RemoveAll(fmt.Sprintf(outputFormat, ""))
 
 	for _, item := range types.Items {
-		schema, err := gontentful.TransformModel(item)
-		if err != nil {
-			log.Fatal(fmt.Errorf("failed to transform model: %s", err.Error()))
-		}
+		schema := gontentful.TransformModel(item)
 		path := fmt.Sprintf(outputFormat, item.Sys.ID)
-		err = os.MkdirAll(path, os.ModePerm)
+		err := os.MkdirAll(path, os.ModePerm)
 		if err != nil {
 			log.Fatal(fmt.Errorf("failed to create output folder %s: %s", path, err.Error()))
 		}

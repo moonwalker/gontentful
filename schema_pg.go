@@ -4,12 +4,14 @@ package gontentful
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/moonwalker/moonbase/pkg/content"
 )
 
 const (
@@ -52,9 +54,11 @@ type PGSQLColumn struct {
 }
 
 type PGSQLData struct {
+	ID           string
 	Label        string
 	Description  string
 	DisplayField string
+	Fields       []map[string]interface{}
 	Version      int
 	CreatedAt    string
 	CreatedBy    string
@@ -81,6 +85,7 @@ type PGSQLTable struct {
 	Data      *PGSQLData
 	Columns   []*PGSQLColumn
 	Indices   map[string]string
+	Schema    *content.Schema
 }
 
 type PGSQLReference struct {
@@ -117,7 +122,11 @@ type PGSQLDeleteTrigger struct {
 }
 
 var schemaFuncMap = template.FuncMap{
-	"fmtLocale": fmtLocale,
+	"marshal": func(v interface{}) string {
+		a, _ := json.Marshal(v)
+		fmt.Println("marshal", string(a))
+		return string(a)
+	},
 }
 
 func NewPGSQLSchema(schemaName string, locales []*Locale, contentTypeFilter string, items []*ContentType, includeDepth int64) *PGSQLSchema {
@@ -208,7 +217,7 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 }
 
 func (s *PGSQLSchema) Render() (string, error) {
-	tmpl, err := template.New("").Funcs(schemaFuncMap).Parse(pgTemplate)
+	tmpl, err := template.New("schemaTemplate").Funcs(schemaFuncMap).Parse(pgTemplate)
 	if err != nil {
 		return "", err
 	}
@@ -227,6 +236,7 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDept
 		TableName: toSnakeCase(item.Sys.ID),
 		Columns:   make([]*PGSQLColumn, 0),
 		Data:      makeModelData(item),
+		Schema:    TransformModel(item),
 	}
 	conTables := make([]*PGSQLTable, 0)
 	references := make([]*PGSQLReference, 0)

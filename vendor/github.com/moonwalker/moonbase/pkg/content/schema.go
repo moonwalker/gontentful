@@ -1,6 +1,9 @@
 package content
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -41,12 +44,31 @@ type Field struct {
 	Schema       *Schema       `json:"schema,omitempty"`
 }
 
+type Fields []*Field
+
+func (f *Fields) Scan(val interface{}) error {
+	switch v := val.(type) {
+	case []byte:
+		json.Unmarshal(v, f)
+		return nil
+	case string:
+		json.Unmarshal([]byte(v), f)
+		return nil
+	default:
+		return fmt.Errorf("unsupported type: %T", v)
+	}
+}
+func (f Fields) Value() (driver.Value, error) {
+	b, err := json.Marshal(f)
+	return string(b), err
+}
+
 type Schema struct {
 	ID           string     `json:"id,omitempty"`
 	Name         string     `json:"name,omitempty"`
 	DisplayField string     `json:"displayField,omitempty"`
 	Description  string     `json:"description,omitempty"`
-	Fields       []*Field   `json:"fields,omitempty"`
+	Fields       Fields     `json:"fields,omitempty"`
 	CreatedAt    *time.Time `json:"createdAt,omitempty"`
 	CreatedBy    string     `json:"createdBy,omitempty"`
 	UpdatedAt    *time.Time `json:"updatedAt,omitempty"`

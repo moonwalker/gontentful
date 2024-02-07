@@ -26,10 +26,7 @@ func (s *GHSyncSchema) Exec(repo string) error {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)
 
-	ct, err := TransformModel(s.Schema)
-	if err != nil {
-		return err
-	}
+	ct := TransformModel(s.Schema)
 	cb, err := json.Marshal(ct)
 	if err != nil {
 		return err
