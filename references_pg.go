@@ -19,14 +19,7 @@ func NewPGReferences(schema *PGSQLSchema) *PGReferences {
 }
 
 func (s *PGReferences) Exec(databaseURL string) error {
-	tmpl, err := template.New("").Parse(pgReferencesTemplate)
-
-	if err != nil {
-		return err
-	}
-
-	var buff bytes.Buffer
-	err = tmpl.Execute(&buff, s)
+	str, err := s.Render()
 	if err != nil {
 		return err
 	}
@@ -51,8 +44,7 @@ func (s *PGReferences) Exec(databaseURL string) error {
 		}
 	}
 
-	// os.WriteFile("/tmp/refs", buff.Bytes(), 0644)
-	_, err = txn.Exec(buff.String())
+	_, err = txn.Exec(str)
 	if err != nil {
 		return err
 	}
@@ -62,4 +54,21 @@ func (s *PGReferences) Exec(databaseURL string) error {
 		return err
 	}
 	return nil
+}
+
+func (s *PGReferences) Render() (string, error) {
+	tmpl, err := template.New("referencesTemplate").Parse(pgReferencesTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buff bytes.Buffer
+	err = tmpl.Execute(&buff, s)
+	if err != nil {
+		return "", err
+	}
+
+	// os.WriteFile("/tmp/refs", buff.Bytes(), 0644)
+
+	return buff.String(), nil
 }
