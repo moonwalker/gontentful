@@ -176,6 +176,7 @@ func (s *PGSyncSchema) Exec(databaseURL string) error {
 	if err != nil {
 		return err
 	}
+	defer txn.Rollback()
 
 	if s.SchemaName != "" {
 		// set schema name

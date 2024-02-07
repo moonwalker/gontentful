@@ -125,6 +125,7 @@ func SwapSchemas(databaseURL string, schemaName string, oldSchemaName string, ne
 	if err != nil {
 		return err
 	}
+	defer txn.Rollback()
 
 	_, err = txn.Exec(fmt.Sprintf(migrateSchemaTpl, schemaName, oldSchemaName, newSchemaName))
 	if err != nil {

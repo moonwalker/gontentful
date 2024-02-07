@@ -56,6 +56,8 @@ func (s *PGFunctions) Exec(databaseURL string) error {
 	if err != nil {
 		return err
 	}
+	defer txn.Rollback()
+
 	if s.Schema.SchemaName != "" {
 		// set schema in use
 		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.Schema.SchemaName))
