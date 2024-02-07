@@ -195,11 +195,20 @@ func (s *PGSyncSchema) Exec(databaseURL string) error {
 		// }
 
 		// bulk insert
-		return s.bulkInsert(txn)
+		err = s.bulkInsert(txn)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	// insert and/or delete changes
-	return s.deltaSync(txn)
+	err = s.deltaSync(txn)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *PGSyncSchema) Render() (string, error) {
