@@ -2,7 +2,6 @@ package gontentful
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 
 	gh "github.com/moonwalker/moonbase/pkg/github"
@@ -36,15 +35,9 @@ func (s *GHDelete) Exec(repo string) ([]gh.BlobEntry, error) {
 	cfg := getConfig(ctx, owner, repo, branch)
 	path := filepath.Join(cfg.WorkDir, s.FolderName)
 
-	fileNames := make([]string, 0)
-
-	for _, l := range s.Locales {
-		fileNames = append(fileNames, fmt.Sprintf("%s/%s.json", s.FileName, l.Code))
-	}
-
 	//_, err := gh.DeleteFiles(ctx, cfg.Token, owner, repo, branch, path, "feat(content): delete files", fileNames)
 	//return err
 
-	items, err := gh.GetDeleteFileEntries(ctx, cfg.Token, owner, repo, branch, path, "feat(content): delete files", fileNames)
+	items, err := gh.GetDeleteFileEntries(ctx, cfg.Token, owner, repo, branch, path, "feat(content): delete files")
 	return items, err
 }

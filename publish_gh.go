@@ -30,14 +30,7 @@ func NewGHPublish(entry *PublishedEntry, repoName, fileName string, locales *Loc
 
 func getDeleteEntries(ctx context.Context, cfg *Config, s *GHPublish, folderName string) ([]gh.BlobEntry, error) {
 	path := filepath.Join(cfg.WorkDir, folderName, s.FileName)
-
-	fileNames := make([]string, 0)
-
-	for _, l := range s.Locales {
-		fileNames = append(fileNames, fmt.Sprintf("%s.json", l.Code))
-	}
-
-	return gh.GetDeleteFileEntries(ctx, cfg.Token, owner, s.RepoName, branch, path, "feat(content): delete files", fileNames)
+	return gh.GetDeleteFileEntries(ctx, cfg.Token, owner, s.RepoName, branch, path, "feat(content): delete files")
 }
 
 func getAssetImages(ctx context.Context, cfg *Config, repo, url string) (*string, error) {
