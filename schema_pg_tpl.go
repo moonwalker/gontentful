@@ -26,8 +26,9 @@ CREATE TABLE IF NOT EXISTS _asset (
 CREATE UNIQUE INDEX IF NOT EXISTS _asset__sys_id__locale ON _asset (_sys_id, _locale);
 --
 CREATE TABLE IF NOT EXISTS _schema (
-	model text primary key,
-	name text not null,
+	table_name text primary key,
+	model text not null unique,
+	name text not null unique,
 	description text,
 	displayField text not null,
 	fields jsonb not null default '[]'::jsonb,
@@ -37,6 +38,7 @@ CREATE TABLE IF NOT EXISTS _schema (
 	_updated_at timestamp without time zone default now(),
 	_updated_by text not null
 );
+CREATE UNIQUE INDEX IF NOT EXISTS _schema_model ON _schema (model);
 --
 {{ end -}}
 {{ range $tblidx, $tbl := $.Tables }}

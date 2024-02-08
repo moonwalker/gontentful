@@ -15,6 +15,8 @@ DROP FUNCTION IF EXISTS {{ $.SchemaName }}._get_{{ $.TableName }}_items CASCADE;
 DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $.TableName }}_items CASCADE;
 --
 DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $.TableName }}_query CASCADE;
+--
+DELETE FROM {{ $.SchemaName }}._schema WHERE table_name = {{ $.TableName }};
 `
 
 type PGDeleteContentType struct {
