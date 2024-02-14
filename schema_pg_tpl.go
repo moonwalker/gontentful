@@ -71,6 +71,7 @@ CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}_{{ .ColumnName }} ON {{ $tbl
 {{- end }}
 --
 INSERT INTO _schema (
+	table_name,
 	model,
 	name,
 	description,
@@ -82,6 +83,7 @@ INSERT INTO _schema (
 	_updated_at,
 	_updated_by
 ) VALUES (
+	'{{ $tbl.TableName }}',
 	'{{ $tbl.Schema.ID }}',
 	'{{ $tbl.Schema.Name }}',
 	'{{ $tbl.Schema.Description }}',
@@ -93,7 +95,7 @@ INSERT INTO _schema (
 	to_timestamp('{{ $tbl.Schema.UpdatedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'),
 	'sync'
 )
-ON CONFLICT (model) DO UPDATE
+ON CONFLICT (table_name) DO UPDATE
 SET
 	name = EXCLUDED.name,
 	description = EXCLUDED.description,
