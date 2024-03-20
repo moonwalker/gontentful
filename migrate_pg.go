@@ -47,7 +47,14 @@ func MigratePGSQL(databaseURL string, newSchemaName string, locales []*Locale, t
 		return err
 	}
 
-	// 3) create functions
+	// 3) create references
+	refs := NewPGReferences(schema)
+	err = refs.Exec(databaseURL)
+	if err != nil {
+		return err
+	}
+
+	// 4) create functions
 	if createFunctions {
 		funcs := NewPGFunctions(schema)
 		err = funcs.Exec(databaseURL)
@@ -56,7 +63,7 @@ func MigratePGSQL(databaseURL string, newSchemaName string, locales []*Locale, t
 		}
 	}
 
-	// 4) refresh materialized views
+	// 5) refresh materialized views
 	if createFunctions {
 		matViews := NewPGMatViews(schema)
 		err = matViews.Exec(databaseURL, newSchemaName)
@@ -96,14 +103,21 @@ func MigrateGamesPGSQL(databaseURL string, newSchemaName string, contentSchemaNa
 		return err
 	}
 
-	// 3) create functions
+	// 3) create references
+	refs := NewPGReferences(schema)
+	err = refs.Exec(databaseURL)
+	if err != nil {
+		return err
+	}
+
+	// 4) create functions
 	funcs := NewPGFunctions(schema)
 	err = funcs.Exec(databaseURL)
 	if err != nil {
 		return err
 	}
 
-	// 4) refresh materialized views
+	// 5) refresh materialized views
 	matViews := NewPGMatViews(schema)
 	err = matViews.Exec(databaseURL, newSchemaName)
 	if err != nil {

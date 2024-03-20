@@ -107,4 +107,17 @@ SET
 ;
 --
 {{- end -}}
+--
+{{ range $idx, $tbl := $.ConTables }}
+CREATE TABLE IF NOT EXISTS {{ .TableName }} (
+	_id SERIAL primary key,
+	{{- range $colidx, $col := .Columns }}
+	{{- if $colidx -}},{{- end }}
+	"{{ .ColumnName }}" TEXT NOT NULL
+	{{- end }}
+);
+{{ range $idxn, $idxf := .Indices }}
+CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}_{{ $tbl.TableName }}_{{ $idxn }} ON {{ $tbl.TableName }} ({{ $idxf }});
+{{- end }}
+{{ end -}}
 `

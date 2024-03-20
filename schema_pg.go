@@ -202,11 +202,11 @@ func (s *PGSQLSchema) Exec(databaseURL string) error {
 		return err
 	}
 
-	refs := NewPGReferences(s)
-	err = refs.Exec(databaseURL)
-	if err != nil {
-		return err
-	}
+	// refs := NewPGReferences(s)
+	// err = refs.Exec(databaseURL)
+	// if err != nil {
+	// 	return err
+	// }
 
 	// funcs := NewPGFunctions(s)
 	// err = funcs.Exec(databaseURL)

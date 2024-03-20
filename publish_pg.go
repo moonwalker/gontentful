@@ -167,8 +167,7 @@ func appendPublishColCons(q *PGPublish, columnReference string, col string, fiel
 		}
 
 		for _, e := range links {
-			f, ok := e.(map[string]interface{})
-			if ok {
+			if f, ok := e.(map[string]interface{}); ok {
 				conSysID := convertSysID(f, true)
 				conID := convertSys(f, true, loc)
 				if id != "" && conID != "" && !addedRefs[conID] {

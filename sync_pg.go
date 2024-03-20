@@ -246,10 +246,10 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 
 		err = stmt.Close()
 		if err != nil {
-			fmt.Println("stmt.Close error", tbl.TableName)
-			for _, r := range tbl.Rows {
-				fmt.Println("row", fmt.Sprintf("%+v", r))
-			}
+			fmt.Println("stmt.Close error", tbl.TableName, err)
+			// for _, r := range tbl.Rows {
+			// 	fmt.Println("row", fmt.Sprintf("%+v", r))
+			// }
 			return err
 		}
 	}

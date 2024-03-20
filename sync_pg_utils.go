@@ -23,8 +23,11 @@ type columnData struct {
 
 func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColumns []string, refColumns map[string]string, localizedColumns map[string]bool, templateFormat bool) {
 	fieldsByLocale := make(map[string][]*rowField, 0)
-	defaultLocale := strings.ToLower(schema.DefaultLocale)
-
+	defaultLocale := schema.DefaultLocale
+	fbLocales := make(map[string]*Locale)
+	for _, loc := range schema.Locales {
+		fbLocales[loc.Code] = loc
+	}
 	// iterate over fields
 	for fieldName, f := range item.Fields {
 		locFields, ok := f.(map[string]interface{})
@@ -49,9 +52,23 @@ func appendTables(schema *PGSyncSchema, item *Entry, tableName string, fieldColu
 				locCode = defaultLocale
 			}
 			fieldValue := locFields[locCode]
-			if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
-				continue
+			fallbackLoc := loc
+			for {
+				if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
+					if fallbackLoc.FallbackCode != "" {
+						fieldValue = locFields[fallbackLoc.FallbackCode]
+						fallbackLoc = fbLocales[fallbackLoc.FallbackCode]
+						continue
+					} else {
+						fieldValue = locFields[defaultLocale]
+					}
+				}
+				break
 			}
+			// if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
+			// 	continue
+			// }
+
 			// collect row fields by locale
 			fieldsByLocale[locale] = append(fieldsByLocale[locale], &rowField{columnName, fieldValue})
 		}
@@ -75,8 +92,7 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 		fieldValues[rowField.fieldName] = convertFieldValue(rowField.fieldValue, templateFormat, locale)
 		// append con tables with Array Links
 		if _, ok := refColumns[rowField.fieldName]; ok {
-			links, ok := rowField.fieldValue.([]interface{})
-			if ok {
+			if links, ok := rowField.fieldValue.([]interface{}); ok {
 				addedRefs := make(map[string]bool)
 				conTableName := getConTableName(tableName, rowField.fieldName)
 				if conTables[conTableName] == nil {
@@ -120,8 +136,7 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 				}
 			}
 		}
-		assetFile, ok := fieldValues[rowField.fieldName].(*AssetFile)
-		if ok {
+		if assetFile, ok := fieldValues[rowField.fieldName].(*AssetFile); ok {
 			url := assetFile.URL
 			fileName := assetFile.FileName
 			contentType := assetFile.ContentType
@@ -134,7 +149,6 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 			fieldValues["file_name"] = fileName
 			fieldValues["content_type"] = contentType
 		}
-
 	}
 	row := newPGSyncRow(item, fieldColumns, fieldValues, locale)
 	tbl.Rows = append(tbl.Rows, row)
@@ -144,7 +158,7 @@ func convertFieldValue(v interface{}, t bool, locale string) interface{} {
 	switch f := v.(type) {
 	case map[string]interface{}:
 		if f["sys"] != nil {
-			s := convertSysID(f, t)
+			s := convertSys(f, t, locale)
 			if s != "" {
 				return s
 			}
