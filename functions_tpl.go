@@ -45,65 +45,32 @@ DROP FUNCTION IF EXISTS {{ .TableName }}_view CASCADE;
 --
 {{- define "assetRef" -}}
 (CASE WHEN 
-	{{ .Reference.JoinAlias }}._sys_id IS NULL AND 
-	{{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL AND 
-	{{ .Reference.JoinAlias }}_deflocale._sys_id IS NULL THEN NULL 
+	{{ .Reference.JoinAlias }}._sys_id IS NULL THEN NULL 
 ELSE
 json_build_object(
-	'title', COALESCE({{ .Reference.JoinAlias }}.title, {{ .Reference.JoinAlias }}_fallbacklocale.title, {{ .Reference.JoinAlias }}_deflocale.title),
-	'description', COALESCE({{ .Reference.JoinAlias }}.description, {{ .Reference.JoinAlias }}_fallbacklocale.description, {{ .Reference.JoinAlias }}_deflocale.description),
-	'file', (CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN 
-		(CASE WHEN {{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL THEN
-			json_build_object(
-				'contentType', {{ .Reference.JoinAlias }}_deflocale.content_type,
-				'fileName', {{ .Reference.JoinAlias }}_deflocale.file_name,
-				'url', {{ .Reference.JoinAlias }}_deflocale.url
-			)
-		ELSE 
-		json_build_object(
-			'contentType', {{ .Reference.JoinAlias }}_fallbacklocale.content_type,
-			'fileName', {{ .Reference.JoinAlias }}_fallbacklocale.file_name,
-			'url', {{ .Reference.JoinAlias }}_fallbacklocale.url
-		) END)	
-	ELSE 
-		json_build_object(
-			'contentType', {{ .Reference.JoinAlias }}.content_type,
-			'fileName', {{ .Reference.JoinAlias }}.file_name,
-			'url', {{ .Reference.JoinAlias }}.url
-		)
-	END)
+	'title', {{ .Reference.JoinAlias }}.title,
+	'description', {{ .Reference.JoinAlias }}.description,
+	'file', json_build_object(
+		'contentType', {{ .Reference.JoinAlias }}.content_type,
+		'fileName', {{ .Reference.JoinAlias }}.file_name,
+		'url', {{ .Reference.JoinAlias }}.url)
 )
 END)
 {{- end -}}
 {{- define "assetCon" -}}
-		json_build_object('id', COALESCE({{ .Reference.JoinAlias }}._sys_id, {{ .Reference.JoinAlias }}_fallbacklocale._sys_id, {{ .Reference.JoinAlias }}_deflocale._sys_id)) AS sys,
-								(CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN (CASE WHEN {{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL THEN {{ .Reference.JoinAlias }}_deflocale.title ELSE {{ .Reference.JoinAlias }}_fallbacklocale.title END) ELSE {{ .Reference.JoinAlias }}.title END) AS "title",
-								(CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN (CASE WHEN {{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL THEN {{ .Reference.JoinAlias }}_deflocale.description ELSE {{ .Reference.JoinAlias }}_fallbacklocale.description END) ELSE {{ .Reference.JoinAlias }}.description END) AS "description",
-								(CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN 
-									(CASE WHEN {{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL THEN
-										json_build_object(
-											'contentType', {{ .Reference.JoinAlias }}_deflocale.content_type,
-											'fileName', {{ .Reference.JoinAlias }}_deflocale.file_name,
-											'url', {{ .Reference.JoinAlias }}_deflocale.url
-										)
-									ELSE 
-									json_build_object(
-										'contentType', {{ .Reference.JoinAlias }}_fallbacklocale.content_type,
-										'fileName', {{ .Reference.JoinAlias }}_fallbacklocale.file_name,
-										'url', {{ .Reference.JoinAlias }}_fallbacklocale.url
-									) END)	
-								ELSE 
-									json_build_object(
-										'contentType', {{ .Reference.JoinAlias }}.content_type,
-										'fileName', {{ .Reference.JoinAlias }}.file_name,
-										'url', {{ .Reference.JoinAlias }}.url
-									)
-								END) AS "file"
+		json_build_object('id', {{ .Reference.JoinAlias }}._sys_id) AS sys,
+								{{ .Reference.JoinAlias }}.title AS "title",
+								{{ .Reference.JoinAlias }}.description AS "description",
+								json_build_object(
+									'contentType', {{ .Reference.JoinAlias }}.content_type,
+									'fileName', {{ .Reference.JoinAlias }}.file_name,
+									'url', {{ .Reference.JoinAlias }}.url
+								) AS "file"
 {{- end -}}
 {{- define "refColumn" -}} 
 {{ if .Localized -}}
-(CASE WHEN COALESCE({{ .JoinAlias }}._sys_id, {{ .JoinAlias }}_fallbacklocale._sys_id, {{ .JoinAlias }}_deflocale._sys_id) IS NULL THEN NULL ELSE json_build_object(
-	'sys', json_build_object('id', COALESCE({{ .JoinAlias }}._sys_id, {{ .JoinAlias }}_fallbacklocale._sys_id, {{ .JoinAlias }}_deflocale._sys_id))
+(CASE WHEN {{ .JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
+	'sys', json_build_object('id', {{ .JoinAlias }}._sys_id)
 {{- else -}}
 (CASE WHEN {{ .JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
 	'sys', json_build_object('id', {{ .JoinAlias }}._sys_id)
@@ -118,11 +85,7 @@ END)
 					{{- else if .Reference -}}
 						{{ template "refColumn" .Reference }}
 					{{- else -}}
-						{{ if .Localized -}}
-							COALESCE({{ .JoinAlias }}.{{ .ColumnName }}, {{ .JoinAlias }}_fallbacklocale.{{ .ColumnName }}, {{ .JoinAlias }}_deflocale.{{ .ColumnName }}) 
-						{{- else -}}
-							{{ .JoinAlias }}.{{ .ColumnName }}
-						{{- end -}}	
+						{{ .JoinAlias }}.{{ .ColumnName }}
 					{{- end -}}
 					{{- end }}) END)
 {{- end -}}
@@ -137,11 +100,7 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 						{{- else if .Reference -}}
 							{{ template "refColumn" .Reference }}
 						{{- else -}}
-							{{ if .Localized -}}
-								COALESCE({{ .JoinAlias }}.{{ .ColumnName }}, {{ .JoinAlias }}_fallbacklocale.{{ .ColumnName }}, {{ .JoinAlias }}_deflocale.{{ .ColumnName }}) 
-							{{- else -}}
-								{{ .JoinAlias }}.{{ .ColumnName }}
-							{{- end -}}	
+							{{ .JoinAlias }}.{{ .ColumnName }}
 						{{- end }} AS "{{ .Alias }}"
 						{{- end }}
 {{- end -}}
@@ -161,46 +120,15 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 				{{- else -}}
 				LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._id = {{ .ConTableName }}.{{ .Reference.TableName }}
 				{{- end }}
-				{{ if or .Localized .IsAsset .Reference.HasLocalized -}}
-				-- Join (Localized:{{ .Localized }}, IsAsset:{{ .IsAsset }}, Reference HasLocalized:{{ .Reference.HasLocalized }}, Reference Localized:{{ .Reference.Localized }})
-				LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_fallbacklocale ON {{ .Reference.JoinAlias }}_fallbacklocale._sys_id = {{ .ConTableName }}.{{ .Reference.TableName }}_sys_id AND {{ .Reference.JoinAlias }}_fallbacklocale._locale = fallbackLocaleArg
-				LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_deflocale ON {{ .Reference.JoinAlias }}_deflocale._sys_id = {{ .ConTableName }}.{{ .Reference.TableName }}_sys_id AND {{ .Reference.JoinAlias }}_deflocale._locale = defLocaleArg
-				{{- end -}}
 				{{- range .Reference.Columns }}
 				{{- template "join" . }}
 				{{- end }}
-				WHERE {{ .ConTableName }}.{{ .TableName }} = 
-				{{- if .Localized -}}	
-				-- IsLocalized join
-				(CASE WHEN {{ .JoinAlias }}.{{ .ColumnName }} IS NULL THEN (CASE WHEN {{ .JoinAlias }}_fallbacklocale.{{ .ColumnName }} IS NULL THEN {{ .JoinAlias }}_deflocale._id ELSE {{ .JoinAlias }}_fallbacklocale._id END) ELSE {{ .JoinAlias }}._id END)
-				{{- else -}}
-				{{ .JoinAlias }}._id
-				{{- end }}
+				WHERE {{ .ConTableName }}.{{ .TableName }} = {{ .JoinAlias }}._id
 				ORDER BY {{ .ConTableName }}._id
 			) l
 		) _included_{{ .Reference.JoinAlias }} ON true
 	{{- else if .Reference }}
-		{{ if .Localized -}}
-		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = COALESCE({{ .JoinAlias }}.{{ .Reference.ForeignKey }},{{ .JoinAlias }}_fallbacklocale.{{ .Reference.ForeignKey }} ,{{ .JoinAlias }}_deflocale.{{ .Reference.ForeignKey }}) AND {{ .Reference.JoinAlias }}._locale = localeArg
-		{{- else -}}
 		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}._locale = localeArg
-		{{- end -}}
-		{{ if or .Localized .IsAsset .Reference.HasLocalized }}
-		{{ if .IsAsset -}}
-		-- IsAsset join
-		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_fallbacklocale ON {{ .Reference.JoinAlias }}_fallbacklocale._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}_fallbacklocale._locale = fallbackLocaleArg
-		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_deflocale ON {{ .Reference.JoinAlias }}_deflocale._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}_deflocale._locale = defLocaleArg
-		{{- else -}}
-		-- Reference (Localized:{{ .Localized }}, Reference Localized:{{ .Reference.Localized }}, Reference HasLocalized:{{ .Reference.HasLocalized }})
-		{{ if .Reference.Localized }}
-		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_fallbacklocale ON {{ .Reference.JoinAlias }}_fallbacklocale._sys_id = COALESCE({{ .JoinAlias }}.{{ .Reference.ForeignKey }},{{ .JoinAlias }}_fallbacklocale.{{ .Reference.ForeignKey }} ,{{ .JoinAlias }}_deflocale.{{ .Reference.ForeignKey }}) AND {{ .Reference.JoinAlias }}_fallbacklocale._locale = fallbackLocaleArg
-		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_deflocale ON {{ .Reference.JoinAlias }}_deflocale._sys_id = COALESCE({{ .JoinAlias }}.{{ .Reference.ForeignKey }},{{ .JoinAlias }}_fallbacklocale.{{ .Reference.ForeignKey }} ,{{ .JoinAlias }}_deflocale.{{ .Reference.ForeignKey }}) AND {{ .Reference.JoinAlias }}_deflocale._locale = defLocaleArg
-		{{- else -}}
-		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_fallbacklocale ON {{ .Reference.JoinAlias }}_fallbacklocale._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}_fallbacklocale._locale = fallbackLocaleArg
-		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }}_deflocale ON {{ .Reference.JoinAlias }}_deflocale._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}_deflocale._locale = defLocaleArg
-		{{- end -}}
-		{{- end -}}
-		{{- end -}}
 		{{- range .Reference.Columns }}
 		{{- template "join" . }}
 		{{- end -}}
@@ -348,7 +276,7 @@ END $$;
 {{ template "query" . }}	
 {{-  end -}}
 --
-CREATE OR REPLACE FUNCTION {{ .TableName }}_view(localeArg TEXT, fallbackLocaleArg TEXT, defLocaleArg TEXT)
+CREATE OR REPLACE FUNCTION {{ .TableName }}_view(localeArg TEXT)
 RETURNS table(_id text, _sys_id text {{- range .Columns -}}
 		,
 		{{ if eq .ColumnName "limit" -}}_{{- end -}}
@@ -369,19 +297,11 @@ BEGIN
 			{{- else if .Reference -}}
 				{{ template "refColumn" .Reference }}
 			{{- else -}}
-			{{ if .Localized -}}
-				COALESCE({{ .TableName }}.{{ .ColumnName }}, {{ .TableName }}_fallbacklocale.{{ .ColumnName }}, {{ .TableName }}_deflocale.{{ .ColumnName }}) 
-			{{- else -}}
-				{{ .TableName }}.{{ .ColumnName }}
-			{{- end -}}
+			{{ .TableName }}.{{ .ColumnName }}
 			{{- end }} AS "{{ .ColumnName }}"
 		{{- end }},
 			{{ .TableName }}._updated_at AS _updated_at
 		FROM {{ .TableName }}
-		{{ if .HasLocalized -}}
-		LEFT JOIN {{ .TableName }} {{ .TableName }}_fallbacklocale ON {{ .TableName }}._sys_id = {{ .TableName }}_fallbacklocale._sys_id AND {{ .TableName }}_fallbacklocale._locale = fallbackLocaleArg
-		LEFT JOIN {{ .TableName }} {{ .TableName }}_deflocale ON {{ .TableName }}._sys_id = {{ .TableName }}_deflocale._sys_id AND {{ .TableName }}_deflocale._locale = defLocaleArg
-		{{- end }}
 		{{- range .Columns -}}
 			{{ template "join" . }}
 		{{- end }}
@@ -390,15 +310,11 @@ END;
 $$ LANGUAGE 'plpgsql';
 --
 {{ range $i, $l := $.Locales }}
-{{ $fallbackLocale := .FallbackCode }}
-{{- if eq $fallbackLocale "" -}}
-	{{ $fallbackLocale := "en" }}
-{{- end -}}
 
-{{- if $.DropTables -}}
-CREATE MATERIALIZED VIEW IF NOT EXISTS "mv_{{ $t.TableName }}_{{ .Code | ToLower }}" AS SELECT * FROM {{ $t.TableName }}_view('{{ .Code | ToLower }}', '{{ $fallbackLocale | ToLower }}', 'en');
-{{- else -}}
-CREATE MATERIALIZED VIEW IF NOT EXISTS "mv_{{ $t.TableName }}_{{ .Code | ToLower }}" AS SELECT * FROM {{ $t.TableName }}_view('{{ .Code | ToLower }}', '{{ $fallbackLocale | ToLower }}', 'en') WITH NO DATA;
+{{ if $.DropTables -}}
+CREATE MATERIALIZED VIEW IF NOT EXISTS "mv_{{ $t.TableName }}_{{ .Code | ToLower }}" AS SELECT * FROM {{ $t.TableName }}_view('{{ .Code | ToLower }}');
+{{ else -}}
+CREATE MATERIALIZED VIEW IF NOT EXISTS "mv_{{ $t.TableName }}_{{ .Code | ToLower }}" AS SELECT * FROM {{ $t.TableName }}_view('{{ .Code | ToLower }}') WITH NO DATA;
 {{- end }}
 CREATE UNIQUE INDEX IF NOT EXISTS "mv_{{ $t.TableName }}_{{ .Code | ToLower }}_idx" ON "mv_{{ $t.TableName }}_{{ .Code | ToLower }}" (_id);
 --
