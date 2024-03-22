@@ -115,11 +115,7 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 					{{ template "conColumn" .Reference }}
 					{{- end }}
 				FROM {{ .ConTableName }}
-				{{ if .Localized -}}
-				LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ .ConTableName }}.{{ .Reference.TableName }}_sys_id AND {{ .Reference.JoinAlias }}._locale = localeArg
-				{{- else -}}
 				LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._id = {{ .ConTableName }}.{{ .Reference.TableName }}
-				{{- end }}
 				{{- range .Reference.Columns }}
 				{{- template "join" . }}
 				{{- end }}
@@ -128,7 +124,7 @@ json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
 			) l
 		) _included_{{ .Reference.JoinAlias }} ON true
 	{{- else if .Reference }}
-		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._sys_id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }} AND {{ .Reference.JoinAlias }}._locale = localeArg
+		LEFT JOIN {{ .Reference.TableName }} {{ .Reference.JoinAlias }} ON {{ .Reference.JoinAlias }}._id = {{ .JoinAlias }}.{{ .Reference.ForeignKey }}
 		{{- range .Reference.Columns }}
 		{{- template "join" . }}
 		{{- end -}}
