@@ -294,9 +294,8 @@ func GetContentTypeEntries(cli *gontentful.Client, contenType string) (*gontentf
 func GetAllEntries(cli *gontentful.Client) (*gontentful.Entries, error) {
 	res := &gontentful.Entries{}
 
-	_, err := cli.Spaces.SyncPaged("", func(sr *gontentful.SyncResponse) error {
+	_, err := cli.Spaces.SyncPaged("", func(sr *gontentful.SyncResponse) {
 		res.Items = append(res.Items, sr.Items...)
-		return nil
 	})
 	if err != nil {
 		return nil, err

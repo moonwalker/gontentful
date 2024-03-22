@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -57,9 +56,9 @@ var pgSyncCmd = &cobra.Command{
 		}
 		log.Println("sync done")
 
-		for _, i := range res.Items {
-			fmt.Println(i.Sys.ID)
-		}
+		// for _, i := range res.Items {
+		// 	fmt.Println(i.Sys.ID)
+		// }
 
 		log.Println("get space...")
 		space, err := client.Spaces.GetSpace()

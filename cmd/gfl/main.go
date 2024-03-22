@@ -35,6 +35,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&cmaToken, "cma", "c", "", "cma token (required)")
 	rootCmd.PersistentFlags().StringVarP(&databaseURL, "url", "u", "postgres://postgres@localhost:5432/?sslmode=disable", "database url")
 	rootCmd.PersistentFlags().StringVarP(&schemaName, "schema", "n", "", "schema name")
+	rootCmd.PersistentFlags().StringVarP(&environmentID, "environment", "e", "master", "cf environment")
 	//rootCmd.MarkFlagRequired("space")
 	//rootCmd.MarkFlagRequired("token")
 	//rootCmd.MarkFlagRequired("cma")

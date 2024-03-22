@@ -21,16 +21,17 @@ const (
 func TransformModel(model *ContentType) *content.Schema {
 	createdAt, _ := time.Parse(time.RFC3339Nano, model.Sys.CreatedAt)
 	updatedAt, _ := time.Parse(time.RFC3339Nano, model.Sys.UpdatedAt)
+
 	schema := &content.Schema{
 		ID:           model.Sys.ID,
 		Name:         model.Name,
 		DisplayField: model.DisplayField,
 		Description:  model.Description,
+		Version:      model.Sys.Version,
 		CreatedAt:    &createdAt,
 		CreatedBy:    "admin@moonwalker.tech",
 		UpdatedAt:    &updatedAt,
 		UpdatedBy:    "admin@moonwalker.tech",
-		Version:      model.Sys.Version,
 	}
 
 	for _, item := range model.Fields {
@@ -466,6 +467,9 @@ func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, localized
 		data.CreatedBy = "admin"
 		data.UpdatedAt = model.Sys.UpdatedAt
 		data.UpdatedBy = "admin"
+		data.PublishedAt = model.Sys.PublishedAt
+		data.PublishedBy = "admin"
+		data.Status = model.Sys.Status()
 		data.Version = model.Sys.Version
 		res[strings.ToLower(loc.Code)] = data
 	}

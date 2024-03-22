@@ -6,17 +6,15 @@ import (
 	"net/url"
 )
 
-type SyncCallback func(*SyncResponse) error
+type SyncCallback func(*SyncResponse)
 
 func (s *SpacesService) Sync(token string) (*SyncResult, error) {
 	var err error
 	res := &SyncResult{}
 
-	res.Token, err = s.SyncPaged(token, func(sr *SyncResponse) error {
-		for _, item := range sr.Items {
-			res.Items = append(res.Items, item)
-		}
-		return nil
+	res.Token, err = s.SyncPaged(token, func(sr *SyncResponse) {
+		res.Items = append(res.Items, sr.Items...)
+
 	})
 	if err != nil {
 		return nil, err
@@ -38,10 +36,7 @@ func (s *SpacesService) SyncPaged(token string, callback SyncCallback) (string, 
 		return "", err
 	}
 
-	err = callback(res)
-	if err != nil {
-		return "", err
-	}
+	callback(res)
 
 	if len(res.NextPageURL) > 0 {
 		t, err := getSyncToken(res.NextPageURL)

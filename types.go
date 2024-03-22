@@ -21,6 +21,16 @@ type Sys struct {
 	Space            *Space       `json:"space,omitempty"`
 }
 
+func (s *Sys) Status() string {
+	if s.Version == s.PublishedVersion {
+		return "published"
+	}
+	if s.PublishedVersion > 0 {
+		return "changed"
+	}
+	return "draft"
+}
+
 type Entries struct {
 	Sys      *Sys     `json:"sys"`
 	Total    int      `json:"total"`

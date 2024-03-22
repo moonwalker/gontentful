@@ -9,11 +9,14 @@ INSERT INTO {{ $.SchemaName }}.{{ $.TableName }} (
 	{{ $v }},
 	{{- end }}
 	_locale,
+	_status,
 	_version,
 	_created_at,
 	_created_by,
 	_updated_at,
-	_updated_by
+	_updated_by,
+	_published_at,
+	_published_by
 ) VALUES (
 	'{{ .SysID }}_{{ .Locale }}',
 	'{{ .SysID }}',
@@ -21,11 +24,14 @@ INSERT INTO {{ $.SchemaName }}.{{ $.TableName }} (
 	{{ $item.GetFieldValue $v }},
 	{{- end }}
 	'{{ .Locale }}',
+	'{{ .Status }}',
 	'{{ .Version }}',
 	to_timestamp('{{ .CreatedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'),
 	'sync',
 	to_timestamp('{{ .UpdatedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'),
-	'sync'
+	'sync',
+	{{ if .PublishedAt }}to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ss.mssZ'){{ else }}NULL{{ end }},
+	'sync',
 )
 ON CONFLICT (_id) DO UPDATE
 SET
@@ -33,11 +39,12 @@ SET
 	{{ $v }} = EXCLUDED.{{ $v }},
 	{{- end }}
 	_locale = EXCLUDED._locale,
-	_version= EXCLUDED._version,
-	_created_at=EXCLUDED._created_at,
-	_created_by=EXCLUDED._created_by,
-	_updated_at=EXCLUDED._updated_at,
-	_updated_by=EXCLUDED._updated_by
+	_status = EXCLUDED.status,
+	_version = EXCLUDED._version,
+	_updated_at = EXCLUDED._updated_at,
+	_updated_by = EXCLUDED._updated_by,
+	_published_at = EXCLUDED._published_at,
+	_published_by = EXCLUDED._published_by
 ;
 {{- end -}}
 {{ range $tblidx, $tbl := .DeletedConTables }}

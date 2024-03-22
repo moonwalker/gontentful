@@ -140,6 +140,7 @@ func newPGPublishRow(sys *Sys, fieldColumns []string, fieldValues map[string]int
 		FieldColumns: fieldColumns,
 		FieldValues:  fieldValues,
 		Locale:       locale,
+		Status:       sys.Status(),
 		Version:      sys.Version,
 		CreatedAt:    sys.CreatedAt,
 		UpdatedAt:    sys.UpdatedAt,
@@ -149,6 +150,11 @@ func newPGPublishRow(sys *Sys, fieldColumns []string, fieldValues map[string]int
 	}
 	if len(row.UpdatedAt) == 0 {
 		row.UpdatedAt = row.CreatedAt
+	}
+	if len(sys.PublishedAt) != 0 {
+		row.PublishedAt = &sys.PublishedAt
+	} else if sys.PublishedVersion > 0 {
+		row.PublishedAt = &row.UpdatedAt
 	}
 	return row
 }

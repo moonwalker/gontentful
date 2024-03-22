@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	metaColumns           = []string{"_locale", "_version", "_created_at", "_created_by", "_updated_at", "_updated_by"}
+	metaColumns           = []string{"_locale", "_status", "_version", "_created_at", "_created_by", "_updated_at", "_updated_by", "_published_at", "_published_by"}
 	localizedAssetColumns = map[string]bool{
 		"title":       true,
 		"description": true,
@@ -25,9 +25,11 @@ type PGSyncRow struct {
 	FieldColumns []string
 	FieldValues  map[string]interface{}
 	Locale       string
+	Status       string
 	Version      int
 	CreatedAt    string
 	UpdatedAt    string
+	PublishedAt  *string
 }
 
 type PGSyncTable struct {
@@ -133,6 +135,7 @@ func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]int
 		FieldColumns: fieldColumns,
 		FieldValues:  fieldValues,
 		Locale:       locale,
+		Status:       item.Sys.Status(),
 		Version:      item.Sys.Version,
 		CreatedAt:    item.Sys.CreatedAt,
 		UpdatedAt:    item.Sys.UpdatedAt,
@@ -143,6 +146,12 @@ func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]int
 	if len(row.UpdatedAt) == 0 {
 		row.UpdatedAt = row.CreatedAt
 	}
+	if len(item.Sys.PublishedAt) > 0 {
+		row.PublishedAt = &item.Sys.PublishedAt
+	} else if item.Sys.PublishedVersion > 0 {
+		row.PublishedAt = &row.UpdatedAt
+	}
+
 	return row
 }
 
@@ -154,7 +163,7 @@ func (r *PGSyncRow) Fields() []interface{} {
 	for _, fieldColumn := range r.FieldColumns {
 		values = append(values, r.FieldValues[fieldColumn])
 	}
-	values = append(values, r.Locale, r.Version, r.CreatedAt, "sync", r.UpdatedAt, "sync")
+	values = append(values, r.Locale, r.Status, r.Version, r.CreatedAt, "sync", r.UpdatedAt, "sync", r.PublishedAt, "sync")
 	return values
 }
 
@@ -250,6 +259,7 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 			// for _, r := range tbl.Rows {
 			// 	fmt.Println("row", fmt.Sprintf("%+v", r))
 			// }
+			os.WriteFile("/tmp/"+tbl.TableName, []byte(fmt.Sprintf("%+v", tbl.Rows)), 0644)
 			return err
 		}
 	}

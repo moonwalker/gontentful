@@ -23,7 +23,10 @@ type Asset struct {
 	CreatedBy   string     `json:"createdBy,omitempty"`
 	UpdatedAt   *time.Time `json:"updatedAt,omitempty"`
 	UpdatedBy   string     `json:"updatedBy,omitempty"`
+	PublishedAt *time.Time `json:"publishedAt,omitempty"`
+	PublishedBy string     `json:"publishedBy,omitempty"`
 	Version     int        `json:"version,omitempty"`
+	Status      string     `json:"status,omitempty"`
 }
 
 type Validation struct {
@@ -73,27 +76,36 @@ type Schema struct {
 	CreatedBy    string     `json:"createdBy,omitempty"`
 	UpdatedAt    *time.Time `json:"updatedAt,omitempty"`
 	UpdatedBy    string     `json:"updatedBy,omitempty"`
+	PublishedAt  *time.Time `json:"publishedAt,omitempty"`
+	PublishedBy  string     `json:"publishedBy,omitempty"`
 	Version      int        `json:"version,omitempty"`
+	Status       string     `json:"status,omitempty"`
 }
 
 type ContentData struct {
-	ID        string                 `json:"id,omitempty"`
-	Fields    map[string]interface{} `json:"fields,omitempty"`
-	CreatedAt string                 `json:"createdAt,omitempty"`
-	CreatedBy string                 `json:"createdBy,omitempty"`
-	UpdatedAt string                 `json:"updatedAt,omitempty"`
-	UpdatedBy string                 `json:"updatedBy,omitempty"`
-	Version   int                    `json:"version,omitempty"`
+	ID          string                 `json:"id,omitempty"`
+	Fields      map[string]interface{} `json:"fields,omitempty"`
+	CreatedAt   string                 `json:"createdAt,omitempty"`
+	CreatedBy   string                 `json:"createdBy,omitempty"`
+	UpdatedAt   string                 `json:"updatedAt,omitempty"`
+	UpdatedBy   string                 `json:"updatedBy,omitempty"`
+	PublishedAt string                 `json:"publishedAt,omitempty"`
+	PublishedBy string                 `json:"publishedBy,omitempty"`
+	Version     int                    `json:"version,omitempty"`
+	Status      string                 `json:"status,omitempty"`
 }
 
 type MergedContentData struct {
-	ID        string                            `json:"id,omitempty"`
-	Name      string                            `json:"name,omitempty"`
-	Type      string                            `json:"type,omitempty"`
-	Fields    map[string]map[string]interface{} `json:"fields,omitempty"`
-	CreatedAt *time.Time                        `json:"createdAt,omitempty"`
-	CreatedBy string                            `json:"createdBy,omitempty"`
-	UpdatedAt *time.Time                        `json:"updatedAt,omitempty"`
-	UpdatedBy string                            `json:"updatedBy,omitempty"`
-	Version   int                               `json:"version,omitempty"`
+	ID          string                            `json:"id,omitempty"`
+	Name        string                            `json:"name,omitempty"`
+	Type        string                            `json:"type,omitempty"`
+	Fields      map[string]map[string]interface{} `json:"fields,omitempty"`
+	CreatedAt   *time.Time                        `json:"createdAt,omitempty"`
+	CreatedBy   string                            `json:"createdBy,omitempty"`
+	UpdatedAt   *time.Time                        `json:"updatedAt,omitempty"`
+	UpdatedBy   string                            `json:"updatedBy,omitempty"`
+	PublishedAt *time.Time                        `json:"publishedAt,omitempty"`
+	PublishedBy string                            `json:"publishedBy,omitempty"`
+	Version     int                               `json:"version,omitempty"`
+	Status      string                            `json:"status,omitempty"`
 }

@@ -17,11 +17,14 @@ CREATE TABLE IF NOT EXISTS _asset (
 	content_type text,
 	url text,
 	_locale text not null,
+	_status text not null,
 	_version integer not null default 0,
 	_created_at timestamp without time zone default now(),
 	_created_by text not null,
 	_updated_at timestamp without time zone default now(),
-	_updated_by text not null
+	_updated_by text not null,
+	_published_at timestamp without time zone,
+	_published_by text
 );
 CREATE UNIQUE INDEX IF NOT EXISTS _asset__sys_id__locale ON _asset (_sys_id, _locale);
 --
@@ -54,11 +57,14 @@ CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }} (
 	"{{ .ColumnName }}" {{ .ColumnType }},
 	{{- end }}
 	_locale text not null,
+	_status text not null,
 	_version integer not null default 0,
 	_created_at timestamp without time zone not null default now(),
 	_created_by text not null,
 	_updated_at timestamp without time zone not null default now(),
-	_updated_by text not null
+	_updated_by text not null,
+	_published_at timestamp without time zone,
+	_published_by text
 );
 --
 CREATE UNIQUE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}__sys_id_locale ON {{ $tbl.TableName }}(_sys_id,_locale);
@@ -101,9 +107,9 @@ SET
 	description = EXCLUDED.description,
 	displayField = EXCLUDED.displayField,
 	fields = EXCLUDED.fields,
-	_version= EXCLUDED._version,
-	_updated_at=EXCLUDED._updated_at,
-	_updated_by=EXCLUDED._updated_by
+	_version = EXCLUDED._version,
+	_updated_at = EXCLUDED._updated_at,
+	_updated_by = EXCLUDED._updated_by
 ;
 --
 {{- end -}}

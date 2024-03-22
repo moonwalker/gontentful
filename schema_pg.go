@@ -59,11 +59,14 @@ type PGSQLData struct {
 	Description  string
 	DisplayField string
 	Fields       []map[string]interface{}
+	Status       string
 	Version      int
 	CreatedAt    string
 	CreatedBy    string
 	UpdatedAt    string
 	UpdatedBy    string
+	PublishedAt  string
+	PublishedBy  string
 	Metas        []*PGSQLMeta
 }
 
@@ -365,9 +368,11 @@ func makeModelData(item *ContentType) *PGSQLData {
 		Label:        formatText(item.Name),
 		Description:  formatText(item.Description),
 		DisplayField: item.DisplayField,
-		Version:      item.Sys.Revision,
+		Status:       item.Sys.Status(),
+		Version:      item.Sys.Version,
 		CreatedAt:    item.Sys.CreatedAt,
 		UpdatedAt:    item.Sys.UpdatedAt,
+		PublishedAt:  item.Sys.PublishedAt,
 		Metas:        make([]*PGSQLMeta, 0),
 	}
 

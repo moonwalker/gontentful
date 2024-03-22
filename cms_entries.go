@@ -290,10 +290,11 @@ func GetPublishedEntry(repo string, contentType string, files []string) (*Publis
 			}
 			if sys == nil {
 				sys = &Sys{
-					ID:        data.ID,
-					CreatedAt: data.CreatedAt,
-					UpdatedAt: data.UpdatedAt,
-					Version:   data.Version,
+					ID:          data.ID,
+					CreatedAt:   data.CreatedAt,
+					UpdatedAt:   data.UpdatedAt,
+					PublishedAt: data.PublishedAt,
+					Version:     data.Version,
 				}
 			}
 		}
