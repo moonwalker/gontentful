@@ -309,8 +309,107 @@ func GetPublishedEntry(repo string, contentType string, files []string) (*Publis
 	}, nil
 }
 
-func GetPublishedEntryFromCMSPost(repo, owner, ref, collection string, items map[string]*content.ContentData, localesArray []string) (*PublishedEntry, []*gh.BlobEntry, error) {
-	return nil, nil, nil
+func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, contentType string, cData map[string]*content.ContentData, locales []string) (*PublishedEntry, []gh.BlobEntry, error) {
+	ctx := context.Background()
+	cfg := getConfig(ctx, rOwner, repo, ref)
+	path := filepath.Join(cfg.WorkDir, contentType)
+
+	rc, _, err := gh.GetSchema(ctx, cfg.Token, rOwner, repo, ref, path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get schema of %s: %s", contentType, err.Error())
+	}
+
+	// get model schema
+	refFields := make(map[string]*content.Field, 0)
+	localizedFields := make(map[string]bool, 0)
+	schema := &content.Schema{}
+	schemaContent, err := rc.GetContent()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get schema content: %s", err.Error())
+	}
+	err = json.Unmarshal([]byte(schemaContent), schema)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal schema %s: %s", contentType, err.Error())
+	}
+	for _, sf := range schema.Fields {
+		if sf.Reference {
+			refFields[sf.ID] = sf
+		}
+		if sf.Localized {
+			localizedFields[sf.ID] = true
+		}
+	}
+
+	var blobs []gh.BlobEntry
+	fields := make(map[string]map[string]interface{})
+	var sys *Sys
+	for name, cd := range cData {
+		for _, loc := range locales {
+			for k, v := range cd.Fields {
+				if fields[k] == nil {
+					fields[k] = make(map[string]interface{})
+				}
+				if rf := refFields[k]; rf != nil {
+					if fields[k] == nil {
+						fields[k] = make(map[string]interface{})
+					}
+					if rf.List {
+						if rl, ok := v.([]interface{}); ok {
+							refList := make([]interface{}, 0)
+							for _, r := range rl {
+								if rid, ok := r.(string); ok {
+									esys := make(map[string]interface{})
+									esys["type"] = LINK
+									esys["linkType"] = ENTRY
+									esys["id"] = rid
+									es := make(map[string]interface{})
+									es["sys"] = esys
+									refList = append(refList, es)
+								}
+							}
+							fields[k][loc] = refList
+						}
+					} else {
+						esys := make(map[string]interface{})
+						esys["type"] = LINK
+						esys["linkType"] = ENTRY
+						esys["id"] = v
+						es := make(map[string]interface{})
+						es["sys"] = esys
+						fields[k][loc] = es
+					}
+				} else {
+					fields[k][loc] = v
+				}
+			}
+			if sys == nil {
+				sys = &Sys{
+					ID:        cd.ID,
+					CreatedAt: cd.CreatedAt,
+					UpdatedAt: cd.UpdatedAt,
+					Version:   cd.Version,
+				}
+			}
+
+			s, err := json.Marshal(*cd)
+			if err != nil {
+				return nil, nil, fmt.Errorf("error marshalling content data:%s", err)
+			}
+			content := string(s)
+			blobs = append(blobs, gh.BlobEntry{
+				Path:    filepath.Join(cfg.WorkDir, contentType, name, fmt.Sprintf("%s.json", loc)),
+				Content: &content,
+			})
+		}
+	}
+
+	// clear fallback values
+	clearPublishedEntryFallbackValues(localizedFields, fields)
+
+	return &PublishedEntry{
+		Sys:    sys,
+		Fields: PublishFields(fields),
+	}, blobs, nil
 }
 
 func clearPublishedEntryFallbackValues(localizedFields map[string]bool, fields map[string]map[string]interface{}) {
