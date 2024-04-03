@@ -31,7 +31,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $.TableName }} (
 	to_timestamp('{{ .UpdatedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'),
 	'sync',
 	{{ if .PublishedAt }}to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ss.mssZ'){{ else }}NULL{{ end }},
-	'sync',
+	'sync'
 )
 ON CONFLICT (_id) DO UPDATE
 SET
@@ -39,7 +39,7 @@ SET
 	{{ $v }} = EXCLUDED.{{ $v }},
 	{{- end }}
 	_locale = EXCLUDED._locale,
-	_status = EXCLUDED.status,
+	_status = EXCLUDED._status,
 	_version = EXCLUDED._version,
 	_updated_at = EXCLUDED._updated_at,
 	_updated_by = EXCLUDED._updated_by,
