@@ -309,6 +309,10 @@ func GetPublishedEntry(repo string, contentType string, files []string) (*Publis
 	}, nil
 }
 
+func GetPublishedEntryFromCMSPost(repo, owner, ref, collection string, items map[string]*content.ContentData, localesArray []string) (*PublishedEntry, []*gh.BlobEntry, error) {
+	return nil, nil, nil
+}
+
 func clearPublishedEntryFallbackValues(localizedFields map[string]bool, fields map[string]map[string]interface{}) {
 	for fn, fvs := range fields {
 		if !localizedFields[fn] {
