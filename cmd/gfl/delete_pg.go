@@ -32,10 +32,13 @@ var pgDeleteCmd = &cobra.Command{
 				},
 			},
 		})
-		err := query.Exec(databaseURL)
+		txn, err := getTransaction(databaseURL, schemaName)
 		if err != nil {
 			log.Fatal(err)
-			return
+		}
+		err = query.Exec(databaseURL, txn)
+		if err != nil {
+			log.Fatal(err)
 		}
 		log.Printf("content %s deleted successfully", schemaName)
 	},

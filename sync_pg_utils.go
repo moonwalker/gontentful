@@ -207,9 +207,8 @@ func convertFieldValue(v interface{}, t bool, locale string) interface{} {
 }
 
 func convertSys(f map[string]interface{}, t bool, locale string) string {
-	s, ok := f["sys"].(map[string]interface{})
-	if ok {
-		if s["type"] == LINK {
+	if s, ok := f["sys"].(map[string]interface{}); ok {
+		if s["type"] == LINK && s["id"] != nil {
 			return fmtSysID(s["id"], t, locale)
 		}
 	}
