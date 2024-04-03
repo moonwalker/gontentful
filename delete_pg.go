@@ -2,7 +2,6 @@ package gontentful
 
 import (
 	"bytes"
-	"fmt"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
