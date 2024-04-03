@@ -405,18 +405,15 @@ func TransformEntry(locales []*Locale, model *Entry, brand string, fmtVideoURL f
 			}
 		}
 
+
 		data.CreatedAt = model.Sys.CreatedAt
 		data.CreatedBy = "admin"
 		data.UpdatedAt = model.Sys.UpdatedAt
 		data.UpdatedBy = "admin"
-		if len(model.Sys.PublishedAt) != 0 {
-			data.PublishedAt = model.Sys.PublishedAt
-		} else if  model.Sys.PublishedVersion > 0 {
-			data.PublishedAt = model.Sys.UpdatedAt
-		}
+		data.PublishedAt = model.Sys.UpdatedAt
 		data.PublishedBy = "admin"
-		data.Status = model.Sys.Status()
-		data.Version = model.Sys.Version
+		data.Status = "published"
+		data.Version = 1
 		res[strings.ToLower(loc.Code)] = data
 	}
 
@@ -474,14 +471,10 @@ func TransformPublishedEntry(locales []*Locale, model *PublishedEntry, localized
 		data.CreatedBy = "admin"
 		data.UpdatedAt = model.Sys.UpdatedAt
 		data.UpdatedBy = "admin"
-		if len(model.Sys.PublishedAt) != 0 {
-			data.PublishedAt = model.Sys.PublishedAt
-		} else if  model.Sys.PublishedVersion > 0 {
-			data.PublishedAt = model.Sys.UpdatedAt
-		}
+		data.PublishedAt = model.Sys.UpdatedAt
 		data.PublishedBy = "admin"
-		data.Status = model.Sys.Status()
-		data.Version = model.Sys.Version
+		data.Status = "published"
+		data.Version = 1
 		res[strings.ToLower(loc.Code)] = data
 	}
 
