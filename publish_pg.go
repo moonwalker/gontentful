@@ -85,7 +85,7 @@ func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentTyp
 	return q
 }
 
-func (s *PGPublish) Exec(databaseURL string) error {
+func (s *PGPublish) Exec(databaseURL string, txn *sqlx.Tx) error {
 	funcMap := template.FuncMap{
 		"ToLower": strings.ToLower,
 	}
@@ -101,32 +101,7 @@ func (s *PGPublish) Exec(databaseURL string) error {
 	}
 	// fmt.Println(buff.String())
 
-	db, err := sqlx.Connect("postgres", databaseURL)
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	txn, err := db.Beginx()
-	if err != nil {
-		return err
-	}
-	defer txn.Rollback()
-
-	if s.SchemaName != "" {
-		// set schema name
-		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
-		if err != nil {
-			return err
-		}
-	}
-
 	_, err = txn.Exec(buff.String())
-	if err != nil {
-		return err
-	}
-
-	err = txn.Commit()
 	if err != nil {
 		return err
 	}
