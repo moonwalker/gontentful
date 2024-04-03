@@ -405,10 +405,17 @@ func TransformEntry(locales []*Locale, model *Entry, brand string, fmtVideoURL f
 			}
 		}
 
+		data.Status = model.Sys.Status()
 		data.CreatedAt = model.Sys.CreatedAt
 		data.CreatedBy = "admin"
 		data.UpdatedAt = model.Sys.UpdatedAt
 		data.UpdatedBy = "admin"
+		if len(model.Sys.PublishedAt) != 0 {
+			data.PublishedAt = model.Sys.PublishedAt
+		} else if  model.Sys.PublishedVersion > 0 {
+			data.PublishedAt = model.Sys.UpdatedAt
+		}
+		data.PublishedBy = "admin"
 		data.Version = model.Sys.Version
 		res[strings.ToLower(loc.Code)] = data
 	}
@@ -540,6 +547,7 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 
 	e.Sys.CreatedAt = contents[DefaultLocale].CreatedAt
 	e.Sys.UpdatedAt = contents[DefaultLocale].UpdatedAt
+	e.Sys.PublishedAt = contents[DefaultLocale].PublishedAt
 
 	fields := make(map[string]interface{})
 
