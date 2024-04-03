@@ -150,8 +150,8 @@ func appendPublishColCons(q *PGPublish, columnReference string, col string, fiel
 		for _, e := range links {
 			if f, ok := e.(map[string]interface{}); ok {
 				conSysID := convertSysID(f, true)
-				conID := convertSys(f, true, loc)
-				if id != "" && conID != "" && !addedRefs[conID] {
+				conID, ok := convertSys(f, true, loc).(string)
+				if ok && id != "" && conID != "" && !addedRefs[conID] {
 					conRow := []interface{}{id, fmt.Sprintf("'%s'", sys_id), conID, conSysID, fmt.Sprintf("'%s'", loc)}
 					q.ConTables[conTableName].Rows = append(q.ConTables[conTableName].Rows, conRow)
 					addedRefs[conID] = true

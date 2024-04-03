@@ -106,8 +106,8 @@ func appendRowsToTable(item *Entry, tbl *PGSyncTable, rowFields []*rowField, fie
 					f, ok := e.(map[string]interface{})
 					if ok {
 						sysConID := convertSysID(f, templateFormat)
-						conID := convertSys(f, templateFormat, locale)
-						if id != "" && conID != "" && !addedRefs[conID] {
+						conID, ok := convertSys(f, templateFormat, locale).(string)
+						if ok && id != "" && conID != "" && !addedRefs[conID] {
 							var conRow []interface{}
 							if templateFormat {
 								conRow = []interface{}{id, fmt.Sprintf("'%s'", item.Sys.ID), conID, sysConID, fmt.Sprintf("'%s'", locale)}
@@ -158,10 +158,7 @@ func convertFieldValue(v interface{}, t bool, locale string) interface{} {
 	switch f := v.(type) {
 	case map[string]interface{}:
 		if f["sys"] != nil {
-			s := convertSys(f, t, locale)
-			if s != "" {
-				return s
-			}
+			return convertSys(f, t, locale)
 		} else if f["fileName"] != nil {
 			var v *AssetFile
 			mapstructure.Decode(f, &v)
@@ -206,13 +203,13 @@ func convertFieldValue(v interface{}, t bool, locale string) interface{} {
 	return v
 }
 
-func convertSys(f map[string]interface{}, t bool, locale string) string {
+func convertSys(f map[string]interface{}, t bool, locale string) interface{} {
 	if s, ok := f["sys"].(map[string]interface{}); ok {
 		if s["type"] == LINK && s["id"] != nil {
 			return fmtSysID(s["id"], t, locale)
 		}
 	}
-	return ""
+	return nil
 }
 
 func fmtSysID(id interface{}, t bool, l string) string {
