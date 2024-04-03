@@ -135,7 +135,7 @@ func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]int
 		FieldColumns: fieldColumns,
 		FieldValues:  fieldValues,
 		Locale:       locale,
-		Status:       item.Sys.Status(),
+		Status:       "published",
 		Version:      item.Sys.Version,
 		CreatedAt:    item.Sys.CreatedAt,
 		UpdatedAt:    item.Sys.UpdatedAt,

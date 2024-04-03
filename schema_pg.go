@@ -368,12 +368,12 @@ func makeModelData(item *ContentType) *PGSQLData {
 		Label:        formatText(item.Name),
 		Description:  formatText(item.Description),
 		DisplayField: item.DisplayField,
-		Status:       item.Sys.Status(),
-		Version:      item.Sys.Version,
-		CreatedAt:    item.Sys.CreatedAt,
-		UpdatedAt:    item.Sys.UpdatedAt,
-		PublishedAt:  item.Sys.PublishedAt,
-		Metas:        make([]*PGSQLMeta, 0),
+		//Status:       item.Sys.Status(),
+		Version:     item.Sys.Version,
+		CreatedAt:   item.Sys.CreatedAt,
+		UpdatedAt:   item.Sys.UpdatedAt,
+		PublishedAt: item.Sys.PublishedAt,
+		Metas:       make([]*PGSQLMeta, 0),
 	}
 
 	return data

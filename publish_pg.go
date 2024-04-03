@@ -17,9 +17,10 @@ type PGPublish struct {
 	ConTables        map[string]*PGSyncConTable
 	DeletedConTables map[string]*PGSyncConTable
 	Locales          []*Locale
+	RowStatus        string
 }
 
-func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentType, item *PublishedEntry) *PGPublish {
+func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentType, item *PublishedEntry, rowStatus string) *PGPublish {
 
 	defLocale := getDefaultLocale(locales)
 	fbLocales := make(map[string]*Locale)
@@ -77,7 +78,7 @@ func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentTyp
 					appendDeletedColCons(q, col, id)
 				}
 			}
-			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, contentTypeColumns, fieldValues, loc))
+			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, contentTypeColumns, fieldValues, loc, rowStatus))
 		}
 	case ASSET:
 		q.TableName = ASSET_TABLE_NAME
@@ -97,7 +98,7 @@ func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentTyp
 			if locTitle == nil && locFile == nil {
 				continue
 			}
-			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, assetColumns, fieldValues, strings.ToLower(oLoc.Code)))
+			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, assetColumns, fieldValues, strings.ToLower(oLoc.Code), rowStatus))
 		}
 	}
 	return q
@@ -127,13 +128,13 @@ func (s *PGPublish) Exec(databaseURL string, txn *sqlx.Tx) error {
 	return nil
 }
 
-func newPGPublishRow(sys *Sys, fieldColumns []string, fieldValues map[string]interface{}, locale string) *PGSyncRow {
+func newPGPublishRow(sys *Sys, fieldColumns []string, fieldValues map[string]interface{}, locale string, status string) *PGSyncRow {
 	row := &PGSyncRow{
 		SysID:        sys.ID,
 		FieldColumns: fieldColumns,
 		FieldValues:  fieldValues,
 		Locale:       locale,
-		Status:       sys.Status(),
+		Status:       status,
 		Version:      sys.Version,
 		CreatedAt:    sys.CreatedAt,
 		UpdatedAt:    sys.UpdatedAt,

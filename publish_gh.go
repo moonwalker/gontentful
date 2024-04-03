@@ -101,11 +101,14 @@ func (s *GHPublish) Exec(fmtVideoURL func(string) string) ([]gh.BlobEntry, error
 	return entries, nil
 }
 
-func PublishCFChanges(repo string, entries []gh.BlobEntry) (github.Rate, error) {
+func PublishCFChanges(repo string, ref string, entries []gh.BlobEntry) (github.Rate, error) {
+	if len(ref) == 0 {
+		ref = branch
+	}
 	ctx := context.Background()
-	cfg := getConfig(ctx, owner, repo, branch)
+	cfg := getConfig(ctx, owner, repo, ref)
 
-	resp, err := gh.CommitBlobs(ctx, cfg.Token, owner, repo, branch, entries, "feat(content): update files")
+	resp, err := gh.CommitBlobs(ctx, cfg.Token, owner, repo, ref, entries, "feat(content): update files")
 	return resp.Rate, err
 }
 
