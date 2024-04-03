@@ -22,6 +22,10 @@ type PGPublish struct {
 func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentType, item *PublishedEntry) *PGPublish {
 
 	defLocale := getDefaultLocale(locales)
+	fbLocales := make(map[string]*Locale)
+	for _, loc := range locales {
+		fbLocales[loc.Code] = loc
+	}
 
 	q := &PGPublish{
 		SchemaName:       schemaName,
@@ -48,9 +52,23 @@ func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentTyp
 				}
 				if item.Fields[prop] != nil {
 					fieldValue := item.Fields[prop][oLocCode]
-					if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
-						continue
+					fallbackLoc := oLoc
+					for {
+						if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
+							if fallbackLoc.FallbackCode != "" {
+								fieldValue = item.Fields[prop][fallbackLoc.FallbackCode]
+								fallbackLoc = fbLocales[fallbackLoc.FallbackCode]
+								continue
+							} else {
+								fieldValue = item.Fields[prop][defLocale]
+							}
+						}
+						break
 					}
+
+					// if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
+					// 	continue
+					// }
 					fieldValues[col] = convertFieldValue(fieldValue, true, loc)
 					if columnReferences[col] != "" {
 						appendPublishColCons(q, columnReferences[col], col, fieldValue, item.Sys.ID, id, loc)
