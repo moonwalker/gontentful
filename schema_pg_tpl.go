@@ -72,7 +72,8 @@ CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}__sys_id ON {{ $tbl.TableName
 CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}__locale ON {{ $tbl.TableName }}(_locale);
 {{- range $tbl.Columns -}}
 {{- if .IsIndex }}
-CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}_{{ .ColumnName }} ON {{ $tbl.TableName }}({{ .ColumnName }},_locale);
+CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}_{{ .ColumnName }} ON {{ $tbl.TableName }}({{ .ColumnName }});
+CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}_{{ .ColumnName }}_locale ON {{ $tbl.TableName }}({{ .ColumnName }},_locale);
 {{ end -}}
 {{- end }}
 --

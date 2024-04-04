@@ -256,7 +256,7 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDept
 
 	for _, field := range item.Fields {
 		if !field.Omitted {
-			column := NewPGSQLColumn(field)
+			column := NewPGSQLColumn(field, field.ID == item.DisplayField)
 			table.Columns = append(table.Columns, column)
 			procColumn := NewPGSQLProcedureColumn(column.ColumnName, field, items, table.TableName, include, 0, "")
 
@@ -278,17 +278,17 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDept
 	return table, conTables, references, dependencies, proc
 }
 
-func NewPGSQLColumn(field *ContentTypeField) *PGSQLColumn {
+func NewPGSQLColumn(field *ContentTypeField, isDisplayField bool) *PGSQLColumn {
 	column := &PGSQLColumn{
 		ColumnName: toSnakeCase(field.ID),
-		IsIndex:    isIndex(field.ID),
+		IsIndex:    isIndex(field.ID) || isDisplayField,
 	}
 	column.getColumnDesc(field)
 	return column
 }
 
 func isIndex(fieldName string) bool {
-	return fieldName == "slug" || fieldName == "code" || fieldName == "key"
+	return fieldName == "slug" || fieldName == "code" || fieldName == "key" || fieldName == "name"
 }
 
 func (c *PGSQLColumn) getColumnDesc(field *ContentTypeField) {
