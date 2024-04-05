@@ -104,28 +104,65 @@ func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentTyp
 	return q
 }
 
-func (s *PGPublish) Exec(databaseURL string, txn *sqlx.Tx) error {
-	funcMap := template.FuncMap{
-		"ToLower": strings.ToLower,
-	}
-	tmpl, err := template.New("").Funcs(funcMap).Parse(pgPublishTemplate)
+func (s *PGPublish) Exec(databaseURL string) error {
+	str, err := s.Render()
 	if err != nil {
 		return err
 	}
 
-	var buff bytes.Buffer
-	err = tmpl.Execute(&buff, s)
+	db, err := sqlx.Connect("postgres", databaseURL)
 	if err != nil {
 		return err
 	}
-	// fmt.Println(buff.String())
+	defer db.Close()
 
-	_, err = txn.Exec(buff.String())
+	txn, err := db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
+
+	if s.SchemaName != "" {
+		// set schema in use
+		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+		if err != nil {
+			return err
+		}
+	}
+
+	// os.WriteFile("/tmp/schema", []byte(str), 0644)
+
+	_, err = txn.Exec(str)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Commit()
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func (s *PGPublish) Render() (string, error) {
+	funcMap := template.FuncMap{
+		"ToLower": strings.ToLower,
+	}
+	tmpl, err := template.New("").Funcs(funcMap).Parse(pgPublishTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buff bytes.Buffer
+	err = tmpl.Execute(&buff, s)
+	if err != nil {
+		return "", err
+	}
+
+	// fmt.Println(buff.String())
+
+	return buff.String(), nil
 }
 
 func newPGPublishRow(sys *Sys, fieldColumns []string, fieldValues map[string]interface{}, locale string, status string) *PGSyncRow {

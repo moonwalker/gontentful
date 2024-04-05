@@ -34,14 +34,7 @@ func NewPGFunctions(schema *PGSQLSchema) *PGFunctions {
 }
 
 func (s *PGFunctions) Exec(databaseURL string) error {
-	tmpl, err := template.New("").Funcs(funcMap).Parse(pgFuncTemplate)
-
-	if err != nil {
-		return err
-	}
-
-	var buff bytes.Buffer
-	err = tmpl.Execute(&buff, s.Schema)
+	str, err := s.Render()
 	if err != nil {
 		return err
 	}
@@ -68,7 +61,7 @@ func (s *PGFunctions) Exec(databaseURL string) error {
 
 	// os.WriteFile("/tmp/func", buff.Bytes(), 0644)
 
-	_, err = txn.Exec(buff.String())
+	_, err = txn.Exec(str)
 	if err != nil {
 		return err
 	}

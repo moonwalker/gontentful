@@ -2,10 +2,8 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/spf13/cobra"
 
 	"github.com/moonwalker/gontentful"
@@ -234,41 +232,12 @@ var pgPublishCmd = &cobra.Command{
 		if contentModel == nil {
 			log.Fatal("contentModel not found")
 		}
-
-		txn, err := getTransaction(databaseURL, schemaName)
-		if err != nil {
-			log.Fatal(err)
-		}
 		log.Printf("publishing content...")
-		pub := gontentful.NewPGPublish(schemaName, space.Locales, contentModel, item)
-		err = pub.Exec(databaseURL, txn)
+		pub := gontentful.NewPGPublish(schemaName, space.Locales, contentModel, item, "published")
+		err = pub.Exec(databaseURL)
 		if err != nil {
 			log.Fatal(err)
 		}
 		log.Printf("content published successfully")
 	},
-}
-
-func getTransaction(databaseURL, schemaName string) (*sqlx.Tx, error) {
-	db, err := sqlx.Connect("postgres", databaseURL)
-	if err != nil {
-		return nil, err
-	}
-
-	defer db.Close()
-
-	txn, err := db.Beginx()
-	if err != nil {
-		return nil, err
-	}
-
-	if schemaName != "" {
-		// set schema name
-		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", schemaName))
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return txn, nil
 }

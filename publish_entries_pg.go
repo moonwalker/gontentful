@@ -2,6 +2,7 @@ package gontentful
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
@@ -30,24 +31,58 @@ func NewPGPublishEntries(schemaName string, tableName string, sysIDs []string, p
 	}
 }
 
-func (s *PGPublishEntries) Exec(databaseURL string, txn *sqlx.Tx) error {
-	tmpl, err := template.New("").Parse(publishEntriesTemplate)
+func (s *PGPublishEntries) Exec(databaseURL string) error {
+	str, err := s.Render()
 	if err != nil {
 		return err
+	}
+
+	db, err := sqlx.Connect("postgres", databaseURL)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	txn, err := db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
+
+	if s.SchemaName != "" {
+		// set schema name
+		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s_draft'", s.SchemaName))
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = txn.Exec(str)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *PGPublishEntries) Render() (string, error) {
+	tmpl, err := template.New("").Parse(publishEntriesTemplate)
+	if err != nil {
+		return "", err
 	}
 
 	var buff bytes.Buffer
 	err = tmpl.Execute(&buff, s)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// fmt.Println(buff.String())
 
-	_, err = txn.Exec(buff.String())
-	if err != nil {
-		return err
-	}
-
-	return err
+	return buff.String(), nil
 }
