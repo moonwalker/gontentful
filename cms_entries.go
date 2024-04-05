@@ -309,7 +309,7 @@ func GetPublishedEntry(repo string, contentType string, files []string) (*Publis
 	}, nil
 }
 
-func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, contentType string, cData map[string]*content.ContentData, locales []string) (*PublishedEntry, []gh.BlobEntry, error) {
+func GetPublishedEntryFromCMSPost(login string, repo string, rOwner string, ref string, contentType string, cData map[string]*content.ContentData, locales []string) (*PublishedEntry, []gh.BlobEntry, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, rOwner, repo, ref)
 	path := filepath.Join(cfg.WorkDir, contentType)
@@ -386,8 +386,28 @@ func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, conten
 				sys = &Sys{
 					ID:        cd.ID,
 					CreatedAt: cd.CreatedAt,
+					CreatedBy: &Entry{
+						Sys: &Sys{
+							ID: cd.CreatedBy,
+						},
+					},
 					UpdatedAt: cd.UpdatedAt,
-					Version:   cd.Version,
+					UpdatedBy: &Entry{
+						Sys: &Sys{
+							ID: cd.UpdatedBy,
+						},
+					},
+					Version: cd.Version,
+				}
+				if cd.PublishedAt != "" {
+					sys.PublishedAt = cd.PublishedAt
+				}
+				if cd.PublishedBy != "" {
+					sys.PublishedBy = &Entry{
+						Sys: &Sys{
+							ID: cd.PublishedBy,
+						},
+					}
 				}
 			}
 

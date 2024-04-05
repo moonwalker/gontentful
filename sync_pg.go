@@ -145,13 +145,9 @@ func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]int
 	}
 	if item.Sys.CreatedBy != nil {
 		row.CreatedBy = item.Sys.CreatedBy.Sys.ID
-	} else {
-		row.CreatedBy = "sync"
 	}
 	if item.Sys.UpdatedBy != nil {
 		row.UpdatedBy = item.Sys.UpdatedBy.Sys.ID
-	} else {
-		row.UpdatedBy = "sync"
 	}
 	if item.Sys.PublishedBy != nil {
 		pb := item.Sys.PublishedBy.Sys.ID
