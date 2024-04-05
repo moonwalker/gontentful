@@ -246,6 +246,8 @@ func (s *PGSyncSchema) Render() (string, error) {
 		return "", err
 	}
 
+	// fmt.Println(buff.String())
+
 	return buff.String(), nil
 }
 
