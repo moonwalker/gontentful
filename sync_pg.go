@@ -28,8 +28,11 @@ type PGSyncRow struct {
 	Status       string
 	Version      int
 	CreatedAt    string
+	CreatedBy    string
 	UpdatedAt    string
+	UpdatedBy    string
 	PublishedAt  *string
+	PublishedBy  *string
 }
 
 type PGSyncTable struct {
@@ -140,6 +143,21 @@ func newPGSyncRow(item *Entry, fieldColumns []string, fieldValues map[string]int
 		CreatedAt:    item.Sys.CreatedAt,
 		UpdatedAt:    item.Sys.UpdatedAt,
 	}
+	if item.Sys.CreatedBy != nil {
+		row.CreatedBy = item.Sys.CreatedBy.Sys.ID
+	} else {
+		row.CreatedBy = "sync"
+	}
+	if item.Sys.UpdatedBy != nil {
+		row.UpdatedBy = item.Sys.UpdatedBy.Sys.ID
+	} else {
+		row.UpdatedBy = "sync"
+	}
+	if item.Sys.PublishedBy != nil {
+		pb := item.Sys.PublishedBy.Sys.ID
+		row.PublishedBy = &pb
+	}
+
 	if row.Version == 0 {
 		row.Version = item.Sys.Revision
 	}
@@ -163,7 +181,7 @@ func (r *PGSyncRow) Fields() []interface{} {
 	for _, fieldColumn := range r.FieldColumns {
 		values = append(values, r.FieldValues[fieldColumn])
 	}
-	values = append(values, r.Locale, r.Status, r.Version, r.CreatedAt, "sync", r.UpdatedAt, "sync", r.PublishedAt, "sync")
+	values = append(values, r.Locale, r.Status, r.Version, r.CreatedAt, r.CreatedBy, r.UpdatedAt, r.UpdatedBy, r.PublishedAt, r.PublishedBy)
 	return values
 }
 
