@@ -309,7 +309,7 @@ func GetPublishedEntry(repo string, contentType string, files []string) (*Publis
 	}, nil
 }
 
-func GetPublishedEntryFromCMSPost(login string, repo string, rOwner string, ref string, contentType string, cData map[string]*content.ContentData, locales []string) (*PublishedEntry, []gh.BlobEntry, error) {
+func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, contentType string, cData map[string]*content.ContentData, locales []string) (*PublishedEntry, []gh.BlobEntry, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, rOwner, repo, ref)
 	path := filepath.Join(cfg.WorkDir, contentType)
