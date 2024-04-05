@@ -12,8 +12,8 @@ const publishEntriesTemplate = `
 	UPDATE {{ .SchemaName }}.{{ .TableName }} 
 	SET _status='published',
 		_published_at = now(),
-		_published_by = {{ .PublishedBy }} 
-	WHERE _sys_id IN '{{ .SysIDs }}';`
+		_published_by = '{{ .PublishedBy }}'
+	WHERE _sys_id IN('{{ .SysIDs }}');`
 
 type PGPublishEntries struct {
 	SchemaName  string
@@ -51,7 +51,7 @@ func (s *PGPublishEntries) Exec(databaseURL string) error {
 
 	if s.SchemaName != "" {
 		// set schema name
-		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s_draft'", s.SchemaName))
+		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
 		if err != nil {
 			return err
 		}
