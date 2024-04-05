@@ -31,7 +31,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	{{ if .CreatedBy }}'{{ .CreatedBy }}'{{ else }}'sync'{{ end }},
 	to_timestamp('{{ .UpdatedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'),
 	{{ if .UpdatedBy }}'{{ .UpdatedBy }}'{{ else }}'sync'{{ end }},
-	{{ if .PublishedAt }}to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ss.mssZ'){{ else }}NULL{{ end }},
+	{{ if .PublishedAt }}to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'){{ else }}NULL{{ end }},
 	{{ if and .PublishedAt .PublishedBy }}'{{ .PublishedBy }}'{{ else }}NULL{{ end }}
 )
 ON CONFLICT (_id) DO UPDATE
