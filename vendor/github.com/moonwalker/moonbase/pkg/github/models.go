@@ -26,4 +26,10 @@ type PushHookPayload struct {
 	Ref        string     `json:"ref"`
 	Repository Repository `json:"repository"`
 	Commit     Commit     `json:"head_commit"`
+	Pusher     Pusher     `json:"pusher"`
+}
+
+type Pusher struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
 }
