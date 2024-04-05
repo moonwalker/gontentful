@@ -61,6 +61,14 @@ func TransformModel(model *ContentType) *content.Schema {
 		schema.Fields = append(schema.Fields, cf)
 	}
 
+	if model.Sys.ID == "locale" {
+		schema.Fields = append(schema.Fields, &content.Field{
+			ID:    "fallbackCode",
+			Label: "Fallback Code",
+			Type:  "text",
+		})
+	}
+
 	return schema
 }
 
@@ -405,6 +413,9 @@ func TransformEntry(locales []*Locale, model *Entry, brand string, fmtVideoURL f
 			}
 		}
 
+		if model.Sys.ContentType.Sys.ID == "locale" {
+			data.Fields["fallbackCode"] = loc.FallbackCode
+		}
 
 		data.CreatedAt = model.Sys.CreatedAt
 		data.CreatedBy = "admin"

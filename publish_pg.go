@@ -176,6 +176,17 @@ func newPGPublishRow(sys *Sys, fieldColumns []string, fieldValues map[string]int
 		CreatedAt:    sys.CreatedAt,
 		UpdatedAt:    sys.UpdatedAt,
 	}
+	if sys.CreatedBy != nil {
+		row.CreatedBy = sys.CreatedBy.Sys.ID
+	}
+	if sys.UpdatedBy != nil {
+		row.UpdatedBy = sys.UpdatedBy.Sys.ID
+	}
+	if sys.PublishedBy != nil {
+		pb := sys.PublishedBy.Sys.ID
+		row.PublishedBy = &pb
+	}
+
 	if row.Version == 0 {
 		row.Version = sys.Revision
 	}
