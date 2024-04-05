@@ -233,7 +233,7 @@ var pgPublishCmd = &cobra.Command{
 			log.Fatal("contentModel not found")
 		}
 		log.Printf("publishing content...")
-		pub := gontentful.NewPGPublish(schemaName, space.Locales, contentModel, item)
+		pub := gontentful.NewPGPublish(schemaName, space.Locales, contentModel, item, "published")
 		err = pub.Exec(databaseURL)
 		if err != nil {
 			log.Fatal(err)

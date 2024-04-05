@@ -17,11 +17,16 @@ type PGPublish struct {
 	ConTables        map[string]*PGSyncConTable
 	DeletedConTables map[string]*PGSyncConTable
 	Locales          []*Locale
+	RowStatus        string
 }
 
-func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentType, item *PublishedEntry) *PGPublish {
+func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentType, item *PublishedEntry, rowStatus string) *PGPublish {
 
 	defLocale := getDefaultLocale(locales)
+	fbLocales := make(map[string]*Locale)
+	for _, loc := range locales {
+		fbLocales[loc.Code] = loc
+	}
 
 	q := &PGPublish{
 		SchemaName:       schemaName,
@@ -48,9 +53,23 @@ func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentTyp
 				}
 				if item.Fields[prop] != nil {
 					fieldValue := item.Fields[prop][oLocCode]
-					if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
-						continue
+					fallbackLoc := oLoc
+					for {
+						if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
+							if fallbackLoc.FallbackCode != "" {
+								fieldValue = item.Fields[prop][fallbackLoc.FallbackCode]
+								fallbackLoc = fbLocales[fallbackLoc.FallbackCode]
+								continue
+							} else {
+								fieldValue = item.Fields[prop][defLocale]
+							}
+						}
+						break
 					}
+
+					// if sv, ok := fieldValue.(string); fieldValue == nil || (ok && sv == "") {
+					// 	continue
+					// }
 					fieldValues[col] = convertFieldValue(fieldValue, true, loc)
 					if columnReferences[col] != "" {
 						appendPublishColCons(q, columnReferences[col], col, fieldValue, item.Sys.ID, id, loc)
@@ -59,7 +78,7 @@ func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentTyp
 					appendDeletedColCons(q, col, id)
 				}
 			}
-			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, contentTypeColumns, fieldValues, loc))
+			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, contentTypeColumns, fieldValues, loc, rowStatus))
 		}
 	case ASSET:
 		q.TableName = ASSET_TABLE_NAME
@@ -79,27 +98,17 @@ func NewPGPublish(schemaName string, locales []*Locale, contentModel *ContentTyp
 			if locTitle == nil && locFile == nil {
 				continue
 			}
-			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, assetColumns, fieldValues, strings.ToLower(oLoc.Code)))
+			q.Rows = append(q.Rows, newPGPublishRow(item.Sys, assetColumns, fieldValues, strings.ToLower(oLoc.Code), rowStatus))
 		}
 	}
 	return q
 }
 
 func (s *PGPublish) Exec(databaseURL string) error {
-	funcMap := template.FuncMap{
-		"ToLower": strings.ToLower,
-	}
-	tmpl, err := template.New("").Funcs(funcMap).Parse(pgPublishTemplate)
+	str, err := s.Render()
 	if err != nil {
 		return err
 	}
-
-	var buff bytes.Buffer
-	err = tmpl.Execute(&buff, s)
-	if err != nil {
-		return err
-	}
-	// fmt.Println(buff.String())
 
 	db, err := sqlx.Connect("postgres", databaseURL)
 	if err != nil {
@@ -114,14 +123,16 @@ func (s *PGPublish) Exec(databaseURL string) error {
 	defer txn.Rollback()
 
 	if s.SchemaName != "" {
-		// set schema name
+		// set schema in use
 		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
 		if err != nil {
 			return err
 		}
 	}
 
-	_, err = txn.Exec(buff.String())
+	// os.WriteFile("/tmp/schema", []byte(str), 0644)
+
+	_, err = txn.Exec(str)
 	if err != nil {
 		return err
 	}
@@ -134,13 +145,33 @@ func (s *PGPublish) Exec(databaseURL string) error {
 	return nil
 }
 
-func newPGPublishRow(sys *Sys, fieldColumns []string, fieldValues map[string]interface{}, locale string) *PGSyncRow {
+func (s *PGPublish) Render() (string, error) {
+	funcMap := template.FuncMap{
+		"ToLower": strings.ToLower,
+	}
+	tmpl, err := template.New("").Funcs(funcMap).Parse(pgPublishTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buff bytes.Buffer
+	err = tmpl.Execute(&buff, s)
+	if err != nil {
+		return "", err
+	}
+
+	// fmt.Println(buff.String())
+
+	return buff.String(), nil
+}
+
+func newPGPublishRow(sys *Sys, fieldColumns []string, fieldValues map[string]interface{}, locale string, status string) *PGSyncRow {
 	row := &PGSyncRow{
 		SysID:        sys.ID,
 		FieldColumns: fieldColumns,
 		FieldValues:  fieldValues,
 		Locale:       locale,
-		Status:       sys.Status(),
+		Status:       status,
 		Version:      sys.Version,
 		CreatedAt:    sys.CreatedAt,
 		UpdatedAt:    sys.UpdatedAt,
@@ -175,8 +206,8 @@ func appendPublishColCons(q *PGPublish, columnReference string, col string, fiel
 		for _, e := range links {
 			if f, ok := e.(map[string]interface{}); ok {
 				conSysID := convertSysID(f, true)
-				conID := convertSys(f, true, loc)
-				if id != "" && conID != "" && !addedRefs[conID] {
+				conID, ok := convertSys(f, true, loc).(string)
+				if ok && id != "" && conID != "" && !addedRefs[conID] {
 					conRow := []interface{}{id, fmt.Sprintf("'%s'", sys_id), conID, conSysID, fmt.Sprintf("'%s'", loc)}
 					q.ConTables[conTableName].Rows = append(q.ConTables[conTableName].Rows, conRow)
 					addedRefs[conID] = true

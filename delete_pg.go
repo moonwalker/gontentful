@@ -31,11 +31,15 @@ func NewPGDelete(schemaName string, sys *Sys) *PGDelete {
 }
 
 func (s *PGDelete) Exec(databaseURL string) error {
-	db, err := sqlx.Connect("postgres", databaseURL)
+	str, err := s.Render()
 	if err != nil {
 		return err
 	}
 
+	db, err := sqlx.Open("postgres", databaseURL)
+	if err != nil {
+		return err
+	}
 	defer db.Close()
 
 	txn, err := db.Beginx()
@@ -45,26 +49,16 @@ func (s *PGDelete) Exec(databaseURL string) error {
 	defer txn.Rollback()
 
 	if s.SchemaName != "" {
+		// set schema in use
 		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
 		if err != nil {
 			return err
 		}
 	}
 
-	tmpl, err := template.New("").Parse(deleteTemplate)
-	if err != nil {
-		return err
-	}
+	// os.WriteFile("/tmp/func", buff.Bytes(), 0644)
 
-	var buff bytes.Buffer
-	err = tmpl.Execute(&buff, s)
-	if err != nil {
-		return err
-	}
-
-	// fmt.Println(buff.String())
-
-	_, err = txn.Exec(buff.String())
+	_, err = txn.Exec(str)
 	if err != nil {
 		return err
 	}
@@ -73,6 +67,22 @@ func (s *PGDelete) Exec(databaseURL string) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
 
-	return err
+func (s *PGDelete) Render() (string, error) {
+	tmpl, err := template.New("").Parse(deleteTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	var buff bytes.Buffer
+	err = tmpl.Execute(&buff, s)
+	if err != nil {
+		return "", err
+	}
+
+	// fmt.Println(buff.String())
+
+	return buff.String(), nil
 }
