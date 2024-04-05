@@ -366,6 +366,12 @@ func formatSchemaRecursive(schema *content.Schema) []*ContentType {
 
 func TransformEntry(locales []*Locale, model *Entry, brand string, fmtVideoURL func(string) string) map[string]*content.ContentData {
 	res := make(map[string]*content.ContentData, 0)
+	fbLocales := make(map[string]string)
+	if model.Sys.ContentType.Sys.ID == "locale" {
+		for _, loc := range locales {
+			fbLocales[strings.ToLower(loc.Code)] = loc.FallbackCode
+		}
+	}
 	for _, loc := range locales {
 		data := &content.ContentData{
 			ID:     model.Sys.ID,
@@ -414,7 +420,9 @@ func TransformEntry(locales []*Locale, model *Entry, brand string, fmtVideoURL f
 		}
 
 		if model.Sys.ContentType.Sys.ID == "locale" {
-			data.Fields["fallbackCode"] = loc.FallbackCode
+			if c, ok := data.Fields["code"].(string); ok {
+				data.Fields["fallbackCode"] = fbLocales[strings.ToLower(c)]
+			}
 		}
 
 		data.CreatedAt = model.Sys.CreatedAt
