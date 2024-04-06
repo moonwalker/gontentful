@@ -562,8 +562,22 @@ func formatEntry(id string, contentType string, contents map[string]content.Cont
 	}
 
 	e.Sys.CreatedAt = contents[DefaultLocale].CreatedAt
+	e.Sys.CreatedBy = &Entry{
+		Sys: &Sys{
+			ID: contents[DefaultLocale].CreatedBy,
+		}}
 	e.Sys.UpdatedAt = contents[DefaultLocale].UpdatedAt
+	e.Sys.UpdatedBy = &Entry{
+		Sys: &Sys{
+			ID: contents[DefaultLocale].UpdatedBy,
+		}}
 	e.Sys.PublishedAt = contents[DefaultLocale].PublishedAt
+	if contents[DefaultLocale].PublishedBy != "" {
+		e.Sys.PublishedBy = &Entry{
+			Sys: &Sys{
+				ID: contents[DefaultLocale].PublishedBy,
+			}}
+	}
 
 	fields := make(map[string]interface{})
 
