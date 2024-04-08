@@ -239,7 +239,6 @@ func NewPGSQLTable(item *ContentType, items map[string]*ContentType, includeDept
 	table := &PGSQLTable{
 		TableName: toSnakeCase(item.Sys.ID),
 		Columns:   make([]*PGSQLColumn, 0),
-		Data:      makeModelData(item),
 		Schema:    TransformModel(item),
 	}
 	conTables := make([]*PGSQLTable, 0)
@@ -361,50 +360,6 @@ func getFieldLinkType(linkType string, validations []*FieldValidation) string {
 		}
 	}
 	return linkType
-}
-
-func makeModelData(item *ContentType) *PGSQLData {
-	data := &PGSQLData{
-		Label:        formatText(item.Name),
-		Description:  formatText(item.Description),
-		DisplayField: item.DisplayField,
-		//Status:       item.Sys.Status(),
-		Version:     item.Sys.Version,
-		CreatedAt:   item.Sys.CreatedAt,
-		UpdatedAt:   item.Sys.UpdatedAt,
-		PublishedAt: item.Sys.PublishedAt,
-		Metas:       make([]*PGSQLMeta, 0),
-	}
-
-	return data
-}
-
-func makeMeta(field *ContentTypeField) *PGSQLMeta {
-	meta := &PGSQLMeta{
-		Name:      toSnakeCase(field.ID),
-		Label:     formatText(field.Name),
-		Type:      field.Type,
-		Required:  field.Required,
-		Localized: field.Localized,
-		Unique:    isUnique(field.Validations),
-		Disabled:  field.Disabled,
-		Omitted:   field.Omitted,
-	}
-	if field.LinkType != "" {
-		linkType := getFieldLinkType(field.LinkType, field.Validations)
-		if linkType != "" {
-			meta.LinkType = linkType
-		}
-	}
-	if field.Items != nil {
-		meta.ItemsType = field.Items.Type
-		linkType := getFieldLinkType(field.Items.LinkType, field.Items.Validations)
-		if linkType != "" {
-			meta.LinkType = linkType
-		}
-	}
-
-	return meta
 }
 
 func NewPGSQLCon(tableName string, fieldName string, reference string) *PGSQLTable {

@@ -26,10 +26,10 @@ INSERT INTO {{ $.SchemaName }}.{{ $.TableName }} (
 	'{{ .Locale }}',
 	'{{ .Status }}',
 	{{ .Version }},
-	to_timestamp('{{ .CreatedAt }}','YYYY-MM-DDThh24:mi:ssZ'),
-	'{{ if .CreatedBy }}{{ .CreatedBy }}{{ else }}sync{{ end }}',
+	to_timestamp('{{ .CreatedAt }}','YYYY-MM-DDThh24:mi:ss.ssZ'),
+	'{{ if not .CreatedBy }}sync{{ else }}{{ .CreatedBy }}{{ end }}',
 	to_timestamp('{{ .UpdatedAt }}','YYYY-MM-DDThh24:mi:ssZ'),
-	'{{ if .UpdatedBy }}{{ .UpdatedBy }}{{ else }}sync{{ end }}',
+	'{{ if not .UpdatedBy }}sync{{ else }}{{ .UpdatedBy }}{{ end }}',
 	{{ if .PublishedAt }}to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ssZ'){{ else }}NULL{{ end }},
 	{{ if and .PublishedAt .PublishedBy }}'{{ .PublishedBy }}'{{ else }}NULL{{ end }}
 )
