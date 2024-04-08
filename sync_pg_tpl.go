@@ -29,7 +29,7 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	{{ .Version }},
 	to_timestamp('{{ .CreatedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'),
 	'{{ if .CreatedBy }}{{ .CreatedBy }}{{ else }}sync{{ end }}',
-	to_timestamp('{{ .UpdatedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'),
+	to_timestamp('{{ .UpdatedAt }}','YYYY-MM-DDThh24:mi:ssZ'),
 	'{{ if .UpdatedBy }}{{ .UpdatedBy }}{{ else }}sync{{ end }}',
 	{{ if .PublishedAt }}to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ss.usZ'){{ else }}NULL{{ end }},
 	{{ if and .PublishedAt .PublishedBy }}'{{ .PublishedBy }}'{{ else }}NULL{{ end }}

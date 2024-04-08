@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/google/go-github/v48/github"
@@ -290,11 +291,25 @@ func GetPublishedEntry(repo string, contentType string, files []string) (*Publis
 			}
 			if sys == nil {
 				sys = &Sys{
-					ID:          data.ID,
-					CreatedAt:   data.CreatedAt,
-					UpdatedAt:   data.UpdatedAt,
+					ID:        data.ID,
+					CreatedAt: data.CreatedAt,
+					CreatedBy: &Entry{
+						Sys: &Sys{
+							ID: data.CreatedBy,
+						}},
+					UpdatedAt: data.UpdatedAt,
+					UpdatedBy: &Entry{
+						Sys: &Sys{
+							ID: data.UpdatedBy,
+						}},
 					PublishedAt: data.PublishedAt,
 					Version:     data.Version,
+				}
+				if data.PublishedBy != "" {
+					sys.PublishedBy = &Entry{
+						Sys: &Sys{
+							ID: data.PublishedBy,
+						}}
 				}
 			}
 		}
@@ -309,7 +324,7 @@ func GetPublishedEntry(repo string, contentType string, files []string) (*Publis
 	}, nil
 }
 
-func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, contentType string, cData map[string]*content.ContentData, locales []string) (*PublishedEntry, []gh.BlobEntry, error) {
+func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, contentType string, cData map[string]*content.ContentData, locales []*Locale) (*PublishedEntry, []gh.BlobEntry, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, rOwner, repo, ref)
 	path := filepath.Join(cfg.WorkDir, contentType)
@@ -344,7 +359,8 @@ func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, conten
 	fields := make(map[string]map[string]interface{})
 	var sys *Sys
 	for name, cd := range cData {
-		for _, loc := range locales {
+		for _, l := range locales {
+			loc := strings.ToLower(l.Code)
 			for k, v := range cd.Fields {
 				if fields[k] == nil {
 					fields[k] = make(map[string]interface{})

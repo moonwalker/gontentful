@@ -11,7 +11,8 @@ import (
 const publishEntriesTemplate = `
 	UPDATE {{ .SchemaName }}.{{ .TableName }} 
 	SET _status='published',
-		_published_at = now(),
+		_version = version + 1,
+		_published_at = to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ssZ'),
 		_published_by = '{{ .PublishedBy }}'
 	WHERE _sys_id IN('{{ .SysIDs }}');`
 
@@ -19,14 +20,16 @@ type PGPublishEntries struct {
 	SchemaName  string
 	TableName   string
 	SysIDs      []string
+	PublishedAt string
 	PublishedBy string
 }
 
-func NewPGPublishEntries(schemaName string, tableName string, sysIDs []string, publishedBy string) *PGPublishEntries {
+func NewPGPublishEntries(schemaName string, tableName string, sysIDs []string, publishedBy string, publishedAt string) *PGPublishEntries {
 	return &PGPublishEntries{
 		SchemaName:  schemaName,
 		TableName:   tableName,
 		SysIDs:      sysIDs,
+		PublishedAt: publishedAt,
 		PublishedBy: publishedBy,
 	}
 }
