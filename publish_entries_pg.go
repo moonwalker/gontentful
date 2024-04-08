@@ -14,7 +14,11 @@ const publishEntriesTemplate = `
 		_version = _version + 1,
 		_published_at = to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ssZ'),
 		_published_by = '{{ .PublishedBy }}'
-	WHERE _sys_id IN('{{ .SysIDs }}');`
+	WHERE _sys_id IN(
+	{{- range $idx, $id := $.SysIDs -}}
+		{{- if $idx -}},{{- end -}}'{{- $id -}}'
+	{{- end -}}
+	);`
 
 type PGPublishEntries struct {
 	SchemaName  string
