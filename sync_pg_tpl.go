@@ -27,11 +27,11 @@ INSERT INTO {{ $.SchemaName }}.{{ $tbl.TableName }} (
 	'{{ .Locale }}',
 	'{{ .Status }}',
 	{{ .Version }},
-	to_timestamp('{{ .CreatedAt }}','YYYY-MM-DDThh24:mi:ss.ssZ'),
+	to_timestamp('{{ .CreatedAt }}','YYYY-MM-DDThh24:mi:ssZ'),
 	'{{ if not .CreatedBy }}sync{{ else }}{{ .CreatedBy }}{{ end }}',
 	to_timestamp('{{ .UpdatedAt }}','YYYY-MM-DDThh24:mi:ssZ'),
 	'{{ if not .UpdatedBy }}sync{{ else }}{{ .UpdatedBy }}{{ end }}',
-	{{ if .PublishedAt }}to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ss.ssZ'){{ else }}NULL{{ end }},
+	{{ if .PublishedAt }}to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ssZ'){{ else }}NULL{{ end }},
 	{{ if and .PublishedAt .PublishedBy }}'{{ .PublishedBy }}'{{ else }}NULL{{ end }}
 )
 ON CONFLICT (_id) DO UPDATE

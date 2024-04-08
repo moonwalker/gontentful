@@ -97,9 +97,9 @@ INSERT INTO _schema (
 	'{{ $tbl.Schema.DisplayField }}',
 	'{{ $tbl.Schema.Fields | marshal }}'::jsonb,
 	{{ $tbl.Schema.Version }},
-	to_timestamp('{{ $tbl.Schema.CreatedAt }}','YYYY-MM-DDThh24:mi:ss.ssZ'),
+	to_timestamp('{{ $tbl.Schema.CreatedAt }}','YYYY-MM-DDThh24:mi:ssZ'),
 	'{{ if $tbl.Schema.CreatedBy }}{{ $tbl.Schema.CreatedBy }}{{ else }}sync{{ end }}',
-	to_timestamp('{{ $tbl.Schema.UpdatedAt }}','YYYY-MM-DDThh24:mi:ss.ssZ'),
+	to_timestamp('{{ $tbl.Schema.UpdatedAt }}','YYYY-MM-DDThh24:mi:ssZ'),
 	'{{ if $tbl.Schema.UpdatedBy }}{{ $tbl.Schema.UpdatedBy }}{{ else }}sync{{ end }}'
 )
 ON CONFLICT (table_name) DO UPDATE
