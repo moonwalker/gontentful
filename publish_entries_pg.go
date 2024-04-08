@@ -11,7 +11,7 @@ import (
 const publishEntriesTemplate = `
 	UPDATE {{ .SchemaName }}.{{ .TableName }} 
 	SET _status='published',
-		_version = version + 1,
+		_version = _version + 1,
 		_published_at = to_timestamp('{{ .PublishedAt }}','YYYY-MM-DDThh24:mi:ssZ'),
 		_published_by = '{{ .PublishedBy }}'
 	WHERE _sys_id IN('{{ .SysIDs }}');`
