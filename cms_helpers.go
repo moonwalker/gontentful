@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/gosimple/slug"
+	"github.com/moonwalker/moonbase/pkg/content"
 	gh "github.com/moonwalker/moonbase/pkg/github"
 	"gopkg.in/yaml.v3"
 )
@@ -85,4 +87,65 @@ func getDefaultLocale(locales []*Locale) string {
 	}
 
 	return DefaultLocale
+}
+
+func validateField(field string, value interface{}, validations []*content.Validation) error {
+	for _, val := range validations {
+		switch val.Type {
+		case "required":
+			s, ok := value.(string)
+			if val.Value.(bool) && (value == nil || (ok && s == "")) {
+				return fmt.Errorf("required validation failed on %s", field)
+			}
+		case "in":
+			vals := val.Value.([]interface{})
+			found := false
+			for _, v := range vals {
+				if v == value {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return fmt.Errorf("in validation failed on %s for %v", field, value)
+			}
+
+		case "size":
+			m, _ := val.Value.(map[string]interface{})
+			j := value.(float64)
+			for k, v := range m {
+				i := v.(float64)
+				if k == "min" {
+					if i < j {
+						return fmt.Errorf("min validation failed on %s for %v", field, value)
+					}
+				}
+				if k == "max" {
+					i := v.(float64)
+					if i < j {
+						return fmt.Errorf("max validation failed on %s for %v", field, value)
+					}
+				}
+			}
+		case "regexp":
+			m, _ := val.Value.(map[string]interface{})
+			regStr := ""
+			for k, v := range m {
+				if k == "pattern" {
+					regStr = regStr + v.(string)
+				}
+				if k == "flags" {
+					regStr = v.(string) + regStr
+				}
+			}
+			reg, err := regexp.Compile(regStr)
+			if err != nil {
+				return err
+			}
+			if !reg.MatchString(value.(string)) {
+				return fmt.Errorf("regexp validation failed on %s for %v", field, value)
+			}
+		}
+	}
+	return nil
 }

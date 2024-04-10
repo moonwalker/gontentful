@@ -51,6 +51,7 @@ type PGSQLColumn struct {
 	ColumnDesc string
 	Required   bool
 	IsIndex    bool
+	IsUnique   bool
 }
 
 type PGSQLData struct {
@@ -291,13 +292,9 @@ func isIndex(fieldName string) bool {
 }
 
 func (c *PGSQLColumn) getColumnDesc(field *ContentTypeField) {
-	columnDesc := ""
-	if isUnique(field.Validations) {
-		columnDesc += " unique"
-	}
+	c.IsUnique = isUnique(field.Validations)
 	c.Required = field.Required && !field.Omitted
 	c.ColumnType = getColumnType(field.Type, field.Items)
-	c.ColumnDesc = columnDesc
 }
 
 func getColumnType(fieldType string, fieldItems *FieldTypeArrayItem) string {

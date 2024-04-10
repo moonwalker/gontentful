@@ -337,6 +337,8 @@ func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, conten
 	// get model schema
 	refFields := make(map[string]*content.Field, 0)
 	localizedFields := make(map[string]bool, 0)
+	schemaFields := make(map[string]bool, 0)
+	fieldValidations := make(map[string][]*content.Validation, 0)
 	schema := &content.Schema{}
 	schemaContent, err := rc.GetContent()
 	if err != nil {
@@ -347,6 +349,8 @@ func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, conten
 		return nil, nil, fmt.Errorf("failed to unmarshal schema %s: %s", contentType, err.Error())
 	}
 	for _, sf := range schema.Fields {
+		schemaFields[sf.ID] = true
+		fieldValidations[sf.ID] = sf.Validations
 		if sf.Reference {
 			refFields[sf.ID] = sf
 		}
@@ -361,42 +365,53 @@ func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, conten
 	for name, cd := range cData {
 		for _, l := range locales {
 			loc := strings.ToLower(l.Code)
+			f := make(map[string]interface{})
 			for k, v := range cd.Fields {
-				if fields[k] == nil {
-					fields[k] = make(map[string]interface{})
-				}
-				if rf := refFields[k]; rf != nil {
+				if schemaFields[k] {
 					if fields[k] == nil {
 						fields[k] = make(map[string]interface{})
 					}
-					if rf.List {
-						if rl, ok := v.([]interface{}); ok {
-							refList := make([]interface{}, 0)
-							for _, r := range rl {
-								if rid, ok := r.(string); ok {
-									esys := make(map[string]interface{})
-									esys["type"] = LINK
-									esys["linkType"] = ENTRY
-									esys["id"] = rid
-									es := make(map[string]interface{})
-									es["sys"] = esys
-									refList = append(refList, es)
+					if rf := refFields[k]; rf != nil {
+						if fields[k] == nil {
+							fields[k] = make(map[string]interface{})
+						}
+						if rf.List {
+							if rl, ok := v.([]interface{}); ok {
+								refList := make([]interface{}, 0)
+								for _, r := range rl {
+									if rid, ok := r.(string); ok {
+										esys := make(map[string]interface{})
+										esys["type"] = LINK
+										esys["linkType"] = ENTRY
+										esys["id"] = rid
+										es := make(map[string]interface{})
+										es["sys"] = esys
+										refList = append(refList, es)
+									}
 								}
+								fields[k][loc] = refList
 							}
-							fields[k][loc] = refList
+						} else {
+							esys := make(map[string]interface{})
+							esys["type"] = LINK
+							esys["linkType"] = ENTRY
+							esys["id"] = v
+							es := make(map[string]interface{})
+							es["sys"] = esys
+							fields[k][loc] = es
 						}
 					} else {
-						esys := make(map[string]interface{})
-						esys["type"] = LINK
-						esys["linkType"] = ENTRY
-						esys["id"] = v
-						es := make(map[string]interface{})
-						es["sys"] = esys
-						fields[k][loc] = es
+						fields[k][loc] = v
 					}
-				} else {
-					fields[k][loc] = v
+
+					err = validateField(k, v, fieldValidations[k])
+					if err != nil {
+						return nil, nil, err
+					}
+
+					f[k] = v
 				}
+				cd.Fields = f
 			}
 			if sys == nil {
 				sys = &Sys{

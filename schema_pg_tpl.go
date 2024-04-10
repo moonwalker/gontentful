@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS {{ $tbl.TableName }} (
 	_id text primary key,
 	_sys_id text not null,
 	{{- range $colidx, $col := $tbl.Columns }}
-	"{{ .ColumnName }}" {{ .ColumnType }},
+	"{{ .ColumnName }}" {{ .ColumnType }}{{ if .Required }} not null{{ end }},
 	{{- end }}
 	_locale text not null,
 	_status text not null,
@@ -73,7 +73,11 @@ CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}__locale ON {{ $tbl.TableName
 {{- range $tbl.Columns -}}
 {{- if .IsIndex }}
 CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}_{{ .ColumnName }} ON {{ $tbl.TableName }}({{ .ColumnName }});
+{{- if .IsUnique }}
+CREATE UNIQUE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}_{{ .ColumnName }}_locale ON {{ $tbl.TableName }}({{ .ColumnName }},_locale);
+{{- else -}}
 CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}_{{ .ColumnName }}_locale ON {{ $tbl.TableName }}({{ .ColumnName }},_locale);
+{{ end -}}
 {{ end -}}
 {{- end }}
 --

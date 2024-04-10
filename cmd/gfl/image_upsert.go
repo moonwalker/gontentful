@@ -53,6 +53,8 @@ type imageDetailsResponse struct {
 }
 
 func upsertImage() error {
+	start := time.Now()
+	c := 1
 	if filename == "" {
 		dir := inputFolder
 		if folder != "" {
@@ -62,36 +64,41 @@ func upsertImage() error {
 		if err != nil {
 			return fmt.Errorf("error reading input directory: %w", err)
 		}
-		for _, e := range de {
+		c = len(de)
+		log.Printf("uploading %d images to cloudflare...\n", c)
+		for i, e := range de {
 			if e.Name() != "" && e.Name() != ".DS_Store" {
+				fmt.Printf("uploading images: %d/%d - %s", i+1, c, e.Name())
 				err = sendImage(e.Name())
 				if err != nil {
 					return fmt.Errorf("failed to upload image: %w", err)
 				}
+				fmt.Printf("\033[2K")
+				fmt.Println()
+				fmt.Printf("\033[1A")
 			}
 		}
 	} else {
+		fmt.Printf("uploading image: %s", filename)
 		err := sendImage(filename)
 		if err != nil {
 			return fmt.Errorf("failed to upload image: %w", err)
 		}
 	}
 
+	fmt.Printf("%d images successfully uploaded in %.1fs\n", c, time.Since(start).Seconds())
 	return nil
 }
 
 func sendImage(imageName string) error {
-	exists, err := imageExists(imageName)
-	if err != nil {
-		return fmt.Errorf("failed to get image details: %w", err)
-	}
+	// exists, err := imageExists(imageName)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to get image details: %w", err)
+	// }
 
-	if exists {
-		err = delImage(imageName)
-		if err != nil {
-			log.Fatalf("failed to delete image: %s", err)
-		}
-	}
+	// if exists {
+	// 	delImage(imageName)
+	// }
 	rootPath, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("failed to get working directory: %w", err)
@@ -150,12 +157,12 @@ func uploadImage(id string, imageContent *string, imagePath string) error {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
 
-	log.Printf("uploading image to cfl, imageID: %s", id)
+	// log.Printf("uploading image to cfl, imageID: %s", id)
 	var resp interface{}
 	err = req(http.MethodPost, url, payload, resp, ct)
 	if err != nil {
-		log.Printf("failed to upload image: %s", err.Error())
-		return fmt.Errorf("failed to upload image: %w", err)
+		log.Printf("failed to upload image: %s - %s", imagePath, err.Error())
+		// return fmt.Errorf("failed to upload image: %w", err)
 	}
 
 	return nil
