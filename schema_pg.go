@@ -162,7 +162,8 @@ func NewPGSQLSchema(schemaName string, locales []*Locale, contentTypeFilter stri
 		schema.Dependencies = append(schema.Dependencies, dependencies...)
 		schema.Functions = append(schema.Functions, proc)
 	}
-	schema.DeleteTriggers = getDeleteTriggers(schema.References)
+	// added on delete cascade / set null, no need to add delete triggers
+	//schema.DeleteTriggers = getDeleteTriggers(schema.References)
 
 	return schema
 }
