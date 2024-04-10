@@ -131,6 +131,9 @@ func transformContent() {
 				}
 
 				dir := fmt.Sprintf("%s/%s", ct, strings.ToLower(dfv))
+				if sysIDFileNames {
+					dir = fmt.Sprintf("%s/%s", ct, strings.ToLower(item.Sys.ID))
+				}
 				path := fmt.Sprintf(outputFormat, dir)
 
 				err = os.MkdirAll(path, os.ModePerm)
