@@ -132,7 +132,7 @@ func transformContent() {
 
 				dir := fmt.Sprintf("%s/%s", ct, strings.ToLower(dfv))
 				if sysIDFileNames {
-					dir = fmt.Sprintf("%s/%s", ct, strings.ToLower(item.Sys.ID))
+					dir = fmt.Sprintf("%s/%s", ct, item.Sys.ID)
 				}
 				path := fmt.Sprintf(outputFormat, dir)
 
