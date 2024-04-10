@@ -10,6 +10,25 @@ import (
 	gh "github.com/moonwalker/moonbase/pkg/github"
 )
 
+func GetSchema(ctx context.Context, cfg *Config, owner, repo, ref, contentType string) (*content.Schema, error) {
+	path := filepath.Join(cfg.WorkDir, contentType)
+
+	rc, _, err := gh.GetSchema(ctx, cfg.Token, owner, repo, ref, path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get schema of %s: %s", contentType, err.Error())
+	}
+	schemaContent, err := rc.GetContent()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get schema content: %s", err.Error())
+	}
+	schema := &content.Schema{}
+	err = json.Unmarshal([]byte(schemaContent), schema)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal schema %s: %s", contentType, err.Error())
+	}
+	return schema, nil
+}
+
 func GetCMSSchema(repo string, ct string) (*ContentType, error) {
 	ctx := context.Background()
 	cfg := getConfig(ctx, owner, repo, branch)

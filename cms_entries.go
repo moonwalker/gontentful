@@ -324,30 +324,38 @@ func GetPublishedEntry(repo string, contentType string, files []string) (*Publis
 	}, nil
 }
 
-func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, contentType string, cData map[string]*content.ContentData, locales []*Locale) (*PublishedEntry, []gh.BlobEntry, error) {
+func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, contentType string, cData content.MergedContentData, locales []*Locale) (*PublishedEntry, []gh.BlobEntry, error) {
 	ctx := context.Background()
-	cfg := getConfig(ctx, rOwner, repo, ref)
-	path := filepath.Join(cfg.WorkDir, contentType)
+	cfg := getConfig(ctx, owner, repo, ref)
 
-	rc, _, err := gh.GetSchema(ctx, cfg.Token, rOwner, repo, ref, path)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get schema of %s: %s", contentType, err.Error())
-	}
-
-	// get model schema
 	refFields := make(map[string]*content.Field, 0)
 	localizedFields := make(map[string]bool, 0)
 	schemaFields := make(map[string]bool, 0)
 	fieldValidations := make(map[string][]*content.Validation, 0)
-	schema := &content.Schema{}
-	schemaContent, err := rc.GetContent()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get schema content: %s", err.Error())
+	fbLocales := make(map[string][]string)
+	localesByCode := make(map[string]*Locale)
+	for _, loc := range locales {
+		localesByCode[loc.Code] = loc
 	}
-	err = json.Unmarshal([]byte(schemaContent), schema)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal schema %s: %s", contentType, err.Error())
+	for _, loc := range locales {
+		code := loc.Code
+		fallbackLoc := loc
+		fbLocales[code] = make([]string, 0)
+		for fallbackLoc != nil && fallbackLoc.FallbackCode != "" && fallbackLoc.Code != content.DefaultLocale {
+			fbLocales[code] = append(fbLocales[code], fallbackLoc.FallbackCode)
+			fallbackLoc = localesByCode[fallbackLoc.FallbackCode]
+		}
+		l := len(fbLocales[code])
+		if code != content.DefaultLocale && (l == 0 || fbLocales[code][l-1] != content.DefaultLocale) {
+			fbLocales[code] = append(fbLocales[code], content.DefaultLocale)
+		}
 	}
+
+	schema, err := GetSchema(ctx, cfg, rOwner, repo, ref, contentType)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	for _, sf := range schema.Fields {
 		schemaFields[sf.ID] = true
 		fieldValidations[sf.ID] = sf.Validations
@@ -360,106 +368,131 @@ func GetPublishedEntryFromCMSPost(repo string, rOwner string, ref string, conten
 	}
 
 	var blobs []gh.BlobEntry
-	fields := make(map[string]map[string]interface{})
-	var sys *Sys
-	for name, cd := range cData {
-		for _, l := range locales {
-			loc := strings.ToLower(l.Code)
-			f := make(map[string]interface{})
-			for k, v := range cd.Fields {
-				if schemaFields[k] {
-					if fields[k] == nil {
-						fields[k] = make(map[string]interface{})
+	publlishedFields := make(map[string]map[string]interface{})
+
+	createdAt := cData.CreatedAt.Format(time.RFC3339)
+	updatedAt := cData.UpdatedAt.Format(time.RFC3339)
+	publishedAt := ""
+	if cData.PublishedAt != nil && !cData.PublishedAt.IsZero() {
+		publishedAt = cData.PublishedAt.Format(time.RFC3339)
+	}
+
+	for _, l := range locales {
+
+		cd := &content.ContentData{
+			ID:          cData.ID,
+			CreatedAt:   createdAt,
+			CreatedBy:   cData.CreatedBy,
+			UpdatedAt:   updatedAt,
+			UpdatedBy:   cData.UpdatedBy,
+			PublishedAt: publishedAt,
+			PublishedBy: cData.PublishedBy,
+			Status:      cData.Status,
+			Version:     cData.Version,
+		}
+
+		loc := strings.ToLower(l.Code)
+		fieldsByLocale := make(map[string]interface{})
+		for k, v := range cData.Fields {
+			if schemaFields[k] {
+				if publlishedFields[k] == nil {
+					publlishedFields[k] = make(map[string]interface{})
+				}
+
+				val := v[loc]
+				for _, fbl := range fbLocales[l.Code] {
+					str, ok := val.(string)
+					if (val != nil && (!ok || str != "")) || loc == content.DefaultLocale {
+						break
 					}
-					if rf := refFields[k]; rf != nil {
-						if fields[k] == nil {
-							fields[k] = make(map[string]interface{})
-						}
-						if rf.List {
-							if rl, ok := v.([]interface{}); ok {
-								refList := make([]interface{}, 0)
-								for _, r := range rl {
-									if rid, ok := r.(string); ok {
-										esys := make(map[string]interface{})
-										esys["type"] = LINK
-										esys["linkType"] = ENTRY
-										esys["id"] = rid
-										es := make(map[string]interface{})
-										es["sys"] = esys
-										refList = append(refList, es)
-									}
+					val = cData.Fields[k][fbl]
+				}
+
+				if rf := refFields[k]; rf != nil {
+					if publlishedFields[k] == nil {
+						publlishedFields[k] = make(map[string]interface{})
+					}
+					if rf.List {
+						if rl, ok := val.([]interface{}); ok {
+							refList := make([]interface{}, 0)
+							for _, r := range rl {
+								if rid, ok := r.(string); ok {
+									esys := make(map[string]interface{})
+									esys["type"] = LINK
+									esys["linkType"] = ENTRY
+									esys["id"] = rid
+									es := make(map[string]interface{})
+									es["sys"] = esys
+									refList = append(refList, es)
 								}
-								fields[k][loc] = refList
 							}
-						} else {
-							esys := make(map[string]interface{})
-							esys["type"] = LINK
-							esys["linkType"] = ENTRY
-							esys["id"] = v
-							es := make(map[string]interface{})
-							es["sys"] = esys
-							fields[k][loc] = es
+							publlishedFields[k][loc] = refList
 						}
 					} else {
-						fields[k][loc] = v
+						esys := make(map[string]interface{})
+						esys["type"] = LINK
+						esys["linkType"] = ENTRY
+						esys["id"] = val
+						es := make(map[string]interface{})
+						es["sys"] = esys
+						publlishedFields[k][loc] = es
 					}
+				} else {
+					publlishedFields[k][loc] = val
+				}
 
-					err = validateField(k, v, fieldValidations[k])
-					if err != nil {
-						return nil, nil, err
-					}
-
-					f[k] = v
+				err = validateField(k, val, fieldValidations[k])
+				if err != nil {
+					return nil, nil, err
 				}
-				cd.Fields = f
+				fieldsByLocale[k] = val
 			}
-			if sys == nil {
-				sys = &Sys{
-					ID:        cd.ID,
-					CreatedAt: cd.CreatedAt,
-					CreatedBy: &Entry{
-						Sys: &Sys{
-							ID: cd.CreatedBy,
-						},
-					},
-					UpdatedAt: cd.UpdatedAt,
-					UpdatedBy: &Entry{
-						Sys: &Sys{
-							ID: cd.UpdatedBy,
-						},
-					},
-					Version: cd.Version,
-				}
-				if cd.PublishedAt != "" {
-					sys.PublishedAt = cd.PublishedAt
-				}
-				if cd.PublishedBy != "" {
-					sys.PublishedBy = &Entry{
-						Sys: &Sys{
-							ID: cd.PublishedBy,
-						},
-					}
-				}
-			}
-
-			s, err := json.Marshal(*cd)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error marshalling content data:%s", err)
-			}
-			content := string(s)
-			blobs = append(blobs, gh.BlobEntry{
-				Path:    filepath.Join(cfg.WorkDir, contentType, name, fmt.Sprintf("%s.json", loc)),
-				Content: &content,
-			})
 		}
+
+		cd.Fields = fieldsByLocale
+
+		s, err := json.Marshal(*cd)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error marshalling content data:%s", err)
+		}
+		content := string(s)
+		blobs = append(blobs, gh.BlobEntry{
+			Path:    filepath.Join(cfg.WorkDir, contentType, cData.ID, fmt.Sprintf("%s.json", loc)),
+			Content: &content,
+		})
 	}
 
 	// clear fallback values
-	clearPublishedEntryFallbackValues(localizedFields, fields)
+	clearPublishedEntryFallbackValues(localizedFields, publlishedFields)
+
+	sys := &Sys{
+		ID:        cData.ID,
+		CreatedAt: createdAt,
+		CreatedBy: &Entry{
+			Sys: &Sys{
+				ID: cData.CreatedBy,
+			},
+		},
+		UpdatedAt: updatedAt,
+		UpdatedBy: &Entry{
+			Sys: &Sys{
+				ID: cData.UpdatedBy,
+			},
+		},
+		PublishedAt: publishedAt,
+		Version:     cData.Version,
+	}
+	if cData.PublishedBy != "" {
+		sys.PublishedBy = &Entry{
+			Sys: &Sys{
+				ID: cData.PublishedBy,
+			},
+		}
+	}
 
 	return &PublishedEntry{
 		Sys:    sys,
-		Fields: PublishFields(fields),
+		Fields: PublishFields(publlishedFields),
 	}, blobs, nil
 }
 
