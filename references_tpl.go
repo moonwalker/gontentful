@@ -23,7 +23,7 @@ ALTER TABLE IF EXISTS {{ .TableName }}
 	ADD CONSTRAINT {{ .ForeignKey }}_fkey
 	FOREIGN KEY ({{ .ForeignKey }})
 	REFERENCES {{ .Reference }} (_id)
-	ON DELETE CASCADE;
+	ON DELETE {{ if .IsManyToMany -}}CASCADE{{- else -}}SET NULL{{- end -}};
 --
 CREATE INDEX IF NOT EXISTS idx_{{ .TableName }}_{{ .ForeignKey }} ON {{ .TableName }}({{ .ForeignKey }});
 --
