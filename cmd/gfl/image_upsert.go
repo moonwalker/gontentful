@@ -11,11 +11,15 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/moonwalker/gontentful"
 )
 
 const (
 	apiurl      = "https://api.cloudflare.com/client/v4/accounts/%s/images/v1" //cloudflare api url
+	inputUrl    = "http://github.com/moonwalker/%s/tree/main/_images/%s"       // add the brand name to path
 	inputFolder = "input/images"
+	VideoKeyFmt = "%s/%s"
 )
 
 type UploadImageParams struct {
@@ -54,71 +58,76 @@ type imageDetailsResponse struct {
 
 func upsertImage() error {
 	start := time.Now()
-	c := 1
-	if filename == "" {
-		dir := inputFolder
-		if folder != "" {
-			dir = folder
-		}
-		de, err := os.ReadDir(dir)
-		if err != nil {
-			return fmt.Errorf("error reading input directory: %w", err)
-		}
-		c = len(de)
-		log.Printf("uploading %d images to cloudflare...\n", c)
-		for i, e := range de {
-			if e.Name() != "" && e.Name() != ".DS_Store" {
-				fmt.Printf("uploading images: %d/%d - %s", i+1, c, e.Name())
-				err = sendImage(e.Name())
-				if err != nil {
-					return fmt.Errorf("failed to upload image: %w", err)
-				}
-				fmt.Printf("\033[2K")
-				fmt.Println()
-				fmt.Printf("\033[1A")
-			}
-		}
-	} else {
-		fmt.Printf("uploading image: %s", filename)
-		err := sendImage(filename)
-		if err != nil {
-			return fmt.Errorf("failed to upload image: %w", err)
-		}
-	}
-
-	fmt.Printf("%d images successfully uploaded in %.1fs\n", c, time.Since(start).Seconds())
-	return nil
-}
-
-func sendImage(imageName string) error {
-	// exists, err := imageExists(imageName)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to get image details: %w", err)
-	// }
-
-	// if exists {
-	// 	delImage(imageName)
-	// }
-	rootPath, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get working directory: %w", err)
-	}
+	c := 0
+	v := 0
 	dir := inputFolder
 	if folder != "" {
 		dir = folder
 	}
-	imgPath := fmt.Sprintf("%s/%s/%s", rootPath, dir, imageName)
-
-	err = uploadImage(fmt.Sprintf("%s/%s", brand, imageName), nil, imgPath)
+	dc, err := os.ReadDir(dir)
 	if err != nil {
-		return fmt.Errorf("failed to upload image: %w", err)
+		return fmt.Errorf("error reading input directory: %w", err)
 	}
+	c = len(dc)
+	log.Printf("uploading %d images to cloudflare...\n", c)
+	for i, e := range dc {
+		if e.Name() != "" && e.Name() != ".DS_Store" {
+			iName := gontentful.GetCloudflareImagesID(brand) + e.Name()
+			fmt.Printf("uploading images: %d/%d - %s", i, c, e.Name())
+			exists, err := imageExists(iName)
+			if err != nil {
+				return fmt.Errorf("failed to get image details: %w", err)
+			}
+			if exists {
+				delImage(iName)
+			}
+
+			if method == "f" {
+				log.Print("We're not uploading by file system now.")
+			} else {
+				iUrl, err := gontentful.GetBlobURL(brand, "_images", e.Name())
+				if gontentful.IsVideoFile(e.Name()) {
+					v++
+					// uploadURL := fmt.Sprintf(VideoKeyFmt, iName, filename)
+					// _, err = r2.UploadURL(uploadURL, iUrl)
+				} else {
+					url := fmt.Sprintf(apiurl, accountId)
+
+					form := map[string]string{"id": iName}
+					if err == nil {
+						p := UploadImageParams{
+							Name:     iName,
+							Metadata: form,
+							URL:      iUrl,
+						}
+
+						ct, payload, err := createForm(p)
+						if err != nil {
+							return fmt.Errorf("failed to read file: %w", err)
+						}
+
+						var resp interface{}
+						err = req(http.MethodPost, url, payload, resp, ct)
+						if err != nil {
+							log.Printf("failed to upload image: %s - %s", p.URL, err.Error())
+						}
+					}
+				}
+			}
+
+			fmt.Printf("\033[2K")
+			fmt.Println()
+			fmt.Printf("\033[1A")
+		}
+	}
+	fmt.Printf("Video files ignored: %d", v)
+	fmt.Println()
+	fmt.Printf("%d images successfully uploaded in %.1fs\n", c, time.Since(start).Seconds())
 	return nil
 }
 
 func imageExists(imageID string) (bool, error) {
-	url := fmt.Sprintf(apiurl, accountId) + "/" + brand + "/" + imageID
-
+	url := fmt.Sprintf(apiurl, accountId) + "/" + imageID
 	req, _ := http.NewRequest(http.MethodGet, url, nil)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 	req.Header.Add("Content-Type", "application/json")
@@ -140,37 +149,8 @@ func imageExists(imageID string) (bool, error) {
 	return resp.Success, nil
 }
 
-func uploadImage(id string, imageContent *string, imagePath string) error {
-	url := fmt.Sprintf(apiurl, accountId)
-
-	form := map[string]string{"id": id}
-	p := UploadImageParams{
-		Name:     id,
-		Metadata: form,
-		Path:     imagePath,
-	}
-	if imageContent != nil {
-		p.File = strings.NewReader(*imageContent)
-	}
-	ct, payload, err := createForm(p)
-	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
-	}
-
-	// log.Printf("uploading image to cfl, imageID: %s", id)
-	var resp interface{}
-	err = req(http.MethodPost, url, payload, resp, ct)
-	if err != nil {
-		log.Printf("failed to upload image: %s - %s", imagePath, err.Error())
-		// return fmt.Errorf("failed to upload image: %w", err)
-	}
-
-	return nil
-}
-
 func delImage(id string) error {
-	url := fmt.Sprintf(apiurl, accountId) + "/" + brand + "/" + id
-
+	url := fmt.Sprintf(apiurl, accountId) + "/" + id
 	err := req(http.MethodDelete, url, nil, nil, "")
 	if err != nil {
 		return fmt.Errorf("failed to delete image: %w", err)

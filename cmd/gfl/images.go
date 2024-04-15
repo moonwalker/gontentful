@@ -7,11 +7,11 @@ const (
 )
 
 var (
-	path,
 	variantId,
 	filename,
 	apiKey,
 	folder,
+	method,
 	accountId string
 	uploadCmd = &cobra.Command{
 		Use:   "upsert",
@@ -35,6 +35,7 @@ func init() {
 	// Optional flags
 	uploadCmd.Flags().StringVarP(&filename, "image", "i", "", "name of image file")
 	uploadCmd.Flags().StringVarP(&folder, "folder", "f", "", "folder of images to be uploaded if different from the default 'input/images'")
-	uploadCmd.Flags().StringVarP(&variantId, "variantId", "v", "", "Variant image settings")
+	uploadCmd.Flags().StringVarP(&variantId, "variantId", "v", "", "variant image settings")
+	uploadCmd.Flags().StringVarP(&method, "method", "m", "", "<f|u> f: physical file(s) from local, u: url of image(s)")
 	rootCmd.AddCommand(uploadCmd)
 }
