@@ -8,14 +8,12 @@ CREATE SCHEMA IF NOT EXISTS {{ $.SchemaName }};
 CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
 --
 {{- end }}
-CREATE TABLE IF NOT EXISTS _asset (
+CREATE TABLE IF NOT EXISTS {{ $.AssetTable.Name }} (
 	_id text primary key,
 	_sys_id text not null,
-	title text,
-	description text,
-	file_name text,
-	content_type text,
-	url text,
+	{{- range $colidx, $col := $.AssetTable.Columns }}
+	"{{ $col }}" text,
+	{{- end }}
 	_locale text not null,
 	_status text not null,
 	_version integer not null default 0,
@@ -26,9 +24,9 @@ CREATE TABLE IF NOT EXISTS _asset (
 	_published_at timestamp without time zone,
 	_published_by text
 );
-CREATE UNIQUE INDEX IF NOT EXISTS _asset__sys_id__locale ON _asset (_sys_id, _locale);
+CREATE UNIQUE INDEX IF NOT EXISTS {{ $.AssetTable.Name }}__sys_id__locale ON {{ $.AssetTable.Name }} (_sys_id, _locale);
 --
-CREATE TABLE IF NOT EXISTS _schema (
+CREATE TABLE IF NOT EXISTS {{ $.SchemaTableName }} (
 	table_name text primary key,
 	model text not null unique,
 	name text not null unique,
@@ -41,7 +39,27 @@ CREATE TABLE IF NOT EXISTS _schema (
 	_updated_at timestamp without time zone default now(),
 	_updated_by text not null
 );
-CREATE UNIQUE INDEX IF NOT EXISTS _schema_model ON _schema (model);
+CREATE UNIQUE INDEX IF NOT EXISTS {{ $.SchemaTableName }}_model ON {{ $.SchemaTableName }} (model);
+--
+INSERT INTO {{ $.SchemaTableName }} (
+	table_name,
+	model,
+	name,
+	description,
+	displayField,
+	fields,
+	_created_by,
+	_updated_by
+) VALUES (
+	'{{ $.AssetTable.Name }}',
+	'{{ $.AssetTable.Name }}',
+	'{{ $.AssetTable.FieldName }}',
+	'{{ $.AssetTable.FieldName }}',
+	'{{ $.AssetTable.DisplayField }}',
+	'{{ $.AssetTable.Fields | marshal }}'::jsonb,
+	'sync',
+	'sync'
+);
 --
 {{ end -}}
 {{ range $tblidx, $tbl := $.Tables }}
@@ -81,7 +99,7 @@ CREATE INDEX IF NOT EXISTS idx_{{ $tbl.TableName }}_{{ .ColumnName }}_locale ON 
 {{ end -}}
 {{- end }}
 --
-INSERT INTO _schema (
+INSERT INTO {{ $.SchemaTableName }} (
 	table_name,
 	model,
 	name,

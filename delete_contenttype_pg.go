@@ -16,20 +16,22 @@ DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $.TableName }}_items CASCADE;
 --
 DROP FUNCTION IF EXISTS {{ $.SchemaName }}.{{ $.TableName }}_query CASCADE;
 --
-DELETE FROM {{ $.SchemaName }}._schema WHERE table_name = {{ $.TableName }};
+DELETE FROM {{ $.SchemaName }}.{{ $.SchemaTableName }} WHERE table_name = {{ $.TableName }};
 `
 
 type PGDeleteContentType struct {
-	SchemaName string
-	TableName  string
-	SysID      string
+	SchemaName      string
+	TableName       string
+	SysID           string
+	SchemaTableName string
 }
 
 func NewPGDeleteContentType(schemaName string, sys *Sys) *PGDeleteContentType {
 	return &PGDeleteContentType{
-		SchemaName: schemaName,
-		TableName:  toSnakeCase(sys.ID),
-		SysID:      sys.ID,
+		SchemaName:      schemaName,
+		TableName:       toSnakeCase(sys.ID),
+		SysID:           sys.ID,
+		SchemaTableName: SCHEMA_TABLE_NAME,
 	}
 }
 

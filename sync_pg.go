@@ -11,12 +11,8 @@ import (
 )
 
 var (
-	metaColumns           = []string{"_locale", "_status", "_version", "_created_at", "_created_by", "_updated_at", "_updated_by", "_published_at", "_published_by"}
-	localizedAssetColumns = map[string]bool{
-		"title":       true,
-		"description": true,
-		"file":        true,
-	}
+	idColumns   = []string{"_id", "_sys_id"}
+	metaColumns = []string{"_locale", "_status", "_version", "_created_at", "_created_by", "_updated_at", "_updated_by", "_published_at", "_published_by"}
 )
 
 type PGSyncRow struct {
@@ -120,7 +116,8 @@ func NewPGSyncSchema(schemaName string, locales []*Locale, types []*ContentType,
 }
 
 func newPGSyncTable(tableName string, fieldColumns []string) *PGSyncTable {
-	columns := []string{"_id", "_sys_id"}
+	columns := make([]string, 0)
+	columns = append(columns, idColumns...)
 	columns = append(columns, fieldColumns...)
 	columns = append(columns, metaColumns...)
 

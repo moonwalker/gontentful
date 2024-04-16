@@ -113,11 +113,11 @@ type PGSQLSchema struct {
 	Dependencies       []*PGSQLDependency
 	Functions          []*PGSQLProcedure
 	DeleteTriggers     []*PGSQLDeleteTrigger
-	AssetTableName     string
-	AssetColumns       []string
+	SchemaTableName    string
 	DropTables         bool
 	ContentTypePublish bool
 	ContentSchema      string
+	AssetTable         *PGSQLAssetTable
 }
 
 type PGSQLDeleteTrigger struct {
@@ -134,15 +134,16 @@ var schemaFuncMap = template.FuncMap{
 
 func NewPGSQLSchema(schemaName string, locales []*Locale, contentTypeFilter string, items []*ContentType, includeDepth int64) *PGSQLSchema {
 	schema := &PGSQLSchema{
-		SchemaName:     schemaName,
-		Locales:        locales,
-		Tables:         make([]*PGSQLTable, 0),
-		ConTables:      make([]*PGSQLTable, 0),
-		References:     make([]*PGSQLReference, 0),
-		Dependencies:   make([]*PGSQLDependency, 0),
-		Functions:      make([]*PGSQLProcedure, 0),
-		DeleteTriggers: make([]*PGSQLDeleteTrigger, 0),
-		AssetColumns:   assetColumns,
+		SchemaName:      schemaName,
+		Locales:         locales,
+		Tables:          make([]*PGSQLTable, 0),
+		ConTables:       make([]*PGSQLTable, 0),
+		References:      make([]*PGSQLReference, 0),
+		Dependencies:    make([]*PGSQLDependency, 0),
+		Functions:       make([]*PGSQLProcedure, 0),
+		DeleteTriggers:  make([]*PGSQLDeleteTrigger, 0),
+		SchemaTableName: SCHEMA_TABLE_NAME,
+		AssetTable:      NewPGSQLAssetTable(),
 	}
 
 	itemsMap := make(map[string]*ContentType)
