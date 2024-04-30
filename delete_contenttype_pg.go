@@ -2,6 +2,7 @@ package gontentful
 
 import (
 	"bytes"
+	"fmt"
 	"text/template"
 
 	"github.com/jmoiron/sqlx"
@@ -36,28 +37,58 @@ func NewPGDeleteContentType(schemaName string, sys *Sys) *PGDeleteContentType {
 }
 
 func (s *PGDeleteContentType) Exec(databaseURL string) error {
-	db, err := sqlx.Connect("postgres", databaseURL)
+	str, err := s.Render()
 	if err != nil {
 		return err
 	}
 
-	defer db.Close()
-
-	tmpl, err := template.New("").Parse(delContentTypeTemplate)
-
+	db, err := sqlx.Connect("postgres", databaseURL)
 	if err != nil {
 		return err
+	}
+	defer db.Close()
+
+	txn, err := db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer txn.Rollback()
+
+	if s.SchemaName != "" {
+		// set schema in use
+		_, err = txn.Exec(fmt.Sprintf("SET search_path='%s'", s.SchemaName))
+		if err != nil {
+			return err
+		}
+	}
+
+	// os.WriteFile("/tmp/func", buff.Bytes(), 0644)
+
+	_, err = txn.Exec(str)
+	if err != nil {
+		return err
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *PGDeleteContentType) Render() (string, error) {
+	tmpl, err := template.New("").Parse(delContentTypeTemplate)
+	if err != nil {
+		return "", err
 	}
 
 	var buff bytes.Buffer
 	err = tmpl.Execute(&buff, s)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	//fmt.Println(buff.String())
+	// fmt.Println(buff.String())
 
-	_, err = db.Exec(buff.String())
-
-	return err
+	return buff.String(), nil
 }
