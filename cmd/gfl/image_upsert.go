@@ -60,6 +60,8 @@ func upsertImage() error {
 	start := time.Now()
 	c := 0
 	v := 0
+	d := 0
+	f := 0
 	dir := inputFolder
 	if folder != "" {
 		dir = folder
@@ -72,13 +74,26 @@ func upsertImage() error {
 	log.Printf("uploading %d images to cloudflare...\n", c)
 	for i, e := range dc {
 		if e.Name() != "" && e.Name() != ".DS_Store" {
-			iName := gontentful.GetCloudflareImagesID(brand) + e.Name()
+
+			iName := gontentful.GetCloudflareImagesID(brand) + "/" + e.Name()
+			faultyName := gontentful.GetCloudflareImagesID(brand) + e.Name()
 			fmt.Printf("uploading images: %d/%d - %s", i, c, e.Name())
+			// Faulty image name deletion (can be removed one the path problem is resolved)
+			fExists, err := imageExists(faultyName)
+			if err != nil {
+				return fmt.Errorf("failed to get image details: %w", err)
+			}
+			if fExists {
+				f++
+				delImage(faultyName)
+			}
+			// Legit image name deletion
 			exists, err := imageExists(iName)
 			if err != nil {
 				return fmt.Errorf("failed to get image details: %w", err)
 			}
 			if exists {
+				d++
 				delImage(iName)
 			}
 
@@ -121,6 +136,10 @@ func upsertImage() error {
 		}
 	}
 	fmt.Printf("Video files ignored: %d", v)
+	fmt.Println()
+	fmt.Printf("Image files deleted: %d", d)
+	fmt.Println()
+	fmt.Printf("Faulty image files deleted: %d", f)
 	fmt.Println()
 	fmt.Printf("%d images successfully uploaded in %.1fs\n", c, time.Since(start).Seconds())
 	return nil
