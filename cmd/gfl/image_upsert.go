@@ -71,6 +71,12 @@ func upsertImage() error {
 		return fmt.Errorf("error reading input directory: %w", err)
 	}
 	c = len(dc)
+
+	repo := fmt.Sprintf("cms-%s", brand)
+	if brand == "games" {
+		repo = fmt.Sprintf("mw-%s", brand)
+	}
+
 	log.Printf("uploading %d images to cloudflare...\n", c)
 	for i, e := range dc {
 		if e.Name() != "" && e.Name() != ".DS_Store" {
@@ -100,7 +106,7 @@ func upsertImage() error {
 			if method == "f" {
 				log.Print("We're not uploading by file system now.")
 			} else {
-				iUrl, err := gontentful.GetBlobURL(brand, "_images", e.Name())
+				iUrl, err := gontentful.GetBlobURL(repo, "_images", e.Name())
 				if gontentful.IsVideoFile(e.Name()) {
 					v++
 					// uploadURL := fmt.Sprintf(VideoKeyFmt, iName, filename)
@@ -118,14 +124,18 @@ func upsertImage() error {
 
 						ct, payload, err := createForm(p)
 						if err != nil {
-							return fmt.Errorf("failed to read file: %w", err)
+							fmt.Println(fmt.Sprintf("failed to read file: %s", err.Error()))
+							continue
 						}
 
 						var resp interface{}
 						err = req(http.MethodPost, url, payload, resp, ct)
 						if err != nil {
-							log.Printf("failed to upload image: %s - %s", p.URL, err.Error())
+							fmt.Println(fmt.Sprintf("failed to upload image: %s - %s", p.URL, err.Error()))
 						}
+					} else {
+						fmt.Println(fmt.Sprintf("failed to get blob url(brand:%s): %s - %s", brand, e.Name(), err.Error()))
+
 					}
 				}
 			}
