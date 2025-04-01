@@ -58,22 +58,34 @@ json_build_object(
 END)
 {{- end -}}
 {{- define "assetCon" -}}
-		json_build_object('id', {{ .Reference.JoinAlias }}._sys_id) AS sys,
-								{{ .Reference.JoinAlias }}.title AS "title",
-								{{ .Reference.JoinAlias }}.description AS "description",
-								json_build_object(
-									'contentType', {{ .Reference.JoinAlias }}.content_type,
-									'fileName', {{ .Reference.JoinAlias }}.file_name,
-									'url', {{ .Reference.JoinAlias }}.url
-								) AS "file"
+		json_build_object(
+			'id', {{ .Reference.JoinAlias }}._sys_id,
+			'createdAt', {{ .Reference.JoinAlias }}._created_at,
+			'updatedAt', {{ .Reference.JoinAlias }}._updated_at
+		) AS sys,		
+		{{ .Reference.JoinAlias }}.title AS "title",
+		{{ .Reference.JoinAlias }}.description AS "description",
+		json_build_object(
+			'contentType', {{ .Reference.JoinAlias }}.content_type,
+			'fileName', {{ .Reference.JoinAlias }}.file_name,
+			'url', {{ .Reference.JoinAlias }}.url
+		) AS "file"
 {{- end -}}
 {{- define "refColumn" -}} 
 {{ if .Localized -}}
-(CASE WHEN {{ .JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
-	'sys', json_build_object('id', {{ .JoinAlias }}._sys_id)
+	(CASE WHEN {{ .JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
+		'sys', json_build_object(
+			'id', {{ .JoinAlias }}._sys_id,
+			'createdAt', {{ .JoinAlias }}._created_at,
+			'updatedAt', {{ .JoinAlias }}._updated_at
+		)
 {{- else -}}
-(CASE WHEN {{ .JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
-	'sys', json_build_object('id', {{ .JoinAlias }}._sys_id)
+	(CASE WHEN {{ .JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
+		'sys', json_build_object(
+			'id', {{ .JoinAlias }}._sys_id,
+			'createdAt', {{ .JoinAlias }}._created_at,
+			'updatedAt', {{ .JoinAlias }}._updated_at
+		)
 {{- end -}}
 					{{- range $i, $c:= .Columns -}}
 					,
@@ -90,19 +102,23 @@ END)
 					{{- end }}) END)
 {{- end -}}
 {{- define "conColumn" -}} 
-json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
-						{{- range $i, $c:= .Columns -}}
-						,
-						{{ if .ConTableName -}}
-							_included_{{ .Reference.JoinAlias }}.res
-						{{- else if .IsAsset -}}
-						{{ template "assetRef" . }}
-						{{- else if .Reference -}}
-							{{ template "refColumn" .Reference }}
-						{{- else -}}
-							{{ .JoinAlias }}.{{ .ColumnName }}
-						{{- end }} AS "{{ .Alias }}"
-						{{- end }}
+	json_build_object(
+		'id', {{ .JoinAlias }}._sys_id,
+		'createdAt', {{ .JoinAlias }}._created_at,
+		'updatedAt', {{ .JoinAlias }}._updated_at
+	) AS sys
+	{{- range $i, $c:= .Columns -}}
+		,
+		{{ if .ConTableName -}}
+			_included_{{ .Reference.JoinAlias }}.res
+		{{- else if .IsAsset -}}
+			{{ template "assetRef" . }}
+		{{- else if .Reference -}}
+			{{ template "refColumn" .Reference }}
+		{{- else -}}
+			{{ .JoinAlias }}.{{ .ColumnName }}
+		{{- end }} AS "{{ .Alias }}"
+	{{- end }}
 {{- end -}}
 {{- define "join" -}}
 	{{- if .ConTableName }}
@@ -171,7 +187,11 @@ BEGIN
 	qs:= qs || ') ';
 			
 	qs:= qs || 'SELECT (SELECT _count FROM filtered LIMIT 1)::INTEGER, json_agg(t)::json FROM (
-	SELECT json_build_object(''id'', {{ .TableName }}._sys_id) AS sys
+	SELECT json_build_object(
+		''id'', {{ .TableName }}._sys_id,
+		''createdAt'', {{ .TableName }}._created_at,
+		''updatedAt'', {{ .TableName }}._updated_at
+	) AS sys
 	{{- range .Columns -}}
 		,
 		{{ .TableName }}.{{ .ColumnName }} AS "{{ .Alias }}"
@@ -234,7 +254,11 @@ BEGIN
 			qs:= qs || ') ';
 					
 			qs:= qs || 'SELECT (SELECT _count FROM filtered LIMIT 1)::INTEGER, json_agg(t)::json FROM (
-			SELECT json_build_object(''id'', {{ .TableName }}._sys_id) AS sys
+			SELECT json_build_object(
+				''id'', {{ .TableName }}._sys_id,
+				''createdAt'', {{ .TableName }}._created_at,
+				''updatedAt'', {{ .TableName }}._updated_at
+			) AS sys
 			{{- range .Columns -}}
 				,
 				{{ if and ($.ContentSchema) (.ColumnName | Overwritable) -}}
@@ -278,6 +302,7 @@ RETURNS table(_id text, _sys_id text {{- range .Columns -}}
 		{{ if eq .ColumnName "limit" -}}_{{- end -}}
 		{{- .ColumnName }} {{ .SqlType -}} 
 	{{- end -}}
+	, _created_at timestamp
 	, _updated_at timestamp) AS $$
 BEGIN
 	RETURN QUERY
@@ -296,6 +321,7 @@ BEGIN
 			{{ .TableName }}.{{ .ColumnName }}
 			{{- end }} AS "{{ .ColumnName }}"
 		{{- end }},
+			{{ .TableName }}._created_at AS _created_at,
 			{{ .TableName }}._updated_at AS _updated_at
 		FROM {{ .TableName }}
 		{{- range .Columns -}}
