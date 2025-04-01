@@ -76,37 +76,49 @@ json_build_object(
 END)
 {{- end -}}
 {{- define "assetCon" -}}
-		json_build_object('id', COALESCE({{ .Reference.JoinAlias }}._sys_id, {{ .Reference.JoinAlias }}_fallbacklocale._sys_id, {{ .Reference.JoinAlias }}_deflocale._sys_id)) AS sys,
-								(CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN (CASE WHEN {{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL THEN {{ .Reference.JoinAlias }}_deflocale.title ELSE {{ .Reference.JoinAlias }}_fallbacklocale.title END) ELSE {{ .Reference.JoinAlias }}.title END) AS "title",
-								(CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN (CASE WHEN {{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL THEN {{ .Reference.JoinAlias }}_deflocale.description ELSE {{ .Reference.JoinAlias }}_fallbacklocale.description END) ELSE {{ .Reference.JoinAlias }}.description END) AS "description",
-								(CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN 
-									(CASE WHEN {{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL THEN
-										json_build_object(
-											'contentType', {{ .Reference.JoinAlias }}_deflocale.content_type,
-											'fileName', {{ .Reference.JoinAlias }}_deflocale.file_name,
-											'url', {{ .Reference.JoinAlias }}_deflocale.url
-										)
-									ELSE 
-									json_build_object(
-										'contentType', {{ .Reference.JoinAlias }}_fallbacklocale.content_type,
-										'fileName', {{ .Reference.JoinAlias }}_fallbacklocale.file_name,
-										'url', {{ .Reference.JoinAlias }}_fallbacklocale.url
-									) END)	
-								ELSE 
-									json_build_object(
-										'contentType', {{ .Reference.JoinAlias }}.content_type,
-										'fileName', {{ .Reference.JoinAlias }}.file_name,
-										'url', {{ .Reference.JoinAlias }}.url
-									)
-								END) AS "file"
+	json_build_object(
+		'id', COALESCE({{ .Reference.JoinAlias }}._sys_id, {{ .Reference.JoinAlias }}_fallbacklocale._sys_id, {{ .Reference.JoinAlias }}_deflocale._sys_id),
+		'createdAt', COALESCE({{ .Reference.JoinAlias }}._created_at, {{ .Reference.JoinAlias }}_fallbacklocale._created_at, {{ .Reference.JoinAlias }}_deflocale._created_at),
+		'updatedAt', COALESCE({{ .Reference.JoinAlias }}._updated_at, {{ .Reference.JoinAlias }}_fallbacklocale._updated_at, {{ .Reference.JoinAlias }}_deflocale._updated_at)
+	) AS sys,
+	(CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN (CASE WHEN {{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL THEN {{ .Reference.JoinAlias }}_deflocale.title ELSE {{ .Reference.JoinAlias }}_fallbacklocale.title END) ELSE {{ .Reference.JoinAlias }}.title END) AS "title",
+	(CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN (CASE WHEN {{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL THEN {{ .Reference.JoinAlias }}_deflocale.description ELSE {{ .Reference.JoinAlias }}_fallbacklocale.description END) ELSE {{ .Reference.JoinAlias }}.description END) AS "description",
+	(CASE WHEN {{ .Reference.JoinAlias }}._sys_id IS NULL THEN 
+		(CASE WHEN {{ .Reference.JoinAlias }}_fallbacklocale._sys_id IS NULL THEN
+			json_build_object(
+				'contentType', {{ .Reference.JoinAlias }}_deflocale.content_type,
+				'fileName', {{ .Reference.JoinAlias }}_deflocale.file_name,
+				'url', {{ .Reference.JoinAlias }}_deflocale.url
+			)
+		ELSE 
+		json_build_object(
+			'contentType', {{ .Reference.JoinAlias }}_fallbacklocale.content_type,
+			'fileName', {{ .Reference.JoinAlias }}_fallbacklocale.file_name,
+			'url', {{ .Reference.JoinAlias }}_fallbacklocale.url
+		) END)	
+	ELSE 
+		json_build_object(
+			'contentType', {{ .Reference.JoinAlias }}.content_type,
+			'fileName', {{ .Reference.JoinAlias }}.file_name,
+			'url', {{ .Reference.JoinAlias }}.url
+		)
+	END) AS "file"
 {{- end -}}
 {{- define "refColumn" -}} 
 {{ if .Localized -}}
 (CASE WHEN COALESCE({{ .JoinAlias }}._sys_id, {{ .JoinAlias }}_fallbacklocale._sys_id, {{ .JoinAlias }}_deflocale._sys_id) IS NULL THEN NULL ELSE json_build_object(
-	'sys', json_build_object('id', COALESCE({{ .JoinAlias }}._sys_id, {{ .JoinAlias }}_fallbacklocale._sys_id, {{ .JoinAlias }}_deflocale._sys_id))
+	'sys', json_build_object(
+		'id', COALESCE({{ .JoinAlias }}._sys_id, {{ .JoinAlias }}_fallbacklocale._sys_id, {{ .JoinAlias }}_deflocale._sys_id),
+		'createdAt', COALESCE({{ .JoinAlias }}._created_at, {{ .JoinAlias }}_fallbacklocale._created_at, {{ .JoinAlias }}_deflocale._created_at),
+		'updatedAt', COALESCE({{ .JoinAlias }}._updated_at, {{ .JoinAlias }}_fallbacklocale._updated_at, {{ .JoinAlias }}_deflocale._updated_at)
+	)
 {{- else -}}
 (CASE WHEN {{ .JoinAlias }}._sys_id IS NULL THEN NULL ELSE json_build_object(
-	'sys', json_build_object('id', {{ .JoinAlias }}._sys_id)
+	'sys', json_build_object(
+		'id', {{ .JoinAlias }}._sys_id,
+		'createdAt', {{ .JoinAlias }}._created_at,
+		'updatedAt', {{ .JoinAlias }}._updated_at
+	)
 {{- end -}}
 					{{- range $i, $c:= .Columns -}}
 					,
@@ -127,23 +139,27 @@ END)
 					{{- end }}) END)
 {{- end -}}
 {{- define "conColumn" -}} 
-json_build_object('id', {{ .JoinAlias }}._sys_id) AS sys
-						{{- range $i, $c:= .Columns -}}
-						,
-						{{ if .ConTableName -}}
-							_included_{{ .Reference.JoinAlias }}.res
-						{{- else if .IsAsset -}}
-						{{ template "assetRef" . }}
-						{{- else if .Reference -}}
-							{{ template "refColumn" .Reference }}
-						{{- else -}}
-							{{ if .Localized -}}
-								COALESCE({{ .JoinAlias }}.{{ .ColumnName }}, {{ .JoinAlias }}_fallbacklocale.{{ .ColumnName }}, {{ .JoinAlias }}_deflocale.{{ .ColumnName }}) 
-							{{- else -}}
-								{{ .JoinAlias }}.{{ .ColumnName }}
-							{{- end -}}	
-						{{- end }} AS "{{ .Alias }}"
-						{{- end }}
+	json_build_object(
+		'id', {{ .JoinAlias }}._sys_id,
+		'createdAt', {{ .JoinAlias }}._created_at,
+		'updatedAt', {{ .JoinAlias }}._updated_at
+	) AS sys
+	{{- range $i, $c:= .Columns -}}
+		,
+		{{ if .ConTableName -}}
+			_included_{{ .Reference.JoinAlias }}.res
+		{{- else if .IsAsset -}}
+		{{ template "assetRef" . }}
+		{{- else if .Reference -}}
+			{{ template "refColumn" .Reference }}
+		{{- else -}}
+			{{ if .Localized -}}
+				COALESCE({{ .JoinAlias }}.{{ .ColumnName }}, {{ .JoinAlias }}_fallbacklocale.{{ .ColumnName }}, {{ .JoinAlias }}_deflocale.{{ .ColumnName }}) 
+			{{- else -}}
+				{{ .JoinAlias }}.{{ .ColumnName }}
+			{{- end -}}	
+		{{- end }} AS "{{ .Alias }}"
+	{{- end }}
 {{- end -}}
 {{- define "join" -}}
 	{{- if .ConTableName }}
@@ -247,7 +263,11 @@ BEGIN
 	qs:= qs || ') ';
 			
 	qs:= qs || 'SELECT (SELECT _count FROM filtered LIMIT 1)::INTEGER, json_agg(t)::json FROM (
-	SELECT json_build_object(''id'', {{ .TableName }}._sys_id) AS sys
+	SELECT json_build_object(
+		''id'', {{ .TableName }}._sys_id,
+		''createdAt'', {{ .TableName }}._created_at,
+		''updatedAt'', {{ .TableName }}._updated_at
+	) AS sys
 	{{- range .Columns -}}
 		,
 		{{ .TableName }}.{{ .ColumnName }} AS "{{ .Alias }}"
@@ -310,7 +330,11 @@ BEGIN
 			qs:= qs || ') ';
 					
 			qs:= qs || 'SELECT (SELECT _count FROM filtered LIMIT 1)::INTEGER, json_agg(t)::json FROM (
-			SELECT json_build_object(''id'', {{ .TableName }}._sys_id) AS sys
+			SELECT json_build_object(
+				''id'', {{ .TableName }}._sys_id,
+				''createdAt'', {{ .TableName }}._created_at,
+				''updatedAt'', {{ .TableName }}._updated_at
+			) AS sys
 			{{- range .Columns -}}
 				,
 				{{ if and ($.ContentSchema) (.ColumnName | Overwritable) -}}
@@ -354,6 +378,7 @@ RETURNS table(_id text, _sys_id text {{- range .Columns -}}
 		{{ if eq .ColumnName "limit" -}}_{{- end -}}
 		{{- .ColumnName }} {{ .SqlType -}} 
 	{{- end -}}
+	, _created_at timestamp
 	, _updated_at timestamp) AS $$
 BEGIN
 	RETURN QUERY
@@ -376,6 +401,7 @@ BEGIN
 			{{- end -}}
 			{{- end }} AS "{{ .ColumnName }}"
 		{{- end }},
+			{{ .TableName }}._created_at AS _created_at,
 			{{ .TableName }}._updated_at AS _updated_at
 		FROM {{ .TableName }}
 		{{ if .HasLocalized -}}
