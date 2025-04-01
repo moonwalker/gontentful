@@ -413,7 +413,7 @@ BEGIN
 		{{- end }}
 		WHERE {{ .TableName }}._locale = localeArg;
 END;
-$$ LANGUAGE 'plpgsql';
+$$ LANGUAGE 'plpgsql' SET search_path TO '{{ $.SchemaName }}';
 --
 {{ range $i, $l := $.Locales }}
 {{ $fallbackLocale := .FallbackCode }}
