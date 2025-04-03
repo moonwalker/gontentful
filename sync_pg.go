@@ -262,7 +262,7 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 		for _, row := range tbl.Rows {
 			_, err = stmt.Exec(row.Fields()...)
 			if err != nil {
-				fmt.Println("stmt.Exec error", tbl.TableName, row)
+				fmt.Println("stmt.Exec row.Fields error", tbl.TableName, row.Fields(), err)
 				return err
 			}
 		}
@@ -291,7 +291,7 @@ func (s *PGSyncSchema) bulkInsert(txn *sqlx.Tx) error {
 		for _, row := range tbl.Rows {
 			_, err = stmt.Exec(row...)
 			if err != nil {
-				fmt.Println("stmt.Exec error", tbl.TableName, row)
+				fmt.Println("stmt.Exec row error", tbl.TableName, row, err)
 				return err
 			}
 		}
