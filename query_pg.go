@@ -21,11 +21,12 @@ const queryTemplate = `
 {{- end }}
 SELECT * FROM {{ .TableName }}_query(
 '{{ .Locale }}',
-{{- if $.Filters }}ARRAY[
+{{- if $.Filters }}'
 {{- range $idx, $filter := $.Filters -}}
-{{- if $idx -}},{{- end -}}'{{ $filter }}'
-{{- end -}}]
+{{- if $idx -}},{{- end -}}{{ $filter }}
+{{- end -}}'
 {{- else -}}NULL{{- end -}},
+'',
 '{{- $.Order -}}',
 {{- $.Skip -}},
 {{- $.Limit -}}
@@ -88,7 +89,7 @@ func ParsePGQuery(schemaName string, defaultLocale string, q url.Values) *PGQuer
 	return NewPGQuery(schemaName, contentType, locale, q, order, skip, limit)
 }
 func NewPGQuery(schemaName string, contentType string, locale string, filters url.Values, order string, skip int, limit int) *PGQuery {
-	tableName := toSnakeCase(contentType)
+	tableName := fmt.Sprintf("content_%s", toSnakeCase(contentType))
 	q := PGQuery{
 		SchemaName: schemaName,
 		TableName:  tableName,
@@ -122,7 +123,10 @@ func createFilters(filters url.Values) *[]string {
 			}
 		}
 		if len(filterFields) > 0 {
-			return &filterFields
+			fs := []string{
+				strings.Join(filterFields, " AND "),
+			}
+			return &fs
 		}
 	}
 	return nil
@@ -263,7 +267,10 @@ func (s *PGQuery) Exec(databaseURL string) (int64, string, error) {
 	if err != nil {
 		return 0, "", err
 	}
-	// fmt.Println(buff.String())
+
+	// log.Info("PGQuery", log.Fields{
+	// 	"template": buff.String(),
+	// })
 
 	var count int64
 	var items string
