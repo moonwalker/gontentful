@@ -155,11 +155,13 @@ func transformContent() {
 			}
 		}
 	}
+	fmt.Printf("Downloading %d images started\n", len(imageURLs))
 	if onlyImages {
-		fmt.Println("Transform skipped. Only downloading iumages.")
+		fmt.Println("Transform skipped. Only downloading images.")
 	}
 
 	i := 1
+
 	j := len(imageURLs)
 	errors := make([]string, 0)
 	images := make(map[string]bool)

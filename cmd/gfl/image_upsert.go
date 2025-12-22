@@ -9,15 +9,17 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	// "github.com/moonwalker/backend/pkg/cloudflare/r2"
 	"github.com/moonwalker/gontentful"
 )
 
 const (
 	apiurl      = "https://api.cloudflare.com/client/v4/accounts/%s/images/v1" //cloudflare api url
-	inputUrl    = "http://github.com/moonwalker/%s/tree/main/_images/%s"       // add the brand name to path
+	vidApiUrl   = "https://api.cloudflare.com/client/v4/accounts/%s/stream"    // cloudflare video api url
 	inputFolder = "input/images"
 	VideoKeyFmt = "%s/%s"
 )
@@ -28,6 +30,7 @@ type UploadImageParams struct {
 	Name     string
 	Path     string
 	Metadata map[string]string
+	Id       string
 }
 
 type errorResponse struct {
@@ -110,7 +113,7 @@ func upsertImage() error {
 				if gontentful.IsVideoFile(e.Name()) {
 					v++
 					// uploadURL := fmt.Sprintf(VideoKeyFmt, iName, filename)
-					// _, err = r2.UploadURL(uploadURL, iUrl)
+					// _, err = r2.UploadURL(vidApiUrl, iUrl)
 				} else {
 					url := fmt.Sprintf(apiurl, accountId)
 
@@ -236,32 +239,59 @@ func req(method, url string, payload io.Reader, resp interface{}, contentType st
 func createForm(p UploadImageParams) (string, io.Reader, error) {
 	body := new(bytes.Buffer)
 	mp := multipart.NewWriter(body)
-	defer mp.Close()
+
+	// Add metadata fields
 	for key, val := range p.Metadata {
-		mp.WriteField(key, val)
+		if err := mp.WriteField(key, val); err != nil {
+			mp.Close()
+			return "", nil, fmt.Errorf("failed to write field %s: %w", key, err)
+		}
 	}
 
 	if len(p.Path) > 0 {
 		file, err := os.Open(p.Path)
 		if err != nil {
-			return "", nil, err
+			mp.Close()
+			return "", nil, fmt.Errorf("failed to open file %s: %w", p.Path, err)
 		}
 		defer file.Close()
-		part, err := mp.CreateFormFile("file", p.Path)
+
+		part, err := mp.CreateFormFile("file", filepath.Base(p.Path))
 		if err != nil {
-			return "", nil, err
+			mp.Close()
+			return "", nil, fmt.Errorf("failed to create form file: %w", err)
 		}
-		io.Copy(part, file)
+
+		if _, err := io.Copy(part, file); err != nil {
+			mp.Close()
+			return "", nil, fmt.Errorf("failed to copy file data: %w", err)
+		}
 	}
+
 	if p.File != nil {
 		part, err := mp.CreateFormFile("file", p.Name)
 		if err != nil {
-			return "", nil, err
+			mp.Close()
+			return "", nil, fmt.Errorf("failed to create form file from reader: %w", err)
 		}
-		io.Copy(part, p.File)
+
+		if _, err := io.Copy(part, p.File); err != nil {
+			mp.Close()
+			return "", nil, fmt.Errorf("failed to copy reader data: %w", err)
+		}
 	}
+
 	if len(p.URL) > 0 {
-		mp.WriteField("url", p.URL)
+		if err := mp.WriteField("url", p.URL); err != nil {
+			mp.Close()
+			return "", nil, fmt.Errorf("failed to write URL field: %w", err)
+		}
 	}
+
+	// Explicitly close the multipart writer to ensure proper boundary closure
+	if err := mp.Close(); err != nil {
+		return "", nil, fmt.Errorf("failed to close multipart writer: %w", err)
+	}
+
 	return mp.FormDataContentType(), body, nil
 }
