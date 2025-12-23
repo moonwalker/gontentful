@@ -657,7 +657,7 @@ func batchUpsertImages() {
 			continue
 		}
 		ext := filepath.Ext(file.Name())
-		if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" {
+		if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".gif" || ext == ".svg" {
 			imageFiles = append(imageFiles, file.Name())
 		}
 	}
