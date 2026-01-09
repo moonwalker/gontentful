@@ -1,0 +1,285 @@
+repo_name: moonwalker/gontentful
+report_id: 6b4e32174bea5487d510f5fff4bb0fc4
+version: 0.1
+repo_type: Public
+timestamp: '2024-04-05T08:26:24+00:00'
+requested_by: hroli79
+provider: github
+branch: master
+detected_tools_count: 20
+tools:
+- name: Golang
+  description: An open source programming language that makes it easy to build simple,
+    reliable, and efficient software
+  website_url: http://golang.org/
+  license: BSD-3-Clause
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Languages
+  image_url: https://img.stackshare.io/service/1005/O6AczwfV_400x400.png
+  detection_source_url: https://github.com/moonwalker/gontentful
+  detection_source: Repo Metadata
+- name: Protobuf
+  description: Google's data interchange format
+  website_url: https://developers.google.com/protocol-buffers/
+  open_source: true
+  hosted_saas: false
+  category: Languages & Frameworks
+  sub_category: Serialization Frameworks
+  image_url: https://img.stackshare.io/service/4393/ma2jqJKH_400x400.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.mod
+  detection_source: go.mod
+  last_updated_by: Roland Helli
+  last_updated_on: 2023-02-16 10:34:25.000000000 Z
+- name: Codecov
+  description: Hosted coverage reports with awesome features to enhance your CI workflow
+  website_url: https://codecov.io/
+  open_source: false
+  hosted_saas: true
+  category: Build, Test, Deploy
+  sub_category: Code Coverage
+  image_url: https://img.stackshare.io/service/2673/Codecov_Mark_Circle_Pink.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/vendor/github.com/gosimple/slug/codecov.yml
+  detection_source: vendor/github.com/gosimple/slug/codecov.yml
+  last_updated_by: rucsi
+  last_updated_on: 2023-05-10 15:44:17.000000000 Z
+- name: Git
+  description: Fast, scalable, distributed revision control system
+  website_url: http://git-scm.com/
+  open_source: true
+  hosted_saas: false
+  category: Build, Test, Deploy
+  sub_category: Version Control System
+  image_url: https://img.stackshare.io/service/1046/git.png
+  detection_source_url: https://github.com/moonwalker/gontentful
+  detection_source: Repo Metadata
+- name: Travis CI
+  description: A hosted continuous integration service for open source and private
+    projects
+  website_url: http://travis-ci.com/
+  open_source: false
+  hosted_saas: true
+  category: Build, Test, Deploy
+  sub_category: Continuous Integration
+  image_url: https://img.stackshare.io/service/460/Lu6cGu0z_400x400.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/vendor/github.com/jmoiron/sqlx/.travis.yml
+  detection_source: vendor/github.com/jmoiron/sqlx/.travis.yml
+  last_updated_by: speier
+  last_updated_on: 2019-10-23 19:12:51.000000000 Z
+- name: crypto
+  description: Go supplementary cryptography libraries
+  package_url: https://pkg.go.dev/golang.org/x/crypto
+  version: 0.0.0
+  license: BSD-3-Clause
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: Roland Helli
+  last_updated_on: 2023-02-16 10:34:25.000000000 Z
+  vulnerabilities:
+  - name: Improper Verification of Cryptographic Signature in golang.org/x/crypto
+    cve_id: CVE-2020-9283
+    cve_url: https://github.com/advisories/GHSA-ffhg-7mh4-33c4
+    detected_date: Aug 22
+    severity: moderate
+    first_patched: 0.0.0-20200220183623-bac4c82f6975
+- name: appengine
+  description: Go App Engine packages
+  package_url: https://pkg.go.dev/google.golang.org/appengine
+  version: 1.6.7
+  license: Apache-2.0
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: Roland Helli
+  last_updated_on: 2023-02-16 10:34:25.000000000 Z
+- name: cobra
+  description: A Commander for modern Go CLI interactions
+  package_url: https://pkg.go.dev/github.com/spf13/cobra
+  version: 1.6.1
+  license: Apache-2.0
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: Roland Helli
+  last_updated_on: 2023-01-17 13:03:29.000000000 Z
+- name: go-querystring
+  description: Go-querystring is Go library for encoding structs into URL query parameters
+  package_url: https://pkg.go.dev/github.com/google/go-querystring
+  version: 1.1.0
+  license: BSD-3-Clause
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: Roland Helli
+  last_updated_on: 2023-02-16 10:34:25.000000000 Z
+- name: godotenv
+  description: A Go port of Ruby's dotenv library
+  package_url: https://pkg.go.dev/github.com/joho/godotenv
+  version: 1.5.1
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: rucsi
+  last_updated_on: 2023-05-03 15:05:38.000000000 Z
+- name: mapstructure
+  description: Go library for decoding generic map values into native Go structures
+  package_url: https://pkg.go.dev/github.com/mitchellh/mapstructure
+  version: 1.5.0
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: Roland Helli
+  last_updated_on: 2023-01-17 13:03:29.000000000 Z
+- name: mousetrap
+  description: Detect starting from Windows explorer
+  package_url: https://pkg.go.dev/github.com/inconshreveable/mousetrap
+  version: 1.0.1
+  license: Apache-2.0
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: Roland Helli
+  last_updated_on: 2023-01-17 13:03:29.000000000 Z
+- name: net
+  description: Go supplementary network libraries
+  package_url: https://pkg.go.dev/golang.org/x/net
+  version: 0.0.0
+  license: BSD-3-Clause
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: speier
+  last_updated_on: 2018-11-16 09:51:16.000000000 Z
+- name: oauth2
+  description: Go OAuth2
+  package_url: https://pkg.go.dev/golang.org/x/oauth2
+  version: 0.5.0
+  license: BSD-3-Clause
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: Roland Helli
+  last_updated_on: 2023-02-16 10:34:25.000000000 Z
+- name: pflag
+  description: Drop-in replacement for Go's flag package
+  package_url: https://pkg.go.dev/github.com/spf13/pflag
+  version: 1.0.5
+  license: BSD-3-Clause
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: Roland Helli
+  last_updated_on: 2023-01-17 13:03:29.000000000 Z
+- name: pq
+  description: Pure Go Postgres driver for database/sql
+  package_url: https://pkg.go.dev/github.com/lib/pq
+  version: 1.2.0
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: speier
+  last_updated_on: 2018-11-16 09:51:16.000000000 Z
+- name: proto
+  description: Go support for Google's protocol buffers
+  package_url: https://pkg.go.dev/github.com/golang/protobuf/proto
+  license: BSD-3-Clause
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.mod
+  detection_source: go.mod
+  last_updated_by: Roland Helli
+  last_updated_on: 2023-02-16 10:34:25.000000000 Z
+- name: slug
+  description: URL-friendly slugify with multiple languages support
+  package_url: https://pkg.go.dev/github.com/gosimple/slug
+  version: 1.13.1
+  license: MPL-2.0
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: rucsi
+  last_updated_on: 2023-08-16 17:09:09.000000000 Z
+- name: sqlx
+  description: General purpose extensions to golang's database/sql
+  package_url: https://pkg.go.dev/github.com/jmoiron/sqlx
+  version: 1.3.5
+  license: MIT
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: Roland Helli
+  last_updated_on: 2023-01-17 13:03:29.000000000 Z
+- name: text
+  description: Go text processing support
+  package_url: https://pkg.go.dev/golang.org/x/text
+  version: 0.3.0
+  license: BSD-3-Clause
+  open_source: true
+  hosted_saas: false
+  category: Libraries
+  sub_category: Go Modules Packages
+  image_url: https://img.stackshare.io/package/go-packages/image.png
+  detection_source_url: https://github.com/moonwalker/gontentful/blob/master/go.sum
+  detection_source: go.mod
+  last_updated_by: rucsi
+  last_updated_on: 2024-02-07 00:02:54.000000000 Z
