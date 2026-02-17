@@ -20,7 +20,7 @@ const queryTemplate = `
 	SET search_path='{{ .SchemaName }}';
 {{- end }}
 SELECT * FROM {{ .TableName }}_query(
-'{{ .Locale }}',
+{{- if .Locale -}}'{{ .Locale }}',{{- end -}}
 {{- if $.Filters }}'
 {{- range $idx, $filter := $.Filters -}}
 {{- if $idx -}},{{- end -}}{{ $filter }}
