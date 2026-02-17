@@ -90,7 +90,7 @@ func ParsePGQuery(schemaName string, defaultLocale string, q url.Values) *PGQuer
 }
 func NewPGQuery(schemaName string, contentType string, locale string, filters url.Values, order string, skip int, limit int) *PGQuery {
 	tableName := toSnakeCase(contentType)
-	if tableName == SCHEMA_TABLE_NAME {
+	if tableName != SCHEMA_TABLE_NAME {
 		tableName = fmt.Sprintf("content_%s", tableName)
 	}
 	q := PGQuery{
